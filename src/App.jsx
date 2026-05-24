@@ -3,7 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import AppLayout from './components/layout/AppLayout';
 import Login from './components/pages/Login';
-import Dashboard from './components/pages/Dashboard';
+import AdminDashboard from './components/pages/admin/Dashboard';
+import TeacherDashboard from './components/pages/teacher/Dashboard';
+import StudentDashboard from './components/pages/student/Dashboard';
 import './App.css';
 
 // Simple helper components to make every sidebar link functional immediately!
@@ -45,9 +47,14 @@ function App() {
           <Route path="/" element={<AppLayout />}>
             {/* Automatic redirect from root to dashboard */}
             <Route index element={<Navigate to="/dashboard" replace />} />
-            
+
             <Route path="dashboard" element={<Dashboard />} />
-            
+
+            {/* Role-based Dashboards */}
+            <Route path="admin/dashboard" element={<AdminDashboard />} />
+            <Route path="teacher/dashboard" element={<TeacherDashboard />} />
+            <Route path="student/dashboard" element={<StudentDashboard />} />
+
             {/* Placeholders for Stitch Screens */}
             <Route path="students" element={<PlaceholderPage title="Gestión de Estudiantes" />} />
             <Route path="teachers" element={<PlaceholderPage title="Gestión de Docentes" />} />
