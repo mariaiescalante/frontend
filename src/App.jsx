@@ -48,7 +48,7 @@ function App() {
             {/* Automatic redirect from root to dashboard */}
             <Route index element={<Navigate to="/dashboard" replace />} />
 
-            <Route path="dashboard" element={<Dashboard />} />
+
 
             {/* Role-based Dashboards */}
             <Route path="admin/dashboard" element={<AdminDashboard />} />
