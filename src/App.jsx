@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import AppLayout from './components/layout/AppLayout';
 import Login from './components/pages/Login';
 import ForgotPassword from './components/pages/ForgotPassword';
+import ChangePassword from './components/pages/ChangePassword';
 import AdminDashboard from './components/pages/admin/Dashboard';
 import TeacherDashboard from './components/pages/teacher/Dashboard';
 import StudentDashboard from './components/pages/student/Dashboard';
@@ -68,6 +69,7 @@ function App() {
             {/* Automatic redirect from root to dashboard */}
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardRedirect />} />
+            <Route path="change-password" element={<ChangePassword />} />
 
             {/* Role-based Dashboards */}
             <Route path="admin/dashboard" element={<AdminDashboard />} />

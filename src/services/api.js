@@ -29,6 +29,10 @@ api.interceptors.response.use(
     const apiMessage = error.response?.data?.message;
     const message = apiMessage || error.message || 'Error de red';
 
+    if (status === 401) {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+
     const normalizedError = new Error(message);
     normalizedError.status = status;
     normalizedError.data = error.response?.data;
