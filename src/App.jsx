@@ -1,11 +1,11 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext.jsx';
 import AppLayout from './components/layout/AppLayout';
 import Login from './components/pages/Login';
 import AdminDashboard from './components/pages/admin/Dashboard';
 import TeacherDashboard from './components/pages/teacher/Dashboard';
 import StudentDashboard from './components/pages/student/Dashboard';
+import useAuth from './hooks/useAuth';
 import './App.css';
 
 // Simple helper components to make every sidebar link functional immediately!
@@ -35,6 +35,24 @@ const PlaceholderPage = ({ title }) => (
   </div>
 );
 
+const DashboardRedirect = () => {
+  const { isAdmin, isTeacher, isStudent } = useAuth();
+
+  if (isAdmin) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  if (isTeacher) {
+    return <Navigate to="/teacher/dashboard" replace />;
+  }
+
+  if (isStudent) {
+    return <Navigate to="/student/dashboard" replace />;
+  }
+
+  return <Navigate to="/login" replace />;
+};
+
 function App() {
   return (
     <AuthProvider>
@@ -47,8 +65,7 @@ function App() {
           <Route path="/" element={<AppLayout />}>
             {/* Automatic redirect from root to dashboard */}
             <Route index element={<Navigate to="/dashboard" replace />} />
-
-
+            <Route path="dashboard" element={<DashboardRedirect />} />
 
             {/* Role-based Dashboards */}
             <Route path="admin/dashboard" element={<AdminDashboard />} />

@@ -1,16 +1,40 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GraduationCap, User, Eye, EyeOff, ShieldAlert, LifeBuoy } from 'lucide-react';
+import useAuth from '../../hooks/useAuth';
 
 export default function Login() {
+  const navigate = useNavigate();
+  const { login, loading, error, isAuthenticated } = useAuth();
+
   // states to bind field values
   const [usuario, setUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [recordarme, setRecordarme] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, loading, navigate]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // minimal form submission placeholder as requested
+
+    const sanitizedUser = usuario.trim();
+    const sanitizedPassword = contrasena.trim();
+
+    if (!sanitizedUser || !sanitizedPassword) {
+      return;
+    }
+
+    try {
+      await login(sanitizedUser, sanitizedPassword);
+      navigate('/dashboard', { replace: true });
+    } catch {
+      // El mensaje de error ya se expone desde AuthContext
+    }
   };
 
   return (
@@ -98,6 +122,23 @@ export default function Login() {
         </div>
 
         {/* Login Form */}
+        {error && (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              background: '#fff1f2',
+              color: '#9f1239',
+              fontSize: '13px',
+              fontFamily: "'Inter', sans-serif",
+              border: '1px solid #fecdd3',
+              lineHeight: 1.4
+            }}
+          >
+            {error}
+          </div>
+        )}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* User Input */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' }}>
@@ -119,6 +160,8 @@ export default function Login() {
                 placeholder="Ingrese su usuario"
                 value={usuario}
                 onChange={(e) => setUsuario(e.target.value)}
+                autoComplete="username"
+                required
                 style={{
                   width: '100%',
                   background: '#f8fafc',
@@ -169,6 +212,8 @@ export default function Login() {
                 placeholder="••••••••"
                 value={contrasena}
                 onChange={(e) => setContrasena(e.target.value)}
+                autoComplete="current-password"
+                required
                 style={{
                   width: '100%',
                   background: '#f8fafc',
@@ -269,14 +314,15 @@ export default function Login() {
               border: 'none',
               borderRadius: '8px',
               padding: '14px',
-              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
               marginTop: '10px',
               boxShadow: '0 4px 10px rgba(250, 204, 21, 0.25)',
-              transition: 'background-color 0.2s, transform 0.1s'
+              transition: 'background-color 0.2s, transform 0.1s',
+              opacity: loading ? 0.75 : 1,
+              cursor: loading ? 'not-allowed' : 'pointer'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = '#eab308';
@@ -290,8 +336,9 @@ export default function Login() {
             onMouseUp={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
             }}
+            disabled={loading}
           >
-            Iniciar Sesión
+            {loading ? 'Ingresando...' : 'Iniciar Sesión'}
             <svg
               width="16"
               height="16"

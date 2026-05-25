@@ -1,73 +1,71 @@
-const BASE_URL = 'http://localhost:3000/api';
+import axios from 'axios';
 
-/**
- * Helper to retrieve stored auth token
- */
-const getToken = () => localStorage.getItem('stitch_token');
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const TOKEN_KEY = 'stitch_token';
 
-/**
- * Standardized API client using native fetch
- */
-export const api = {
-  async request(endpoint, options = {}) {
-    const token = getToken();
-    const headers = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
+const getToken = () => localStorage.getItem(TOKEN_KEY);
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const config = {
-      ...options,
-      headers,
-    };
-
-    try {
-      const response = await fetch(`${BASE_URL}${endpoint}`, config);
-      
-      // Handle empty or NO_CONTENT responses
-      if (response.status === 204) {
-        return null;
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || `Error del Servidor (${response.status})`);
-      }
-
-      return data;
-    } catch (error) {
-      console.error(`Error en API Request [${endpoint}]:`, error);
-      throw error;
-    }
+const api = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
   },
+});
 
-  get(endpoint, headers = {}) {
-    return this.request(endpoint, { method: 'GET', headers });
+api.interceptors.request.use((config) => {
+  const token = getToken();
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const apiMessage = error.response?.data?.message;
+    const message = apiMessage || error.message || 'Error de red';
+
+    const normalizedError = new Error(message);
+    normalizedError.status = status;
+    normalizedError.data = error.response?.data;
+
+    return Promise.reject(normalizedError);
+  }
+);
+
+const request = async (method, endpoint, data, config = {}) => {
+  const response = await api.request({
+    url: endpoint,
+    method,
+    data,
+    ...config,
+  });
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.data;
+};
+
+export const http = {
+  request,
+  get(endpoint, config = {}) {
+    return request('GET', endpoint, undefined, config);
   },
-
-  post(endpoint, body, headers = {}) {
-    return this.request(endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
+  post(endpoint, body, config = {}) {
+    return request('POST', endpoint, body, config);
   },
-
-  put(endpoint, body, headers = {}) {
-    return this.request(endpoint, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(body),
-    });
+  put(endpoint, body, config = {}) {
+    return request('PUT', endpoint, body, config);
   },
-
-  delete(endpoint, headers = {}) {
-    return this.request(endpoint, { method: 'DELETE', headers });
+  delete(endpoint, config = {}) {
+    return request('DELETE', endpoint, undefined, config);
   },
 };
-export default api;
+
+export default http;

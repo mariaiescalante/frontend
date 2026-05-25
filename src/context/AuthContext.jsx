@@ -1,11 +1,32 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import AuthContext from './authContext';
 
-const AuthContext = createContext(null);
+const TOKEN_KEY = 'stitch_token';
+
+const normalizeUser = (payload) => {
+  if (!payload) {
+    return null;
+  }
+
+  if (payload.user) {
+    return payload.user;
+  }
+
+  if (payload.data?.user) {
+    return payload.data.user;
+  }
+
+  if (payload.data) {
+    return payload.data;
+  }
+
+  return payload;
+};
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('stitch_token'));
+  const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -14,13 +35,20 @@ export function AuthProvider({ children }) {
   const isStudent = user?.role === 'Estudiante';
   const isTeacher = user?.role === 'Docente';
 
+  const logout = useCallback(() => {
+    localStorage.removeItem(TOKEN_KEY);
+    setToken(null);
+    setUser(null);
+    setError(null);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     async function initAuth() {
       if (token) {
         try {
-          // Attempt to retrieve profile from backend
           const profile = await api.get('/auth/profile');
-          setUser(profile);
+          setUser(normalizeUser(profile));
         } catch (err) {
           console.error('Failed to restore session:', err);
           logout();
@@ -28,41 +56,40 @@ export function AuthProvider({ children }) {
       }
       setLoading(false);
     }
+
     initAuth();
-  }, [token]);
+  }, [token, logout]);
 
   const login = async (username, password) => {
     setError(null);
     setLoading(true);
     try {
       const response = await api.post('/auth/login', { username, password });
-      
-      const { access_token, user: userData } = response;
-      
-      // Save to state & localstorage
-      localStorage.setItem('stitch_token', access_token);
-      setToken(access_token);
-      
-      // The login response might return the user directly, otherwise fetch profile
+
+      const accessToken = response?.access_token || response?.token;
+      const userData = normalizeUser(response);
+
+      if (!accessToken) {
+        throw new Error('La respuesta del login no devolvió un token válido');
+      }
+
+      localStorage.setItem(TOKEN_KEY, accessToken);
+      setToken(accessToken);
+
       if (userData) {
         setUser(userData);
       } else {
         const profile = await api.get('/auth/profile');
-        setUser(profile);
+        setUser(normalizeUser(profile));
       }
-      return true;
+
+      setLoading(false);
+      return userData || true;
     } catch (err) {
       setError(err.message || 'Credenciales inválidas');
       setLoading(false);
       throw err;
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('stitch_token');
-    setToken(null);
-    setUser(null);
-    setError(null);
   };
 
   const value = {
@@ -80,12 +107,3 @@ export function AuthProvider({ children }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
-export default AuthContext;
