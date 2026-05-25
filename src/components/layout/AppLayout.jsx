@@ -3,6 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import './Layout.css';
 
 export default function AppLayout() {
   const { isAuthenticated, loading } = useAuth();
@@ -54,9 +55,9 @@ export default function AppLayout() {
   return (
     <div className="app-container">
       <Sidebar />
-      <div className="main-content">
+      <div className="sgums-main-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Navbar />
-        <main className="content-page">
+        <main className="sgums-content-container">
           {/* Dynamic route rendering for the screens (Stitch Pages) */}
           <Outlet />
         </main>

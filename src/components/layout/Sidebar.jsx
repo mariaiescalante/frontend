@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
-import StitchMascot from '../../assets/StitchMascot';
 import {
   LayoutDashboard,
   Users,
@@ -9,20 +8,50 @@ import {
   BookOpen,
   ClipboardList,
   FileText,
+  KeyRound,
+  LogOut,
+  School,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
 
 export default function Sidebar() {
-  const { user, isAdmin, isStudent, isTeacher } = useAuth();
+  const { user, logout, isAdmin, isStudent, isTeacher } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Define sidebar menu options based on role
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+  const getPortalName = () => {
+    if (isAdmin) return 'ADMIN PORTAL';
+    if (isTeacher) return 'DOCENTE PORTAL';
+    if (isStudent) return 'PORTAL ESTUDIANTE';
+    return 'PORTAL ACADÉMICO';
+  };
+
+  const getInitials = () => {
+    if (!user) return 'SG';
+    const first = user.name ? user.name[0] : '';
+    const last = user.lastname ? user.lastname[0] : '';
+    return (first + last).toUpperCase();
+  };
+
+  // Sidebar navigation menu items based on role
   const menuItems = [
     {
       path: '/dashboard',
-      name: 'Panel General',
+      name: 'Dashboard',
       icon: LayoutDashboard,
+      visible: true
+    },
+    {
+      path: '/subjects',
+      name: 'Asignaturas',
+      icon: BookOpen,
       visible: true
     },
     {
@@ -38,12 +67,6 @@ export default function Sidebar() {
       visible: isAdmin
     },
     {
-      path: '/subjects',
-      name: 'Materias y Secciones',
-      icon: BookOpen,
-      visible: true
-    },
-    {
       path: '/registrations',
       name: 'Inscripciones',
       icon: ClipboardList,
@@ -51,7 +74,7 @@ export default function Sidebar() {
     },
     {
       path: '/documents',
-      name: 'Solicitud Documentos',
+      name: 'Solicitudes',
       icon: FileText,
       visible: true
     }
@@ -59,19 +82,10 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="glass-panel"
+      className="sgums-sidebar"
       style={{
-        width: collapsed ? '80px' : '260px',
-        minWidth: collapsed ? '80px' : '260px',
-        transition: 'var(--transition)',
-        display: 'flex',
-        flexDirection: 'column',
-        height: 'calc(100vh - 40px)',
-        margin: '20px 0 20px 20px',
-        padding: '24px 16px',
-        position: 'relative',
-        zIndex: 10,
-        backgroundColor: 'var(--bg-glass)'
+        width: collapsed ? '80px' : '280px',
+        minWidth: collapsed ? '80px' : '280px'
       }}
     >
       {/* Collapse Button */}
@@ -81,7 +95,7 @@ export default function Sidebar() {
           position: 'absolute',
           right: '-14px',
           top: '32px',
-          background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-blue))',
+          background: '#ffd100',
           border: 'none',
           borderRadius: '50%',
           width: '28px',
@@ -90,49 +104,30 @@ export default function Sidebar() {
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          boxShadow: '0 0 10px rgba(0, 229, 255, 0.4)',
-          color: '#000'
+          boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
+          color: '#051124',
+          zIndex: 50,
+          transition: 'all 0.2s ease'
         }}
       >
         {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
 
-      {/* Brand Mascot Logo */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '12px',
-          marginBottom: '36px',
-          textAlign: 'center',
-          overflow: 'hidden'
-        }}
-      >
-        <StitchMascot size={collapsed ? 48 : 88} />
+      {/* Brand logo container */}
+      <div className="sgums-sidebar-logo-container" style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}>
+        <div className="sgums-sidebar-logo-icon">
+          <School size={24} />
+        </div>
         {!collapsed && (
-          <div>
-            <h2
-              style={{
-                fontSize: '1.2rem',
-                fontWeight: '700',
-                background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-pink))',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                margin: 0
-              }}
-            >
-              Stitch Académico
-            </h2>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              SISTEMA ACADÉMICO V1.0
-            </span>
+          <div className="sgums-sidebar-logo-text">
+            <span className="sgums-sidebar-title">SGUMS</span>
+            <span className="sgums-sidebar-subtitle">{getPortalName()}</span>
           </div>
         )}
       </div>
 
       {/* Navigation Links */}
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto' }}>
+      <nav className="sgums-sidebar-nav">
         {menuItems
           .filter((item) => item.visible)
           .map((item) => {
@@ -141,58 +136,87 @@ export default function Sidebar() {
               <NavLink
                 key={item.path}
                 to={item.path}
-                style={({ isActive }) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  padding: '12px 16px',
-                  borderRadius: '10px',
-                  color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                  background: isActive ? 'rgba(0, 229, 255, 0.08)' : 'transparent',
-                  border: isActive ? '1px solid rgba(0, 229, 255, 0.15)' : '1px solid transparent',
-                  transition: 'var(--transition)',
-                  fontWeight: isActive ? '600' : '400',
-                  textDecoration: 'none',
-                  overflow: 'hidden',
-                  whiteSpace: 'nowrap'
-                })}
-                onMouseEnter={(e) => {
-                  if (!e.currentTarget.classList.contains('active')) {
-                    e.currentTarget.style.color = 'var(--text-primary)';
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                  }
+                className={({ isActive }) => {
+                  const isDashboardActive = item.path === '/dashboard' && location.pathname.includes('dashboard');
+                  return (isActive || isDashboardActive) ? 'sgums-sidebar-link active' : 'sgums-sidebar-link';
                 }}
-                onMouseLeave={(e) => {
-                  if (!e.currentTarget.classList.contains('active')) {
-                    e.currentTarget.style.color = 'var(--text-secondary)';
-                    e.currentTarget.style.background = 'transparent';
-                  }
+                style={{
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  padding: collapsed ? '12px' : '12px 16px'
                 }}
               >
-                <Icon size={20} style={{ minWidth: '20px' }} />
-                {!collapsed && <span style={{ fontSize: '0.9rem' }}>{item.name}</span>}
+                <div className="sgums-sidebar-link-icon">
+                  <Icon size={20} />
+                </div>
+                {!collapsed && <span style={{ whiteSpace: 'nowrap' }}>{item.name}</span>}
               </NavLink>
             );
           })}
       </nav>
 
-      {/* Bottom Footer Details */}
-      {!collapsed && (
-        <div
-          style={{
-            padding: '12px',
-            borderRadius: '10px',
-            backgroundColor: 'rgba(255, 255, 255, 0.02)',
-            textAlign: 'center',
-            fontSize: '0.75rem',
-            color: 'var(--text-muted)',
-            border: '1px solid var(--border-color)'
-          }}
-        >
-          <p>Conectado a la API</p>
-          <span style={{ color: 'var(--accent-cyan)', fontWeight: '600' }}>ONLINE</span>
+      {/* Sidebar Footer details */}
+      <div className="sgums-sidebar-footer" style={{ alignItems: collapsed ? 'center' : 'stretch' }}>
+        {user && !collapsed && (
+          <div className="sgums-sidebar-profile">
+            <div className="sgums-sidebar-avatar">
+              {getInitials()}
+            </div>
+            <div className="sgums-sidebar-profile-info">
+              <span className="sgums-sidebar-profile-name">
+                {user.name} {user.lastname}
+              </span>
+              <span className="sgums-sidebar-profile-role">
+                {user.role}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {user && collapsed && (
+          <div
+            className="sgums-sidebar-avatar"
+            title={`${user.name} ${user.lastname} (${user.role})`}
+            style={{ margin: '8px auto' }}
+          >
+            {getInitials()}
+          </div>
+        )}
+
+        {/* Action button container */}
+        <div className="sgums-sidebar-footer-actions" style={{ alignItems: collapsed ? 'center' : 'stretch' }}>
+          <NavLink
+            to="/change-password"
+            className={({ isActive }) => 
+              `sgums-sidebar-footer-btn${isActive ? ' active' : ''}`
+            }
+            style={({ isActive }) => ({
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              color: isActive ? '#ffd100' : undefined,
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            })}
+          >
+            <KeyRound size={16} />
+            {!collapsed && <span>Cambiar Contraseña</span>}
+          </NavLink>
+
+          <button
+            onClick={handleLogout}
+            className="sgums-sidebar-footer-btn logout-btn"
+            style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}
+          >
+            <LogOut size={16} />
+            {!collapsed && <span>Cerrar Sesión</span>}
+          </button>
+
+          <div className="sgums-api-status" style={{ justifyContent: collapsed ? 'center' : 'flex-start', paddingLeft: collapsed ? '0' : '4px' }}>
+            <span className="sgums-api-status-dot"></span>
+            {!collapsed && <span>ONLINE</span>}
+          </div>
         </div>
-      )}
+      </div>
     </aside>
   );
 }

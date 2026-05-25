@@ -268,19 +268,19 @@ function PasswordField({ id, label, value, onChange, showValue, onToggle }) {
           required
           style={{
             width: '100%',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid var(--border-color)',
+            background: '#f8fafc',
+            border: '1px solid #cbd5e1',
             borderRadius: '10px',
             padding: '13px 44px 13px 16px',
             fontSize: '13.5px',
-            color: 'var(--text-primary)',
+            color: '#0f172a',
             fontFamily: "'Inter', sans-serif",
             outline: 'none',
             boxSizing: 'border-box',
             transition: 'var(--transition)'
           }}
-          onFocus={(event) => (event.target.style.borderColor = 'var(--accent-cyan)')}
-          onBlur={(event) => (event.target.style.borderColor = 'var(--border-color)')}
+          onFocus={(event) => (event.target.style.borderColor = '#051124')}
+          onBlur={(event) => (event.target.style.borderColor = '#cbd5e1')}
         />
         <button
           type="button"
