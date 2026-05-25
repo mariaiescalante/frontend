@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import AppLayout from './components/layout/AppLayout';
 import Login from './components/pages/Login';
+import ForgotPassword from './components/pages/ForgotPassword';
 import AdminDashboard from './components/pages/admin/Dashboard';
 import TeacherDashboard from './components/pages/teacher/Dashboard';
 import StudentDashboard from './components/pages/student/Dashboard';
@@ -60,6 +61,7 @@ function App() {
         <Routes>
           {/* Public Route */}
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Secure Layout Routes */}
           <Route path="/" element={<AppLayout />}>

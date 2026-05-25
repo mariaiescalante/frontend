@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, User, Eye, EyeOff, ShieldAlert, LifeBuoy } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 
@@ -288,8 +288,8 @@ export default function Login() {
               />
               Recordarme
             </label>
-            <a
-              href="#forgot"
+            <Link
+              to="/forgot-password"
               style={{
                 color: '#2b6cb0',
                 fontWeight: '600',
@@ -299,7 +299,7 @@ export default function Login() {
               onMouseLeave={(e) => (e.target.style.color = '#2b6cb0')}
             >
               Olvidé mi contraseña
-            </a>
+            </Link>
           </div>
 
           {/* Yellow Action Button */}
