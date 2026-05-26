@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import AppLayout from './components/layout/AppLayout';
 import Login from './components/pages/Login';
 import ForgotPassword from './components/pages/ForgotPassword';
+import ResetPassword from './components/pages/ResetPassword';
 import ChangePassword from './components/pages/ChangePassword';
 import AdminDashboard from './components/pages/admin/Dashboard';
 import TeacherDashboard from './components/pages/teacher/Dashboard';
@@ -63,6 +64,8 @@ function App() {
           {/* Public Route */}
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/restablecer-contrasena" element={<ResetPassword />} />
 
           {/* Secure Layout Routes */}
           <Route path="/" element={<AppLayout />}>

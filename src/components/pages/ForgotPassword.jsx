@@ -24,7 +24,7 @@ export default function ForgotPassword() {
 
     try {
       const response = await requestPasswordReset(sanitizedEmail);
-      const message = response?.message || 'Si el correo existe, recibirás las instrucciones para recuperar tu contraseña.';
+      const message = response?.message || 'Si el correo existe, recibirás un enlace para restablecer tu contraseña.';
       setSuccess(message);
       setEmail('');
     } catch (requestError) {
