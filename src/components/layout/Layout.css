@@ -364,6 +364,47 @@
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
 }
 
+/* Admin/content text overrides for light cards and tables */
+.sgums-content-container .custom-table th {
+  color: #475569 !important;
+  background: #f8fafc !important;
+}
+
+.sgums-content-container .custom-table td {
+  color: #0f172a !important;
+}
+
+.sgums-content-container .custom-table tr:hover td {
+  background: #f8fafc !important;
+}
+
+.sgums-content-container .form-label {
+  color: #475569 !important;
+}
+
+.sgums-content-container .form-input {
+  color: #0f172a !important;
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.sgums-content-container .form-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.sgums-content-container h1,
+.sgums-content-container h2,
+.sgums-content-container h3,
+.sgums-content-container h4,
+.sgums-content-container h5,
+.sgums-content-container h6,
+.sgums-content-container p,
+.sgums-content-container span,
+.sgums-content-container td,
+.sgums-content-container th {
+  text-shadow: none !important;
+}
+
 /* Custom scrollbar for main area */
 .sgums-content-container::-webkit-scrollbar {
   width: 8px;

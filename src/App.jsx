@@ -6,6 +6,15 @@ import ForgotPassword from './components/pages/ForgotPassword';
 import ResetPassword from './components/pages/ResetPassword';
 import ChangePassword from './components/pages/ChangePassword';
 import AdminDashboard from './components/pages/admin/Dashboard';
+import UserManagement from './components/pages/admin/UserManagement';
+import CareersManagement from './components/pages/admin/CareersManagement';
+import PensumManagement from './components/pages/admin/PensumManagement';
+import AcademicPeriods from './components/pages/admin/AcademicPeriods';
+import EnrollmentsManagement from './components/pages/admin/EnrollmentsManagement';
+import SectionsManagement from './components/pages/admin/SectionsManagement';
+import TeacherAssignment from './components/pages/admin/TeacherAssignment';
+import GradesControl from './components/pages/admin/GradesControl';
+import AcademicHistory from './components/pages/admin/AcademicHistory';
 import TeacherDashboard from './components/pages/teacher/Dashboard';
 import StudentDashboard from './components/pages/student/Dashboard';
 import useAuth from './hooks/useAuth';
@@ -76,6 +85,15 @@ function App() {
 
             {/* Role-based Dashboards */}
             <Route path="admin/dashboard" element={<AdminDashboard />} />
+            <Route path="admin/users" element={<UserManagement />} />
+            <Route path="admin/careers" element={<CareersManagement />} />
+            <Route path="admin/pensum" element={<PensumManagement />} />
+            <Route path="admin/periods" element={<AcademicPeriods />} />
+            <Route path="admin/enrollments" element={<EnrollmentsManagement />} />
+            <Route path="admin/sections" element={<SectionsManagement />} />
+            <Route path="admin/teacher-assignment" element={<TeacherAssignment />} />
+            <Route path="admin/grades" element={<GradesControl />} />
+            <Route path="admin/history" element={<AcademicHistory />} />
             <Route path="teacher/dashboard" element={<TeacherDashboard />} />
             <Route path="student/dashboard" element={<StudentDashboard />} />
 

@@ -1,0 +1,107 @@
+# Plan de Implementación: Módulos de Gestión del Panel Administrativo (SGUMS)
+
+Este plan describe el diseño y la integración de 9 nuevos módulos académicos interactivos para el panel de administración en el sistema SGUMS. Cada módulo estará integrado en la navegación global y contará con un diseño consistente con la estética cósmica premium del proyecto.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Integración del Sidebar:**
+> - Añadiremos 9 nuevos accesos directos en el Sidebar que serán visibles únicamente para usuarios con rol `Administrador` (`visible: isAdmin`).
+> - Para evitar saturación visual, usaremos una barra lateral con scroll vertical fluido y elegante, aplicando los mismos tokens de diseño (enlaces inactivos en gris, enlace activo con fondo amarillo `#ffd100` y texto azul marino).
+> - Se importarán íconos modernos y descriptivos desde `lucide-react` para cada módulo.
+
+---
+
+## Proposed Changes
+
+### 1. Navigation & Routing System
+
+#### [MODIFY] [Sidebar.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/layout/Sidebar.jsx)
+- Importaremos los íconos de Lucide: `UserCog`, `Award`, `Calendar`, `Layers`, `UserCheck`, `History`, `ClipboardCheck`.
+- Actualizaremos la lista `menuItems` para incluir los 9 nuevos módulos administrativos configurados con `visible: isAdmin` y apuntando a sus rutas respectivas.
+
+#### [MODIFY] [Navbar.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/layout/Navbar.jsx)
+- Añadiremos el mapeo de títulos correspondientes en la función `getPageTitle()` para que las cabeceras de navegación reflejen el nombre correcto de cada módulo en español.
+
+#### [MODIFY] [App.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/App.jsx)
+- Importaremos y registraremos las 9 nuevas páginas del panel de administración dentro de las rutas seguras de `AppLayout`.
+
+---
+
+### 2. Administrative Modules (New High-Fidelity UI Screens)
+
+Todos los módulos se crearán en `src/components/pages/admin/` utilizando paneles de vidrio (`glass-panel`), tablas con transiciones suaves, tarjetas informativas, botones con gradientes de neón y estados de interacción dinámicos en React.
+
+#### [NEW] [UserManagement.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/pages/admin/UserManagement.jsx)
+- **Gestión de Usuarios (Registro de Estudiantes y Docentes):**
+  - Selector de pestañas ("Estudiantes" vs "Docentes").
+  - Buscador global por cédula/nombre y filtros de estado (Activo/Inactivo).
+  - Tabla de registros detallada con badges de estado y botones de acción (Editar, Eliminar).
+  - Formulario/Modal interactivo para registrar un nuevo usuario (Cédula, Nombre, Apellidos, Correo, Rol, Carrera/Departamento).
+
+#### [NEW] [CareersManagement.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/pages/admin/CareersManagement.jsx)
+- **Gestión de Carreras:**
+  - Grid de tarjetas de carreras con códigos, créditos requeridos, duración en semestres y materias totales.
+  - Buscador y botón para abrir un formulario para agregar/editar una carrera.
+
+#### [NEW] [PensumManagement.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/pages/admin/PensumManagement.jsx)
+- **Gestión de Pensum:**
+  - Filtro por Carrera.
+  - Visualización del plan de estudios agrupado por Semestres/Ciclos académicos.
+  - Tabla de asignaturas correspondientes al ciclo con sus créditos, prerrequisitos e indicador de obligatoriedad.
+  - Modal para agregar una materia al plan de estudios actual de forma dinámica.
+
+#### [NEW] [AcademicPeriods.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/pages/admin/AcademicPeriods.jsx)
+- **Gestión de Períodos Académicos:**
+  - Tabla con períodos activos, pasados e históricos (Ej: 2026-I, 2026-II).
+  - Formulario para crear un período académico (Nombre, Fecha Inicio, Fecha Fin) y alternador de estado (Planificación, Inscripción Abierta, Clases en Curso, Cerrado).
+
+#### [NEW] [EnrollmentsManagement.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/pages/admin/EnrollmentsManagement.jsx)
+- **Gestión de Inscripciones:**
+  - Panel para auditar solicitudes de inscripción hechas por estudiantes.
+  - Tabla de solicitudes con el nombre del estudiante, carrera, cantidad de materias seleccionadas y estado (`Pendiente`, `Aprobada`, `Rechazada`).
+  - Botones de acción directa para Aprobar, Rechazar o ver el desglose detallado de materias en un modal interactivo.
+
+#### [NEW] [SectionsManagement.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/pages/admin/SectionsManagement.jsx)
+- **Gestión de Secciones:**
+  - Filtro de materias y semestres.
+  - Listado de secciones (Ej: Sección A-1, Sección B-1) indicando cupos máximos, cupos inscritos, horario y aula asignada.
+  - Formulario modal para crear y aperturar una nueva sección para una asignatura.
+
+#### [NEW] [TeacherAssignment.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/pages/admin/TeacherAssignment.jsx)
+- **Asignación Docente:**
+  - Interfaz de asignación estructurada en un flujo de selección jerárquico (desglose progresivo):
+    1. **Carrera:** Selector inicial para filtrar las opciones académicas.
+    2. **Semestre/Ciclo:** Selector secundario que depende de la carrera elegida.
+    3. **Asignatura:** Lista de asignaturas correspondientes a la carrera y semestre seleccionados.
+    4. **Sección:** Sección específica del curso a la cual se asignará la clase.
+    5. **Docente:** Selección final del profesor disponible para vincularlo a la sección.
+  - Listado interactivo de asignaciones vigentes agrupadas o filtrables para una auditoría rápida.
+  - Formulario dinámico que valida y muestra conflictos de horarios antes de consolidar la asignación.
+
+#### [NEW] [GradesControl.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/pages/admin/GradesControl.jsx)
+- **Control de Notas y Evaluaciones:**
+  - Selector de Sección y Materia.
+  - Listado de alumnos inscritos en la sección seleccionada con sus notas por corte/evaluación y nota final.
+  - Formulario dinámico en línea para actualizar o auditar calificaciones antes del cierre definitivo de actas.
+
+#### [NEW] [AcademicHistory.jsx](file:///c:/Users/Core/Documents/Uni/7mo%20semestre/Lenguaje%20III/frontend/src/components/pages/admin/AcademicHistory.jsx)
+- **Historial Académico de Estudiantes:**
+  - Buscador predictivo por cédula o nombre del estudiante.
+  - Resumen estadístico del estudiante seleccionado: CUM (Promedio acumulado), Créditos Aprobados, Materias Cursadas.
+  - Acordeón interactivo o línea de tiempo desplegable que lista detalladamente las notas obtenidas en cada período histórico cursado.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+- Validaremos la estructura sintáctica de los componentes y la compilación exitosa del bundle corriendo `npm run build` en el directorio de la aplicación.
+- Corrección de alertas de lint o sintaxis mediante el IDE.
+
+### Manual Verification
+- Iniciaremos sesión como Administrador en el puerto local y verificaremos que los 9 enlaces estén renderizados en el Sidebar.
+- Comprobaremos que cada uno de los enlaces cargue la pantalla correspondiente sin colapsos de enrutador.
+- Probaremos las acciones interactivas clave en cada módulo (añadir estudiantes/docentes, aprobar solicitudes de inscripción, crear períodos, registrar calificaciones, buscar estudiante para historial).

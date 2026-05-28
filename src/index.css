@@ -188,15 +188,39 @@ a:hover {
   padding: 12px 16px;
   font-family: var(--font-body);
   font-size: 0.95rem;
-  transition: var(--transition);
+  /* limit transitions to avoid repaint-heavy properties while typing */
+  transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
 }
 
 .form-input:focus {
-  outline: none;
-  border-color: var(--accent-cyan);
-  box-shadow: var(--shadow-glow);
-  background: rgba(0, 0, 0, 0.5);
+  outline: none; /* remove default browser ring */
+  /* subtle, low-cost focus style to keep accessibility without heavy glow */
+  border-color: rgba(var(--accent-cyan-rgb), 0.12);
+  box-shadow: none; /* remove strong neon glow that causes repaints */
+  background: rgba(0, 0, 0, 0.45);
 }
+
+/* Stronger override for browser UA focus rings inside modal panels */
+.glass-panel .form-input,
+.glass-panel select.form-input,
+.glass-panel textarea.form-input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.glass-panel .form-input:focus,
+.glass-panel select.form-input:focus,
+.glass-panel textarea.form-input:focus,
+.glass-panel .form-input:focus-visible,
+.glass-panel select.form-input:focus-visible,
+.glass-panel textarea.form-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #cbd5e1; /* light neutral border for focus */
+  background: rgba(255,255,255,0.02);
+}
+
 
 /* --- Tables (Stitch academic standard) --- */
 .custom-table-container {

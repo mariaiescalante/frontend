@@ -15,6 +15,24 @@ export default function Navbar() {
     switch (lastSegment) {
       case 'dashboard':
         return 'Dashboard';
+      case 'users':
+        return 'Gestión de Usuarios';
+      case 'careers':
+        return 'Gestión de Carreras';
+      case 'pensum':
+        return 'Gestión de Pensum';
+      case 'periods':
+        return 'Períodos Académicos';
+      case 'enrollments':
+        return 'Gestión de Inscripciones';
+      case 'sections':
+        return 'Gestión de Secciones';
+      case 'teacher-assignment':
+        return 'Asignación Docente';
+      case 'grades':
+        return 'Control de Notas';
+      case 'history':
+        return 'Historial Académico';
       case 'students':
         return 'Estudiantes';
       case 'teachers':

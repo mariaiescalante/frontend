@@ -3,16 +3,20 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import {
   LayoutDashboard,
-  Users,
-  GraduationCap,
   BookOpen,
   ClipboardList,
-  FileText,
   KeyRound,
   LogOut,
   School,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserCog,
+  Award,
+  Calendar,
+  ClipboardCheck,
+  Layers,
+  UserCheck,
+  History
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -43,40 +47,64 @@ export default function Sidebar() {
   // Sidebar navigation menu items based on role
   const menuItems = [
     {
-      path: '/dashboard',
+      path: '/admin/dashboard',
       name: 'Dashboard',
       icon: LayoutDashboard,
       visible: true
     },
     {
-      path: '/subjects',
-      name: 'Asignaturas',
-      icon: BookOpen,
-      visible: true
-    },
-    {
-      path: '/students',
-      name: 'Estudiantes',
-      icon: GraduationCap,
-      visible: isAdmin || isTeacher
-    },
-    {
-      path: '/teachers',
-      name: 'Docentes',
-      icon: Users,
+      path: '/admin/users',
+      name: 'Usuarios',
+      icon: UserCog,
       visible: isAdmin
     },
     {
-      path: '/registrations',
-      name: 'Inscripciones',
-      icon: ClipboardList,
-      visible: isAdmin || isStudent
+      path: '/admin/careers',
+      name: 'Carreras',
+      icon: Award,
+      visible: isAdmin
     },
     {
-      path: '/documents',
-      name: 'Solicitudes',
-      icon: FileText,
-      visible: true
+      path: '/admin/pensum',
+      name: 'Pensum',
+      icon: BookOpen,
+      visible: isAdmin
+    },
+    {
+      path: '/admin/periods',
+      name: 'Períodos',
+      icon: Calendar,
+      visible: isAdmin
+    },
+    {
+      path: '/admin/enrollments',
+      name: 'Inscripciones',
+      icon: ClipboardCheck,
+      visible: isAdmin
+    },
+    {
+      path: '/admin/sections',
+      name: 'Secciones',
+      icon: Layers,
+      visible: isAdmin
+    },
+    {
+      path: '/admin/teacher-assignment',
+      name: 'Asignación Docente',
+      icon: UserCheck,
+      visible: isAdmin
+    },
+    {
+      path: '/admin/grades',
+      name: 'Notas',
+      icon: ClipboardList,
+      visible: isAdmin
+    },
+    {
+      path: '/admin/history',
+      name: 'Historial',
+      icon: History,
+      visible: isAdmin
     }
   ];
 
@@ -138,7 +166,8 @@ export default function Sidebar() {
                 to={item.path}
                 className={({ isActive }) => {
                   const isDashboardActive = item.path === '/dashboard' && location.pathname.includes('dashboard');
-                  return (isActive || isDashboardActive) ? 'sgums-sidebar-link active' : 'sgums-sidebar-link';
+                  const isAdminDashboardActive = item.path === '/admin/dashboard' && location.pathname.startsWith('/admin/dashboard');
+                  return (isActive || isDashboardActive || isAdminDashboardActive) ? 'sgums-sidebar-link active' : 'sgums-sidebar-link';
                 }}
                 style={{
                   justifyContent: collapsed ? 'center' : 'flex-start',
