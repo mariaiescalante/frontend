@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, User, Eye, EyeOff, ShieldAlert, LifeBuoy } from 'lucide-react';
+import { ArrowLeft, User, Eye, EyeOff, ShieldAlert, LifeBuoy } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
+import universityLogo from '../../assets/logo-uptnt.png';
+
+const publicWebsiteUrl = import.meta.env.VITE_PUBLIC_SITE_URL || 'http://localhost:5174/';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -66,7 +69,47 @@ export default function Login() {
           position: 'relative'
         }}
       >
-        {/* Academic Hat Logo (Birrete) */}
+        <a
+          href={publicWebsiteUrl}
+          aria-label="Volver al sitio público"
+          title="Volver al sitio público"
+          style={{
+            position: 'absolute',
+            top: '16px',
+            left: '16px',
+            width: '42px',
+            height: '42px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '12px',
+            background: '#f8fafc',
+            color: '#0b1c3f',
+            border: '1px solid #e2e8f0',
+            textDecoration: 'none',
+            boxShadow: '0 8px 18px rgba(15, 23, 42, 0.08)',
+            transition: 'transform 0.2s, background-color 0.2s, border-color 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#edf2f7';
+            e.currentTarget.style.borderColor = '#cbd5e1';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#f8fafc';
+            e.currentTarget.style.borderColor = '#e2e8f0';
+            e.currentTarget.style.transform = 'translateX(0)';
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = 'translateX(-1px)';
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = 'translateX(0)';
+          }}
+        >
+          <ArrowLeft size={18} strokeWidth={2.4} />
+        </a>
+
+        {/* Logo institucional */}
         <div
           style={{
             display: 'flex',
@@ -76,17 +119,28 @@ export default function Login() {
         >
           <div
             style={{
-              width: '56px',
-              height: '56px',
-              backgroundColor: '#0b1c3f',
-              borderRadius: '12px',
+              width: '72px',
+              height: '72px',
+              backgroundColor: '#ffffff',
+              borderRadius: '14px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(11, 28, 63, 0.2)'
+              boxShadow: '0 8px 22px rgba(11, 28, 63, 0.2)',
+              border: '1px solid #e2e8f0',
+              overflow: 'hidden'
             }}
           >
-            <GraduationCap size={32} color="#ffffff" strokeWidth={1.5} />
+            <img
+              src={universityLogo}
+              alt="Logo UPTNT Manuela Saenz"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                padding: '8px'
+              }}
+            />
           </div>
         </div>
 

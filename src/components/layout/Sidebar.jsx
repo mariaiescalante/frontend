@@ -7,7 +7,6 @@ import {
   ClipboardList,
   KeyRound,
   LogOut,
-  School,
   ChevronLeft,
   ChevronRight,
   UserCog,
@@ -18,6 +17,7 @@ import {
   UserCheck,
   History
 } from 'lucide-react';
+import universityLogo from '../../assets/logo-uptnt.png';
 
 export default function Sidebar() {
   const { user, logout, isAdmin, isStudent, isTeacher } = useAuth();
@@ -144,7 +144,7 @@ export default function Sidebar() {
       {/* Brand logo container */}
       <div className="sgums-sidebar-logo-container" style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}>
         <div className="sgums-sidebar-logo-icon">
-          <School size={24} />
+          <img src={universityLogo} alt="Logo UPTNT" className="sgums-sidebar-logo-image" />
         </div>
         {!collapsed && (
           <div className="sgums-sidebar-logo-text">
