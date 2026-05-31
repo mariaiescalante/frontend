@@ -1,29 +1,101 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { BookOpenCheck, FileDown, FileLock2, History, Users } from 'lucide-react';
+import { AdminPageShell, SectionCard } from '../admin/AdminPageShell';
+import { teacherAssignments, teacherHistory } from './teacherSeedData';
+
+const quickModules = [
+  {
+    path: '/teacher/subjects',
+    title: 'Asignaturas impartidas',
+    description: 'Consulta materias, secciones, carrera y semestre asignados.',
+    icon: BookOpenCheck
+  },
+  {
+    path: '/teacher/students',
+    title: 'Estudiantes y evaluaciones',
+    description: 'Busca por cedula o nombre, carga 4 cortes y contenido evaluado.',
+    icon: Users
+  },
+  {
+    path: '/teacher/records',
+    title: 'Actas y cierre',
+    description: 'Descarga constancia de notas y cierra actas para bloquear edicion.',
+    icon: FileLock2
+  },
+  {
+    path: '/teacher/history',
+    title: 'Historial impartido',
+    description: 'Revisa materias impartidas de periodos anteriores en solo lectura.',
+    icon: History
+  }
+];
 
 export default function TeacherDashboard() {
-  return (
-    <div className="glass-panel" style={{ padding: '40px', textAlign: 'left' }}>
-      <h2 style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--accent-pink)', marginBottom: '12px' }}>
-        Dashboard Docente
-      </h2>
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '24px' }}>
-        Bienvenido al panel del personal docente. Desde aquí puedes visualizar tus secciones asignadas, cargar las calificaciones correspondientes a los diferentes cortes y registrar el porcentaje de asistencia de tus estudiantes.
-      </p>
+  const openAssignments = teacherAssignments.filter((item) => item.actStatus !== 'cerrada').length;
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-        <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '12px', background: 'rgba(255,255,255,0.01)' }}>
-          <h4 style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '8px' }}>Secciones Activas</h4>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Listado de materias dictadas este semestre</span>
+  return (
+    <AdminPageShell
+      eyebrow="Panel Docente"
+      title="Dashboard Docente"
+      subtitle="Vista de resumen del docente. Los procesos academicos operativos estan en los modulos del menu lateral."
+      metrics={[
+        {
+          label: 'Asignaturas activas',
+          value: teacherAssignments.length,
+          hint: 'Carga academica total del docente',
+          icon: BookOpenCheck,
+          tone: 'info'
+        },
+        {
+          label: 'Actas pendientes',
+          value: openAssignments,
+          hint: 'Secciones con acta aun abierta',
+          icon: FileDown,
+          tone: openAssignments ? 'warning' : 'success'
+        },
+        {
+          label: 'Historial registrado',
+          value: teacherHistory.length,
+          hint: 'Asignaturas historicas disponibles para consulta',
+          icon: History,
+          tone: 'primary'
+        }
+      ]}
+    >
+      <SectionCard
+        title="Modulos disponibles"
+        description="Cada proceso se encuentra en un modulo independiente para mantener trazabilidad y orden academico."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '14px' }}>
+          {quickModules.map((moduleItem) => {
+            const Icon = moduleItem.icon;
+            return (
+              <NavLink
+                key={moduleItem.path}
+                to={moduleItem.path}
+                style={{
+                  textDecoration: 'none',
+                  color: '#0f172a',
+                  border: '1px solid #dbe4f0',
+                  background: '#ffffff',
+                  borderRadius: '14px',
+                  padding: '16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1d4ed8', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon size={18} />
+                </div>
+                <strong style={{ fontSize: '0.95rem' }}>{moduleItem.title}</strong>
+                <span style={{ color: '#64748b', fontSize: '0.84rem', lineHeight: 1.55 }}>{moduleItem.description}</span>
+              </NavLink>
+            );
+          })}
         </div>
-        <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '12px', background: 'rgba(255,255,255,0.01)' }}>
-          <h4 style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '8px' }}>Carga de Notas</h4>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Registro de cortes 1, 2, 3 y 4</span>
-        </div>
-        <div style={{ padding: '20px', border: '1px solid var(--border-color)', borderRadius: '12px', background: 'rgba(255,255,255,0.01)' }}>
-          <h4 style={{ fontWeight: '600', color: 'var(--text-primary)', marginBottom: '8px' }}>Asistencia</h4>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Control y porcentaje de asistencia estudiantil</span>
-        </div>
-      </div>
-    </div>
+      </SectionCard>
+    </AdminPageShell>
   );
 }

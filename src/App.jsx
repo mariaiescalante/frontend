@@ -16,6 +16,10 @@ import TeacherAssignment from './components/pages/admin/TeacherAssignment';
 import GradesControl from './components/pages/admin/GradesControl';
 import AcademicHistory from './components/pages/admin/AcademicHistory';
 import TeacherDashboard from './components/pages/teacher/Dashboard';
+import TeacherSubjects from './components/pages/teacher/TeacherSubjects';
+import TeacherStudents from './components/pages/teacher/TeacherStudents';
+import TeacherRecords from './components/pages/teacher/TeacherRecords';
+import TeacherHistory from './components/pages/teacher/TeacherHistory';
 import StudentDashboard from './components/pages/student/Dashboard';
 import useAuth from './hooks/useAuth';
 import './App.css';
@@ -95,6 +99,10 @@ function App() {
             <Route path="admin/grades" element={<GradesControl />} />
             <Route path="admin/history" element={<AcademicHistory />} />
             <Route path="teacher/dashboard" element={<TeacherDashboard />} />
+            <Route path="teacher/subjects" element={<TeacherSubjects />} />
+            <Route path="teacher/students" element={<TeacherStudents />} />
+            <Route path="teacher/records" element={<TeacherRecords />} />
+            <Route path="teacher/history" element={<TeacherHistory />} />
             <Route path="student/dashboard" element={<StudentDashboard />} />
 
             {/* Placeholders for Stitch Screens */}

@@ -15,7 +15,9 @@ import {
   ClipboardCheck,
   Layers,
   UserCheck,
-  History
+  History,
+  FileLock2,
+  Users
 } from 'lucide-react';
 import universityLogo from '../../assets/logo-uptnt.png';
 
@@ -66,7 +68,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
       path: '/admin/dashboard',
       name: 'Dashboard',
       icon: LayoutDashboard,
-      visible: true
+      visible: isAdmin
     },
     {
       path: '/admin/users',
@@ -121,6 +123,42 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
       name: 'Historial',
       icon: History,
       visible: isAdmin
+    },
+    {
+      path: '/teacher/dashboard',
+      name: 'Dashboard',
+      icon: LayoutDashboard,
+      visible: isTeacher
+    },
+    {
+      path: '/teacher/subjects',
+      name: 'Asignaturas Impartidas',
+      icon: BookOpen,
+      visible: isTeacher
+    },
+    {
+      path: '/teacher/students',
+      name: 'Estudiantes Inscritos',
+      icon: Users,
+      visible: isTeacher
+    },
+    {
+      path: '/teacher/records',
+      name: 'Cerrar Actas',
+      icon: FileLock2,
+      visible: isTeacher
+    },
+    {
+      path: '/teacher/history',
+      name: 'Historial Impartido',
+      icon: History,
+      visible: isTeacher
+    },
+    {
+      path: '/student/dashboard',
+      name: 'Dashboard',
+      icon: LayoutDashboard,
+      visible: isStudent
     }
   ];
 
@@ -183,9 +221,8 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) => {
-                  const isDashboardActive = item.path === '/dashboard' && location.pathname.includes('dashboard');
-                  const isAdminDashboardActive = item.path === '/admin/dashboard' && location.pathname.startsWith('/admin/dashboard');
-                  return (isActive || isDashboardActive || isAdminDashboardActive) ? 'sgums-sidebar-link active' : 'sgums-sidebar-link';
+                  const nestedActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+                  return (isActive || nestedActive) ? 'sgums-sidebar-link active' : 'sgums-sidebar-link';
                 }}
                 style={{
                   justifyContent: isCompact ? 'center' : 'flex-start',
