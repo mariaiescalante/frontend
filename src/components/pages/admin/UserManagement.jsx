@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Users, UserPlus, Edit3, Trash2, Eye, EyeOff } from 'lucide-react';
 import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle } from './AdminPageShell';
 import { careerCatalog, teachersCatalog, studentsCatalog } from './adminSeedData';
 import { registerUser } from '../../../services/auth';
+import api from '../../../services/api';
 
 const teacherTitleOptions = ['Licenciado', 'Ingeniero', 'MSc', 'PhD', 'Otro'];
 const documentTypeOptions = [
@@ -10,6 +11,106 @@ const documentTypeOptions = [
   { value: 'E', label: 'E - Extranjero' },
   { value: 'P', label: 'P - Pasaporte' }
 ];
+const STUDENTS_STORAGE_KEY = 'admin_users_students';
+const TEACHERS_STORAGE_KEY = 'admin_users_teachers';
+
+const readStoredRecords = (storageKey, fallbackRecords) => {
+  if (typeof window === 'undefined') {
+    return fallbackRecords;
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(storageKey);
+
+    if (!storedValue) {
+      return fallbackRecords;
+    }
+
+    const parsedValue = JSON.parse(storedValue);
+
+    return Array.isArray(parsedValue) ? parsedValue : fallbackRecords;
+  } catch {
+    return fallbackRecords;
+  }
+};
+
+const unwrapArrayPayload = (payload) => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  const candidates = [payload?.users, payload?.results, payload?.items, payload?.data];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+  }
+
+  return [];
+};
+
+const normalizeBackendUser = (user) => {
+  const roleValue = user?.id_role ?? user?.role ?? user?.user_role ?? '';
+  const roleId = Number(roleValue);
+  const isTeacher = roleId === 2 || `${roleValue}`.toLowerCase() === 'docente';
+  const isStudent = roleId === 3 || `${roleValue}`.toLowerCase() === 'estudiante';
+
+  const firstName = user?.first_name ?? user?.name ?? '';
+  const secondName = user?.second_name ?? '';
+  const lastName = user?.last_name ?? user?.lastname ?? '';
+  const secondLastName = user?.second_lastname ?? '';
+  const fullName = [firstName, secondName, lastName, secondLastName].filter(Boolean).join(' ').trim();
+
+  const record = {
+    id: user?.document_id ?? user?.id ?? user?.cedula ?? '',
+    name: fullName || user?.full_name || user?.fullName || '',
+    email: user?.email ?? '',
+    username: user?.username ?? '',
+    phone: user?.phone ?? '',
+    status: user?.status ?? (isTeacher ? 'Disponible' : 'Activo')
+  };
+
+  if (isTeacher) {
+    return {
+      ...record,
+      department: user?.academic_title ?? user?.academicTitle ?? user?.department ?? '',
+      expertise: user?.expertise ?? 'Pendiente de asignación',
+      load: Number(user?.load ?? user?.carga ?? 0)
+    };
+  }
+
+  if (isStudent) {
+    return {
+      ...record,
+      career: user?.career ?? '',
+      period: user?.period ?? user?.academic_period ?? '2026-II',
+      cum: Number(user?.cum ?? user?.average ?? 0)
+    };
+  }
+
+  return record;
+};
+
+const splitUsersByRole = (users) => {
+  const nextStudents = [];
+  const nextTeachers = [];
+
+  users.forEach((user) => {
+    const roleValue = user?.id_role ?? user?.role ?? user?.user_role ?? '';
+    const roleId = Number(roleValue);
+    const isTeacher = roleId === 2 || `${roleValue}`.toLowerCase() === 'docente';
+
+    if (isTeacher) {
+      nextTeachers.push(normalizeBackendUser(user));
+      return;
+    }
+
+    nextStudents.push(normalizeBackendUser(user));
+  });
+
+  return { nextStudents, nextTeachers };
+};
 
 const createInitialForm = (userType = 'student') => ({
   userType,
@@ -172,11 +273,63 @@ export default function UserManagement() {
   const [userType, setUserType] = useState('student');
   const [studentForm, setStudentForm] = useState(createInitialForm('student'));
   const [teacherForm, setTeacherForm] = useState(createInitialForm('teacher'));
-  const [students, setStudents] = useState(studentsCatalog);
-  const [teachers, setTeachers] = useState(teachersCatalog);
+  const [students, setStudents] = useState(() => readStoredRecords(STUDENTS_STORAGE_KEY, studentsCatalog));
+  const [teachers, setTeachers] = useState(() => readStoredRecords(TEACHERS_STORAGE_KEY, teachersCatalog));
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(students));
+    window.localStorage.setItem(TEACHERS_STORAGE_KEY, JSON.stringify(teachers));
+  }, [students, teachers]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const hydrateUsers = async () => {
+      const endpoints = ['/admin/users', '/users'];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await api.get(endpoint);
+          const users = unwrapArrayPayload(response?.data ?? response);
+
+          if (!users.length) {
+            continue;
+          }
+
+          const { nextStudents, nextTeachers } = splitUsersByRole(users);
+
+          if (!isMounted) {
+            return;
+          }
+
+          if (nextStudents.length) {
+            setStudents(nextStudents);
+          }
+
+          if (nextTeachers.length) {
+            setTeachers(nextTeachers);
+          }
+
+          return;
+        } catch {
+          // Try the next candidate endpoint.
+        }
+      }
+    };
+
+    hydrateUsers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const records = activeTab === 'students' ? students : teachers;
   const form = userType === 'student' ? studentForm : teacherForm;
