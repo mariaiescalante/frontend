@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import {
@@ -19,11 +19,27 @@ import {
 } from 'lucide-react';
 import universityLogo from '../../assets/logo-uptnt.png';
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen = false, onMobileClose }) {
   const { user, logout, isAdmin, isStudent, isTeacher } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 900px)');
+
+    const updateIsMobile = (event) => {
+      setIsMobile(event.matches);
+    };
+
+    setIsMobile(mediaQuery.matches);
+    mediaQuery.addEventListener('change', updateIsMobile);
+
+    return () => mediaQuery.removeEventListener('change', updateIsMobile);
+  }, []);
+
+  const isCompact = !isMobile && collapsed;
 
   const handleLogout = () => {
     logout();
@@ -110,43 +126,45 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="sgums-sidebar"
+      className={`sgums-sidebar${mobileOpen ? ' mobile-open' : ''}`}
       style={{
-        width: collapsed ? '80px' : '280px',
-        minWidth: collapsed ? '80px' : '280px'
+        width: isCompact ? '80px' : '280px',
+        minWidth: isCompact ? '80px' : '280px'
       }}
     >
       {/* Collapse Button */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        style={{
-          position: 'absolute',
-          right: '-14px',
-          top: '32px',
-          background: '#ffd100',
-          border: 'none',
-          borderRadius: '50%',
-          width: '28px',
-          height: '28px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
-          color: '#051124',
-          zIndex: 50,
-          transition: 'all 0.2s ease'
-        }}
-      >
-        {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-      </button>
+      {!isMobile ? (
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          style={{
+            position: 'absolute',
+            right: '-14px',
+            top: '32px',
+            background: '#ffd100',
+            border: 'none',
+            borderRadius: '50%',
+            width: '28px',
+            height: '28px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
+            color: '#051124',
+            zIndex: 50,
+            transition: 'all 0.2s ease'
+          }}
+        >
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        </button>
+      ) : null}
 
       {/* Brand logo container */}
-      <div className="sgums-sidebar-logo-container" style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}>
+      <div className="sgums-sidebar-logo-container" style={{ justifyContent: isCompact ? 'center' : 'flex-start' }}>
         <div className="sgums-sidebar-logo-icon">
           <img src={universityLogo} alt="Logo UPTNT" className="sgums-sidebar-logo-image" />
         </div>
-        {!collapsed && (
+        {!isCompact && (
           <div className="sgums-sidebar-logo-text">
             <span className="sgums-sidebar-title">SGUMS</span>
             <span className="sgums-sidebar-subtitle">{getPortalName()}</span>
@@ -170,22 +188,25 @@ export default function Sidebar() {
                   return (isActive || isDashboardActive || isAdminDashboardActive) ? 'sgums-sidebar-link active' : 'sgums-sidebar-link';
                 }}
                 style={{
-                  justifyContent: collapsed ? 'center' : 'flex-start',
-                  padding: collapsed ? '12px' : '12px 16px'
+                  justifyContent: isCompact ? 'center' : 'flex-start',
+                  padding: isCompact ? '12px' : '12px 16px'
+                }}
+                onClick={() => {
+                  if (onMobileClose) onMobileClose();
                 }}
               >
                 <div className="sgums-sidebar-link-icon">
                   <Icon size={20} />
                 </div>
-                {!collapsed && <span style={{ whiteSpace: 'nowrap' }}>{item.name}</span>}
+                {!isCompact && <span className="sgums-sidebar-link-text">{item.name}</span>}
               </NavLink>
             );
           })}
       </nav>
 
       {/* Sidebar Footer details */}
-      <div className="sgums-sidebar-footer" style={{ alignItems: collapsed ? 'center' : 'stretch' }}>
-        {user && !collapsed && (
+      <div className="sgums-sidebar-footer" style={{ alignItems: isCompact ? 'center' : 'stretch' }}>
+        {user && !isCompact && (
           <div className="sgums-sidebar-profile">
             <div className="sgums-sidebar-avatar">
               {getInitials()}
@@ -201,7 +222,7 @@ export default function Sidebar() {
           </div>
         )}
 
-        {user && collapsed && (
+        {user && isCompact && (
           <div
             className="sgums-sidebar-avatar"
             title={`${user.name} ${user.lastname} (${user.role})`}
@@ -212,37 +233,40 @@ export default function Sidebar() {
         )}
 
         {/* Action button container */}
-        <div className="sgums-sidebar-footer-actions" style={{ alignItems: collapsed ? 'center' : 'stretch' }}>
+        <div className="sgums-sidebar-footer-actions" style={{ alignItems: isCompact ? 'center' : 'stretch' }}>
           <NavLink
             to="/change-password"
             className={({ isActive }) => 
               `sgums-sidebar-footer-btn${isActive ? ' active' : ''}`
             }
             style={({ isActive }) => ({
-              justifyContent: collapsed ? 'center' : 'flex-start',
+              justifyContent: isCompact ? 'center' : 'flex-start',
               color: isActive ? '#ffd100' : undefined,
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
               gap: '10px'
             })}
+            onClick={() => {
+              if (onMobileClose) onMobileClose();
+            }}
           >
             <KeyRound size={16} />
-            {!collapsed && <span>Cambiar Contraseña</span>}
+            {!isCompact && <span>Cambiar Contraseña</span>}
           </NavLink>
 
           <button
             onClick={handleLogout}
             className="sgums-sidebar-footer-btn logout-btn"
-            style={{ justifyContent: collapsed ? 'center' : 'flex-start' }}
+            style={{ justifyContent: isCompact ? 'center' : 'flex-start' }}
           >
             <LogOut size={16} />
-            {!collapsed && <span>Cerrar Sesión</span>}
+            {!isCompact && <span>Cerrar Sesión</span>}
           </button>
 
-          <div className="sgums-api-status" style={{ justifyContent: collapsed ? 'center' : 'flex-start', paddingLeft: collapsed ? '0' : '4px' }}>
+          <div className="sgums-api-status" style={{ justifyContent: isCompact ? 'center' : 'flex-start', paddingLeft: isCompact ? '0' : '4px' }}>
             <span className="sgums-api-status-dot"></span>
-            {!collapsed && <span>ONLINE</span>}
+            {!isCompact && <span>ONLINE</span>}
           </div>
         </div>
       </div>

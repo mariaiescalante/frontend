@@ -1,8 +1,8 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 
-export default function Navbar() {
+export default function Navbar({ onMenuClick }) {
   const location = useLocation();
 
   // Determine page title dynamically based on active route path
@@ -52,6 +52,10 @@ export default function Navbar() {
 
   return (
     <header className="sgums-navbar">
+      <button type="button" className="sgums-navbar-menu-btn" onClick={onMenuClick} aria-label="Abrir menú">
+        <Menu size={20} />
+      </button>
+
       {/* Left side: Page Title, Divider, Cycle Badge */}
       <div className="sgums-navbar-left">
         <h1 className="sgums-navbar-title">

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Sidebar from './Sidebar';
@@ -7,6 +7,7 @@ import './Layout.css';
 
 export default function AppLayout() {
   const { isAuthenticated, loading } = useAuth();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Show a gorgeous cosmic loader while authenticating/restoring session
   if (loading) {
@@ -54,9 +55,17 @@ export default function AppLayout() {
 
   return (
     <div className="app-container">
-      <Sidebar />
+      {mobileSidebarOpen ? (
+        <button
+          type="button"
+          className="sgums-sidebar-backdrop"
+          aria-label="Cerrar menú"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      ) : null}
+      <Sidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
       <div className="sgums-main-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <Navbar />
+        <Navbar onMenuClick={() => setMobileSidebarOpen((current) => !current)} />
         <main className="sgums-content-container">
           {/* Dynamic route rendering for the screens (Stitch Pages) */}
           <Outlet />

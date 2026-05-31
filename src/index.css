@@ -41,6 +41,7 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
+  width: 100%;
   overflow-x: hidden;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -287,6 +288,7 @@ a:hover {
 
 /* Adjust standard root padding */
 #root {
+  width: 100%;
   min-height: 100vh;
   display: flex;
   flex-direction: column;

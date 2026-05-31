@@ -1,18 +1,17 @@
-/* Layout unificado estilo SGUMS (Fondo claro con Sidebar azul oscuro y Navbar blanco) */
+/* Layout unificado estilo SGUMS */
 
 .app-container {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
   background-color: #f1f5f9;
   font-family: 'Inter', sans-serif;
   color: #0f172a;
+  overflow: hidden;
 }
 
 .app-container.collapsed-layout {
-  grid-template-columns: 80px 1fr;
+  grid-template-columns: unset;
 }
 
 /* Sidebar CSS */
@@ -21,21 +20,25 @@
   color: #ffffff;
   display: flex;
   flex-direction: column;
+  width: 280px;
+  min-width: 280px;
   height: 100vh;
   padding: 24px 16px;
   box-sizing: border-box;
   position: relative;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
+  flex: 0 0 auto;
 }
 
 .sgums-sidebar-logo-container {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px 24px 12px;
+  padding: 8px 12px 24px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 24px;
+  min-width: 0;
 }
 
 .sgums-sidebar-logo-icon {
@@ -48,6 +51,7 @@
   width: 42px;
   height: 42px;
   overflow: hidden;
+  flex: 0 0 auto;
 }
 
 .sgums-sidebar-logo-image {
@@ -59,6 +63,7 @@
 .sgums-sidebar-logo-text {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .sgums-sidebar-title {
@@ -86,12 +91,13 @@
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
+  min-height: 0;
 }
 
-/* Custom Scrollbar for Sidebar nav */
 .sgums-sidebar-nav::-webkit-scrollbar {
   width: 4px;
 }
+
 .sgums-sidebar-nav::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
@@ -108,6 +114,7 @@
   text-decoration: none;
   font-size: 0.95rem;
   transition: all 0.2s ease;
+  min-width: 0;
 }
 
 .sgums-sidebar-link:hover {
@@ -125,13 +132,21 @@
   min-width: 20px;
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
+}
+
+.sgums-sidebar-link-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Footer of Sidebar */
 .sgums-sidebar-footer {
   margin-top: auto;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 16px 8px 0 8px;
+  padding: 16px 8px 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -141,6 +156,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .sgums-sidebar-avatar {
@@ -155,6 +171,7 @@
   font-weight: 700;
   font-size: 0.95rem;
   border: 2px solid rgba(255, 255, 255, 0.1);
+  flex: 0 0 auto;
 }
 
 .sgums-sidebar-profile-info {
@@ -180,7 +197,6 @@
   letter-spacing: 0.05em;
 }
 
-/* Action Links in Sidebar Footer */
 .sgums-sidebar-footer-actions {
   display: flex;
   flex-direction: column;
@@ -211,7 +227,6 @@
   color: #f87171;
 }
 
-/* API Status Indicator */
 .sgums-api-status {
   display: flex;
   align-items: center;
@@ -240,7 +255,7 @@
 /* Navbar CSS */
 .sgums-navbar {
   background-color: #ffffff;
-  height: 70px;
+  min-height: 70px;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
@@ -248,12 +263,30 @@
   padding: 0 32px;
   box-sizing: border-box;
   z-index: 30;
+  gap: 16px;
+  min-width: 0;
+}
+
+.sgums-navbar-menu-btn {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  cursor: pointer;
 }
 
 .sgums-navbar-left {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .sgums-navbar-title {
@@ -262,6 +295,8 @@
   font-weight: 700;
   color: #0f172a;
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .sgums-navbar-divider {
@@ -279,6 +314,7 @@
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  min-width: 0;
 }
 
 .sgums-navbar-badge {
@@ -294,6 +330,9 @@
   display: flex;
   align-items: center;
   gap: 24px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .sgums-system-status {
@@ -303,6 +342,7 @@
   font-size: 0.85rem;
   color: #475569;
   font-weight: 500;
+  min-width: 0;
 }
 
 .sgums-system-status-dot {
@@ -335,6 +375,8 @@
 .sgums-main-wrapper {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
   height: 100vh;
   overflow: hidden;
   background-color: #f8fafc;
@@ -342,8 +384,15 @@
 
 .sgums-content-container {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 32px;
+}
+
+.sgums-content-container > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Overrides for some components inside content container if needed to make them look nice */
@@ -370,7 +419,6 @@
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
 }
 
-/* Admin/content text overrides for light cards and tables */
 .sgums-content-container .custom-table th {
   color: #475569 !important;
   background: #f8fafc !important;
@@ -411,18 +459,286 @@
   text-shadow: none !important;
 }
 
+.admin-page-shell {
+  min-width: 0;
+  width: 100%;
+}
+
+.admin-page-shell-hero h2 {
+  overflow-wrap: anywhere;
+}
+
+.admin-section-card,
+.admin-section-card-body {
+  min-width: 0;
+}
+
+.sgums-sidebar-backdrop {
+  display: none;
+}
+
 /* Custom scrollbar for main area */
 .sgums-content-container::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
+
 .sgums-content-container::-webkit-scrollbar-track {
   background: #f1f5f9;
 }
+
 .sgums-content-container::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
+
 .sgums-content-container::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+@media (max-width: 1100px) {
+  .sgums-navbar {
+    padding: 0 24px;
+  }
+
+  .sgums-content-container {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-container,
+  .app-container.collapsed-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    height: auto;
+    overflow: visible;
+  }
+
+  .sgums-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 70;
+    width: min(86vw, 320px) !important;
+    min-width: min(86vw, 320px) !important;
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transform: translateX(-100%);
+    box-shadow: 18px 0 40px rgba(5, 17, 36, 0.28);
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .sgums-sidebar.mobile-open {
+    transform: translateX(0);
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  .sgums-sidebar > button {
+    display: none;
+  }
+
+  .sgums-sidebar-logo-container {
+    padding: 4px 0 16px;
+    margin-bottom: 16px;
+  }
+
+  .sgums-sidebar-nav {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    overflow-y: auto;
+    padding-right: 0;
+    flex: 0 0 auto;
+    max-height: calc(100dvh - 280px);
+  }
+
+  .sgums-sidebar-link {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+
+  .sgums-sidebar-link-text {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.15;
+  }
+
+  .sgums-sidebar-footer {
+    display: flex;
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+
+  .sgums-sidebar-footer-actions {
+    align-items: stretch;
+  }
+
+  .sgums-sidebar-profile {
+    align-items: center;
+  }
+
+  .sgums-sidebar-footer-btn {
+    padding: 8px 4px;
+  }
+
+  .sgums-navbar-menu-btn {
+    display: inline-flex;
+  }
+
+  .sgums-navbar {
+    min-height: auto;
+    height: auto;
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sgums-navbar-left,
+  .sgums-navbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sgums-navbar-left {
+    align-items: flex-start;
+    gap: 8px 12px;
+    width: 100%;
+  }
+
+  .sgums-navbar-right {
+    gap: 12px;
+    width: 100%;
+  }
+
+  .sgums-navbar-title {
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+
+  .sgums-navbar-divider {
+    display: none;
+  }
+
+  .sgums-main-wrapper {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    width: 100%;
+  }
+
+  .sgums-content-container {
+    width: 100%;
+    padding: 14px;
+    overflow: visible;
+  }
+
+  .sgums-content-container .glass-panel,
+  .sgums-content-container .glass-card {
+    padding: 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .sgums-content-container .custom-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sgums-content-container .custom-table {
+    min-width: 720px;
+  }
+
+  .sgums-content-container table {
+    font-size: 0.9rem;
+  }
+
+  .sgums-content-container td,
+  .sgums-content-container th {
+    white-space: nowrap;
+  }
+
+  .sgums-content-container [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .sgums-content-container [style*="2fr 1fr"],
+  .sgums-content-container [style*="1.5fr 1fr"],
+  .sgums-content-container [style*="1.3fr 0.9fr"],
+  .sgums-content-container [style*="1.1fr 0.9fr"],
+  .sgums-content-container [style*="0.9fr 1.1fr"],
+  .sgums-content-container [style*="repeat(2, minmax(0, 1fr))"],
+  .sgums-content-container [style*="repeat(3, minmax(0, 1fr))"],
+  .sgums-content-container [style*="repeat(4, minmax(0, 1fr))"],
+  .sgums-content-container [style*="minmax(220px"],
+  .sgums-content-container [style*="minmax(270px"],
+  .sgums-content-container [style*="minmax(280px"],
+  .sgums-content-container [style*="minmax(320px"],
+  .sgums-content-container [style*="minmax(700px"],
+  .sgums-content-container [style*="minmax(760px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-page-shell-hero {
+    padding: 20px !important;
+    border-radius: 18px !important;
+  }
+
+  .admin-page-shell-hero-content {
+    gap: 14px !important;
+  }
+
+  .admin-page-shell-hero-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  .admin-page-shell-hero-copy {
+    max-width: 100% !important;
+  }
+
+  .admin-page-shell-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  .admin-page-shell-metrics {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .admin-section-card-header {
+    padding: 18px 18px 14px !important;
+  }
+
+  .admin-section-card-body {
+    padding: 18px !important;
+  }
+
+  .admin-section-card-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  .sgums-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    border: none;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(3px);
+  }
+
+  .sgums-content-container .form-group {
+    gap: 6px;
+  }
 }

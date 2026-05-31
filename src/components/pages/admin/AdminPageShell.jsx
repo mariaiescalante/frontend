@@ -191,9 +191,9 @@ export function MetricCard({ label, value, hint, icon: Icon, tone = 'primary' })
 
 export function AdminPageShell({ eyebrow = 'Panel administrativo', title, subtitle, actions, metrics = [], children }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
+    <div className="admin-page-shell" style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
       <section
-        className="glass-panel"
+        className="glass-panel admin-page-shell-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
@@ -226,30 +226,30 @@ export function AdminPageShell({ eyebrow = 'Panel administrativo', title, subtit
             pointerEvents: 'none'
           }}
         />
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '760px' }}>
+          <div className="admin-page-shell-hero-content" style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div className="admin-page-shell-hero-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
+              <div className="admin-page-shell-hero-copy" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '760px' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', width: 'fit-content', padding: '6px 12px', borderRadius: '999px', background: 'rgba(255, 209, 0, 0.16)', color: '#ffd100', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 {eyebrow}
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <h2 style={{ margin: 0, fontSize: '2.05rem', fontWeight: 800, lineHeight: 1.08 }}>
+                  <h2 style={{ margin: 0, fontSize: 'clamp(1.5rem, 3.8vw, 2.05rem)', fontWeight: 800, lineHeight: 1.08 }}>
                   {title}
                 </h2>
                 {subtitle ? (
-                  <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.8)', fontSize: '0.98rem', lineHeight: 1.65, maxWidth: '66ch' }}>
+                    <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.8)', fontSize: '0.98rem', lineHeight: 1.65, maxWidth: '66ch' }}>
                     {subtitle}
                   </p>
                 ) : null}
               </div>
             </div>
-            {actions ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'flex-end' }}>{actions}</div> : null}
+              {actions ? <div className="admin-page-shell-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'flex-end' }}>{actions}</div> : null}
           </div>
         </div>
       </section>
 
       {metrics.length ? (
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px' }}>
+          <section className="admin-page-shell-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px' }}>
           {metrics.map((metric) => (
             <MetricCard key={metric.label} {...metric} />
           ))}
@@ -263,17 +263,17 @@ export function AdminPageShell({ eyebrow = 'Panel administrativo', title, subtit
 
 export function SectionCard({ title, description, actions, children, style, className = '' }) {
   return (
-    <section className={`glass-panel ${className}`.trim()} style={{ ...sectionCardStyle, padding: '0', ...style }}>
+    <section className={`glass-panel admin-section-card ${className}`.trim()} style={{ ...sectionCardStyle, padding: '0', ...style }}>
       {(title || description || actions) ? (
-        <header style={{ padding: '22px 24px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+        <header className="admin-section-card-header" style={{ padding: '22px 24px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {title ? <h3 style={{ margin: 0, fontSize: '1.12rem', fontWeight: 800, color: '#0f172a' }}>{title}</h3> : null}
             {description ? <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', lineHeight: 1.55 }}>{description}</p> : null}
           </div>
-          {actions ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>{actions}</div> : null}
+          {actions ? <div className="admin-section-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>{actions}</div> : null}
         </header>
       ) : null}
-      <div style={{ padding: '24px' }}>{children}</div>
+      <div className="admin-section-card-body" style={{ padding: '24px' }}>{children}</div>
     </section>
   );
 }
