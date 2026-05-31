@@ -1,15 +1,167 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { Search, Users, UserPlus, Edit3, Trash2 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Search, Users, UserPlus, Edit3, Trash2, Eye, EyeOff } from 'lucide-react';
 import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle } from './AdminPageShell';
 import { careerCatalog, teachersCatalog, studentsCatalog } from './adminSeedData';
+import { registerUser } from '../../../services/auth';
 
-const initialForm = {
-  id: '',
-  name: '',
-  lastname: '',
+const teacherTitleOptions = ['Licenciado', 'Ingeniero', 'MSc', 'PhD', 'Otro'];
+const documentTypeOptions = [
+  { value: 'V', label: 'V - Nacional' },
+  { value: 'E', label: 'E - Extranjero' },
+  { value: 'P', label: 'P - Pasaporte' }
+];
+
+const createInitialForm = (userType = 'student') => ({
+  userType,
+  firstName: '',
+  secondName: '',
+  lastName: '',
+  secondLastName: '',
+  birthDate: '',
   email: '',
-  role: 'Estudiante',
-  assignment: ''
+  documentType: 'V',
+  documentNumber: '',
+  phone: '',
+  username: '',
+  password: '',
+  career: '',
+  academicTitle: teacherTitleOptions[0]
+});
+
+const buildLocalRecord = (form) => {
+  const fullName = [form.firstName, form.secondName, form.lastName, form.secondLastName]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(' ');
+  const documentId = `${form.documentType}-${form.documentNumber.trim()}`;
+
+  if (form.userType === 'student') {
+    return {
+      id: documentId,
+      name: fullName,
+      email: form.email.trim(),
+      career: form.career,
+      status: 'Activo',
+      period: '2026-II',
+      cum: 0,
+      username: form.username.trim(),
+      phone: form.phone.trim()
+    };
+  }
+
+  return {
+    id: documentId,
+    name: fullName,
+    department: form.academicTitle,
+    expertise: 'Pendiente de asignación',
+    status: 'Disponible',
+    load: 0,
+    email: form.email.trim(),
+    username: form.username.trim(),
+    phone: form.phone.trim()
+  };
+};
+
+const isValidEmail = (value) => /^\S+@\S+\.\S+$/.test(value.trim());
+
+const normalizeDocumentNumber = (value) => value.replace(/\D/g, '').slice(0, 8);
+
+const normalizePhoneNumber = (value) => value.replace(/\D/g, '').slice(0, 11);
+
+const formatDocumentId = (type, value) => {
+  const documentNumber = normalizeDocumentNumber(value);
+  const documentType = (type || '').toUpperCase();
+  return documentNumber ? `${documentType}-${documentNumber}` : `${documentType}-`;
+};
+
+const formatPhone = (value) => {
+  const digits = normalizePhoneNumber(value);
+
+  if (digits.length <= 4) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+};
+
+const ROLE_IDS = {
+  teacher: 2,
+  student: 3
+};
+
+const describeValidationItem = (item) => {
+  if (item == null) {
+    return '';
+  }
+
+  if (typeof item === 'string') {
+    return item;
+  }
+
+  if (typeof item === 'number' || typeof item === 'boolean') {
+    return String(item);
+  }
+
+  if (Array.isArray(item)) {
+    return item.map(describeValidationItem).filter(Boolean).join(' · ');
+  }
+
+  if (typeof item === 'object') {
+    const parts = [item.field, item.path, item.param, item.location, item.message, item.msg]
+      .map((value) => (typeof value === 'string' ? value.trim() : ''))
+      .filter(Boolean);
+
+    if (parts.length) {
+      return parts.join(': ');
+    }
+
+    try {
+      return JSON.stringify(item);
+    } catch {
+      return '[validación sin formato]';
+    }
+  }
+
+  return String(item);
+};
+
+const formatApiError = (error) => {
+  const responseData = error?.data;
+  const validationParts = [];
+
+  if (responseData?.message) {
+    validationParts.push(responseData.message);
+  }
+
+  if (Array.isArray(responseData?.errors)) {
+    validationParts.push(...responseData.errors.map(describeValidationItem));
+  }
+
+  if (responseData?.errors && !Array.isArray(responseData.errors)) {
+    validationParts.push(describeValidationItem(responseData.errors));
+  }
+
+  if (Array.isArray(responseData?.error)) {
+    validationParts.push(...responseData.error.map(describeValidationItem));
+  }
+
+  if (responseData?.error && !Array.isArray(responseData.error)) {
+    validationParts.push(describeValidationItem(responseData.error));
+  }
+
+  if (responseData?.details) {
+    validationParts.push(describeValidationItem(responseData.details));
+  }
+
+  if (responseData?.validationErrors) {
+    validationParts.push(describeValidationItem(responseData.validationErrors));
+  }
+
+  if (validationParts.length) {
+    return validationParts.filter(Boolean).join(' · ');
+  }
+
+  return error?.message || 'No fue posible registrar el usuario.';
 };
 
 export default function UserManagement() {
@@ -17,16 +169,17 @@ export default function UserManagement() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState(initialForm);
+  const [userType, setUserType] = useState('student');
+  const [studentForm, setStudentForm] = useState(createInitialForm('student'));
+  const [teacherForm, setTeacherForm] = useState(createInitialForm('teacher'));
+  const [students, setStudents] = useState(studentsCatalog);
+  const [teachers, setTeachers] = useState(teachersCatalog);
+  const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const idRef = useRef(null);
-  const nameRef = useRef(null);
-  const lastnameRef = useRef(null);
-  const emailRef = useRef(null);
-  const roleRef = useRef(null);
-  const assignmentRef = useRef(null);
-
-  const records = activeTab === 'students' ? studentsCatalog : teachersCatalog;
+  const records = activeTab === 'students' ? students : teachers;
+  const form = userType === 'student' ? studentForm : teacherForm;
 
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
@@ -39,6 +192,98 @@ export default function UserManagement() {
   }, [records, query, statusFilter]);
 
   const careerOptions = careerCatalog.map((career) => career.name);
+
+  const openUserModal = (type) => {
+    const nextType = type || (activeTab === 'students' ? 'student' : 'teacher');
+    setUserType(nextType);
+    setFormError('');
+    setShowPassword(false);
+    setModalOpen(true);
+  };
+
+  const handleFieldChange = (field, value) => {
+    if (userType === 'student') {
+      setStudentForm((currentForm) => ({
+        ...currentForm,
+        [field]: value
+      }));
+      return;
+    }
+
+    setTeacherForm((currentForm) => ({
+      ...currentForm,
+      [field]: value
+    }));
+  };
+
+  const handleUserTypeChange = (nextType) => {
+    setUserType(nextType);
+    setFormError('');
+    setShowPassword(false);
+  };
+
+  const validateForm = () => {
+    if (!form.firstName.trim()) return 'El primer nombre es obligatorio.';
+    if (!form.lastName.trim()) return 'El primer apellido es obligatorio.';
+    if (!form.email.trim()) return 'El correo es obligatorio.';
+    if (!isValidEmail(form.email)) return 'El correo no tiene un formato válido.';
+    if (normalizeDocumentNumber(form.documentNumber).length !== 8) return 'La cédula debe tener 8 dígitos.';
+    if (normalizePhoneNumber(form.phone).length !== 11) return 'El teléfono debe tener 11 dígitos.';
+    if (!form.username.trim()) return 'El username es obligatorio.';
+    if (!form.password.trim() || form.password.trim().length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
+    if (form.userType === 'student' && !form.career.trim()) return 'Selecciona una carrera para el estudiante.';
+    if (form.userType === 'teacher' && !form.academicTitle.trim()) return 'Selecciona el título académico del docente.';
+
+    return '';
+  };
+
+  const handleSubmit = async () => {
+    const validationMessage = validateForm();
+
+    if (validationMessage) {
+      setFormError(validationMessage);
+      return;
+    }
+
+    const payload = {
+      document_id: formatDocumentId(form.documentType, form.documentNumber),
+      name: form.firstName.trim(),
+      lastname: form.lastName.trim(),
+      second_name: form.secondName.trim(),
+      second_lastname: form.secondLastName.trim(),
+      date_birth: form.birthDate,
+      id_role: ROLE_IDS[form.userType] ?? ROLE_IDS.student,
+      email: form.email.trim(),
+      phone: formatPhone(form.phone),
+      username: form.username.trim(),
+      password: form.password
+    };
+
+    setSubmitting(true);
+    setFormError('');
+
+    try {
+      const response = await registerUser(payload);
+      const backendUser = response?.user || response?.data?.user || response?.data || response;
+      const localRecord = { ...buildLocalRecord(form), ...(backendUser && typeof backendUser === 'object' ? backendUser : {}) };
+
+      if (form.userType === 'student') {
+        setStudents((currentStudents) => [localRecord, ...currentStudents]);
+        setStudentForm(createInitialForm('student'));
+      } else {
+        setTeachers((currentTeachers) => [localRecord, ...currentTeachers]);
+        setTeacherForm(createInitialForm('teacher'));
+      }
+
+      setModalOpen(false);
+      setShowPassword(false);
+    } catch (error) {
+      console.error('registerUser validation error:', error?.data || error);
+      setFormError(formatApiError(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <AdminPageShell
@@ -53,7 +298,7 @@ export default function UserManagement() {
           <ActionButton variant="secondary" onClick={() => setActiveTab('teachers')}>
             Docentes
           </ActionButton>
-          <ActionButton variant="accent" onClick={() => setModalOpen(true)}>
+          <ActionButton variant="accent" onClick={() => openUserModal()}>
             <UserPlus size={16} /> Nuevo usuario
           </ActionButton>
         </>
@@ -125,48 +370,130 @@ export default function UserManagement() {
 
       <Modal
         open={modalOpen}
-        title="Registrar nuevo usuario"
-        subtitle="Completa la ficha básica y deja lista la cuenta para sincronizarla con el backend."
-        onClose={() => setModalOpen(false)}
+        title={userType === 'student' ? 'Registrar estudiante' : 'Registrar docente'}
+        subtitle={userType === 'student'
+          ? 'Completa los datos del estudiante y deja su cuenta lista para iniciar sesión.'
+          : 'Completa los datos del docente y deja su cuenta lista para iniciar sesión.'}
+        onClose={() => {
+          setModalOpen(false);
+          setFormError('');
+          setShowPassword(false);
+        }}
         footer={
           <>
-            <ActionButton variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</ActionButton>
-            <ActionButton variant="accent" onClick={() => setModalOpen(false)}>Guardar usuario</ActionButton>
+            <ActionButton variant="ghost" onClick={() => setModalOpen(false)} disabled={submitting}>Cancelar</ActionButton>
+            <ActionButton variant="accent" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? 'Guardando...' : 'Guardar usuario'}
+            </ActionButton>
           </>
         }
       >
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+          <ActionButton variant={userType === 'student' ? 'primary' : 'secondary'} onClick={() => handleUserTypeChange('student')}>
+            Estudiante
+          </ActionButton>
+          <ActionButton variant={userType === 'teacher' ? 'primary' : 'secondary'} onClick={() => handleUserTypeChange('teacher')}>
+            Docente
+          </ActionButton>
+        </div>
+
+        {formError ? (
+          <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '12px', background: '#fff1f2', color: '#b91c1c', border: '1px solid #fecdd3', fontSize: '0.92rem', fontWeight: 600 }}>
+            {formError}
+          </div>
+        ) : null}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
           <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Cédula</span>
-            <input className="form-input" defaultValue={form.id} ref={idRef} />
+            <span className="form-label">Primer nombre</span>
+            <input className="form-input" value={form.firstName} onChange={(event) => handleFieldChange('firstName', event.target.value)} />
           </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Nombre</span>
-            <input className="form-input" defaultValue={form.name} ref={nameRef} />
+            <span className="form-label">Segundo nombre</span>
+            <input className="form-input" value={form.secondName} onChange={(event) => handleFieldChange('secondName', event.target.value)} />
           </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Apellidos</span>
-            <input className="form-input" defaultValue={form.lastname} ref={lastnameRef} />
+            <span className="form-label">Primer apellido</span>
+            <input className="form-input" value={form.lastName} onChange={(event) => handleFieldChange('lastName', event.target.value)} />
+          </label>
+          <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Segundo apellido</span>
+            <input className="form-input" value={form.secondLastName} onChange={(event) => handleFieldChange('secondLastName', event.target.value)} />
+          </label>
+          <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Fecha de nacimiento</span>
+            <input className="form-input" type="date" value={form.birthDate} onChange={(event) => handleFieldChange('birthDate', event.target.value)} />
           </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Correo</span>
-            <input className="form-input" defaultValue={form.email} ref={emailRef} />
+            <input className="form-input" type="email" value={form.email} onChange={(event) => handleFieldChange('email', event.target.value)} />
           </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Rol</span>
-            <select className="form-input" defaultValue={form.role} ref={roleRef}>
-              <option>Estudiante</option>
-              <option>Docente</option>
-            </select>
-          </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Carrera / Departamento</span>
-            <select className="form-input" defaultValue={form.assignment} ref={assignmentRef}>
-              <option value="">Seleccionar</option>
-              {careerOptions.map((option) => (
-                <option key={option}>{option}</option>
+            <span className="form-label">Tipo de documento</span>
+            <select className="form-input" value={form.documentType} onChange={(event) => handleFieldChange('documentType', event.target.value)}>
+              {documentTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
+          </label>
+          <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Número de documento / cédula</span>
+            <input className="form-input" value={form.documentNumber} onChange={(event) => handleFieldChange('documentNumber', event.target.value)} />
+          </label>
+          <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Teléfono</span>
+            <input className="form-input" value={form.phone} onChange={(event) => handleFieldChange('phone', event.target.value)} />
+          </label>
+          <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Username</span>
+            <input className="form-input" value={form.username} onChange={(event) => handleFieldChange('username', event.target.value)} />
+          </label>
+          <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Contraseña</span>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-input"
+                type={showPassword ? 'text' : 'password'}
+                value={form.password}
+                onChange={(event) => handleFieldChange('password', event.target.value)}
+                autoComplete="new-password"
+                style={{ paddingRight: '48px' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: '#64748b', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </label>
+
+          {userType === 'student' ? (
+            <label className="form-group" style={{ marginBottom: 0 }}>
+              <span className="form-label">Carrera</span>
+              <select className="form-input" value={form.career} onChange={(event) => handleFieldChange('career', event.target.value)}>
+                <option value="">Seleccionar</option>
+                {careerOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label className="form-group" style={{ marginBottom: 0 }}>
+              <span className="form-label">Título académico</span>
+              <select className="form-input" value={form.academicTitle} onChange={(event) => handleFieldChange('academicTitle', event.target.value)}>
+                {teacherTitleOptions.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <label className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+            <span className="form-label">Tipo de registro</span>
+            <input className="form-input" value={userType === 'student' ? 'Estudiante' : 'Docente'} disabled />
           </label>
         </div>
       </Modal>

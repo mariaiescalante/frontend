@@ -1,4 +1,8 @@
-import api from './api';
+import api, { http } from './api';
+
+export const registerUser = (payload) => {
+  return http.post('/auth/register', payload);
+};
 
 export const requestPasswordReset = (email) => {
   return api.post('/auth/forgot-password', { email });
