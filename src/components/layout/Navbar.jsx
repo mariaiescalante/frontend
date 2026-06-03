@@ -33,6 +33,9 @@ export default function Navbar({ onMenuClick }) {
         return 'Control de Notas';
       case 'history':
         return 'Historial Académico';
+      case 'pre-registrations':
+      case 'aspirantes':
+        return 'Control de Aspirantes';
       case 'subjects':
         return 'Asignaturas Impartidas';
       case 'students':

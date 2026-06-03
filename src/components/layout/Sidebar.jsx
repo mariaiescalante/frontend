@@ -119,6 +119,12 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
       visible: isAdmin
     },
     {
+      path: '/admin/pre-registrations',
+      name: 'Aspirantes',
+      icon: Users,
+      visible: isAdmin
+    },
+    {
       path: '/admin/history',
       name: 'Historial',
       icon: History,

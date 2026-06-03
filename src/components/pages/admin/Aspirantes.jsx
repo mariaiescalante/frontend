@@ -1,0 +1,443 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, Users, UserCheck, CheckCircle2, XCircle, AlertCircle, Trash2, Calendar, FileText, MapPin, Eye, Info } from 'lucide-react';
+import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle } from './AdminPageShell';
+import api from '../../../services/api';
+
+export default function Aspirantes() {
+  const [applicants, setApplicants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Todos');
+  const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const [actionSuccess, setActionSuccess] = useState('');
+
+  const fetchApplicants = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await api.get('/pre-registrations');
+      const items = Array.isArray(response) ? response : (response?.data ?? response?.items ?? []);
+      setApplicants(items);
+    } catch (err) {
+      console.error(err);
+      setError('No fue posible cargar la lista de aspirantes de la base de datos.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchApplicants();
+  }, []);
+
+  const filteredApplicants = useMemo(() => {
+    return applicants.filter((app) => {
+      const fullName = `${app.first_name || ''} ${app.second_name || ''} ${app.first_lastname || ''} ${app.second_lastname || ''}`.toLowerCase();
+      const docId = `${app.document_type || ''}-${app.document_id || ''}`.toLowerCase();
+      const email = (app.email || '').toLowerCase();
+      const careerName = (app.Career?.name_career || '').toLowerCase();
+      const matchesQuery = fullName.includes(query.toLowerCase()) || 
+                           docId.includes(query.toLowerCase()) || 
+                           email.includes(query.toLowerCase()) ||
+                           careerName.includes(query.toLowerCase());
+      
+      const statusValue = app.status_pre || 'Pendiente';
+      const matchesStatus = statusFilter === 'Todos' || statusValue.toLowerCase() === statusFilter.toLowerCase();
+      
+      return matchesQuery && matchesStatus;
+    });
+  }, [applicants, query, statusFilter]);
+
+  // Metric computations
+  const metrics = useMemo(() => {
+    const total = applicants.length;
+    const pending = applicants.filter(a => (a.status_pre || 'Pendiente') === 'Pendiente').length;
+    const inRevision = applicants.filter(a => a.status_pre === 'En Revisión').length;
+    const approved = applicants.filter(a => a.status_pre === 'Aprobado').length;
+
+    return [
+      { label: 'Total Aspirantes', value: String(total), hint: 'Preinscritos en la plataforma', icon: Users, tone: 'primary' },
+      { label: 'Pendientes', value: String(pending), hint: 'Esperando primera revisión', icon: AlertCircle, tone: 'warning' },
+      { label: 'En Revisión', value: String(inRevision), hint: 'Documentos bajo análisis', icon: Info, tone: 'info' },
+      { label: 'Aprobados', value: String(approved), hint: 'Listos para registro definitivo', icon: UserCheck, tone: 'success' }
+    ];
+  }, [applicants]);
+
+  const handleViewDetails = (applicant) => {
+    setSelectedApplicant(applicant);
+    setActionError('');
+    setActionSuccess('');
+    setModalOpen(true);
+  };
+
+  const handleUpdateStatus = async (id, newStatus) => {
+    setUpdating(true);
+    setActionError('');
+    setActionSuccess('');
+    try {
+      const response = await api.put(`/pre-registrations/${id}`, { status_pre: newStatus });
+      const updatedItem = response?.data ?? response;
+      
+      // Update local state
+      setApplicants(prev => prev.map(a => a.id_pre === id ? { ...a, ...updatedItem } : a));
+      
+      // Update selected applicant details view
+      if (selectedApplicant && selectedApplicant.id_pre === id) {
+        setSelectedApplicant(prev => ({ ...prev, ...updatedItem }));
+      }
+      
+      setActionSuccess(`El estado ha sido cambiado a "${newStatus}" correctamente.`);
+      
+      // Auto close/refresh helpers if needed
+      setTimeout(() => {
+        setActionSuccess('');
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      setActionError(err.message || 'Error al actualizar el estado del aspirante.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteApplicant = async (id) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar permanentemente este pre-registro? Esta acción no se puede deshacer.')) {
+      return;
+    }
+    
+    try {
+      await api.delete(`/pre-registrations/${id}`);
+      setApplicants(prev => prev.filter(a => a.id_pre !== id));
+      if (selectedApplicant && selectedApplicant.id_pre === id) {
+        setModalOpen(false);
+        setSelectedApplicant(null);
+      }
+      alert('Registro eliminado correctamente.');
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Error al eliminar el aspirante.');
+    }
+  };
+
+  return (
+    <AdminPageShell
+      eyebrow="Gestión de Admisiones"
+      title="Control de Aspirantes"
+      subtitle="Recibe, verifica y aprueba la información enviada desde el formulario de pre-registro de admisiones."
+      metrics={metrics}
+    >
+      <SectionCard 
+        title="Búsqueda y filtros de aspirantes" 
+        description="Filtra por cédula, nombre, correo o carrera para encontrar perfiles específicos."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '14px' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Buscar</span>
+            <div style={{ position: 'relative' }}>
+              <Search size={16} style={{ position: 'absolute', left: '14px', top: '14px', color: '#94a3b8', pointerEvents: 'none' }} />
+              <input 
+                value={query} 
+                onChange={(event) => setQuery(event.target.value)} 
+                placeholder="Nombre, cédula, correo o carrera..." 
+                style={{ ...fieldStyle, minHeight: '44px', paddingLeft: '42px' }} 
+              />
+            </div>
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Estado de preinscripción</span>
+            <select 
+              value={statusFilter} 
+              onChange={(event) => setStatusFilter(event.target.value)} 
+              style={fieldStyle}
+            >
+              <option value="Todos">Todos los estados</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En Revisión">En Revisión</option>
+              <option value="Aprobado">Aprobado</option>
+              <option value="Rechazado">Rechazado</option>
+            </select>
+          </label>
+        </div>
+      </SectionCard>
+
+      <SectionCard 
+        title="Listado de aspirantes recibidos" 
+        description={`Se encontraron ${filteredApplicants.length} aspirante(s) en la base de datos.`}
+        actions={
+          <ActionButton variant="secondary" onClick={fetchApplicants} disabled={loading}>
+            Actualizar Lista
+          </ActionButton>
+        }
+      >
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+            Cargando información de los aspirantes...
+          </div>
+        ) : error ? (
+          <div style={{ padding: '30px', borderRadius: '12px', background: '#fff1f2', color: '#b91c1c', border: '1px solid #fecdd3', textAlign: 'center' }}>
+            {error}
+          </div>
+        ) : filteredApplicants.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', border: '1px dashed #cbd5e1', borderRadius: '12px' }}>
+            No se encontraron pre-registros que coincidan con la búsqueda.
+          </div>
+        ) : (
+          <DataTable columns={['Cédula', 'Aspirante', 'Carrera', 'Modalidad', 'Estado', 'Fecha', 'Acciones']}>
+            {filteredApplicants.map((app) => {
+              const fullName = `${app.first_name} ${app.first_lastname}`;
+              const docText = `${app.document_type}-${app.document_id}`;
+              const statusText = app.status_pre || 'Pendiente';
+              const statusTone = 
+                statusText === 'Aprobado' ? 'success' : 
+                statusText === 'En Revisión' ? 'info' : 
+                statusText === 'Rechazado' ? 'danger' : 'warning';
+              
+              const dateText = app.created_at 
+                ? new Date(app.created_at).toLocaleDateString('es-VE') 
+                : 'N/D';
+
+              return (
+                <tr key={app.id_pre}>
+                  <td><strong>{docText}</strong></td>
+                  <td>{fullName}</td>
+                  <td>{app.Career?.name_career || `ID: ${app.id_career}`}</td>
+                  <td>{app.entry_mode}</td>
+                  <td><StatusBadge tone={statusTone}>{statusText}</StatusBadge></td>
+                  <td>{dateText}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <ActionButton variant="secondary" onClick={() => handleViewDetails(app)} style={{ padding: '6px 12px' }}>
+                        <Eye size={14} /> Detalles
+                      </ActionButton>
+                      <ActionButton variant="danger" onClick={() => handleDeleteApplicant(app.id_pre)} style={{ padding: '6px 12px' }}>
+                        <Trash2 size={14} />
+                      </ActionButton>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </DataTable>
+        )}
+      </SectionCard>
+
+      {/* Detail view Modal */}
+      {selectedApplicant && (
+        <Modal
+          open={modalOpen}
+          title={`Ficha de Aspirante: ${selectedApplicant.first_name} ${selectedApplicant.first_lastname}`}
+          subtitle={`Pre-registro #${selectedApplicant.id_pre} · Estado: ${selectedApplicant.status_pre || 'Pendiente'}`}
+          onClose={() => setModalOpen(false)}
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <ActionButton 
+                  variant="danger" 
+                  onClick={() => handleDeleteApplicant(selectedApplicant.id_pre)}
+                >
+                  <Trash2 size={16} /> Eliminar Aspirante
+                </ActionButton>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <ActionButton variant="ghost" onClick={() => setModalOpen(false)}>
+                  Cerrar
+                </ActionButton>
+                {selectedApplicant.status_pre !== 'En Revisión' && (
+                  <ActionButton 
+                    variant="secondary" 
+                    onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'En Revisión')}
+                    disabled={updating}
+                  >
+                    Poner En Revisión
+                  </ActionButton>
+                )}
+                {selectedApplicant.status_pre !== 'Rechazado' && (
+                  <ActionButton 
+                    variant="ghost" 
+                    onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'Rechazado')}
+                    disabled={updating}
+                    style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#dc2626' }}
+                  >
+                    Rechazar
+                  </ActionButton>
+                )}
+                {selectedApplicant.status_pre !== 'Aprobado' && (
+                  <ActionButton 
+                    variant="accent" 
+                    onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'Aprobado')}
+                    disabled={updating}
+                  >
+                    Aprobar Aspirante
+                  </ActionButton>
+                )}
+              </div>
+            </div>
+          }
+        >
+          {actionError && (
+            <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '12px', background: '#fff1f2', color: '#b91c1c', border: '1px solid #fecdd3', fontWeight: 600 }}>
+              {actionError}
+            </div>
+          )}
+          {actionSuccess && (
+            <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '12px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', fontWeight: 600 }}>
+              {actionSuccess}
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+            
+            {/* COLUMN 1: Personal & Contact */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px' }}>
+                <h4 style={{ margin: '0 0 14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                  <Users size={18} style={{ color: '#0b5ed7' }} /> Datos Personales
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Nombre Completo</span>
+                    <strong style={{ color: '#0f172a' }}>
+                      {selectedApplicant.first_name} {selectedApplicant.second_name || ''} {selectedApplicant.first_lastname} {selectedApplicant.second_lastname || ''}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Documento</span>
+                      <strong style={{ color: '#0f172a' }}>{selectedApplicant.document_type}-{selectedApplicant.document_id}</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Nacionalidad</span>
+                      <strong style={{ color: '#0f172a' }}>{selectedApplicant.nationality}</strong>
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Fecha de Nacimiento</span>
+                    <strong style={{ color: '#0f172a' }}>{selectedApplicant.birth_date}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Correo Electrónico</span>
+                    <strong style={{ color: '#0f172a' }}>{selectedApplicant.email}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Teléfono</span>
+                    <strong style={{ color: '#0f172a' }}>{selectedApplicant.phone}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px' }}>
+                <h4 style={{ margin: '0 0 14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                  <MapPin size={18} style={{ color: '#0b5ed7' }} /> Dirección y Residencia
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Estado</span>
+                      <strong style={{ color: '#0f172a' }}>{selectedApplicant.State?.name_state || `ID: ${selectedApplicant.id_state}`}</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Municipio</span>
+                      <strong style={{ color: '#0f172a' }}>{selectedApplicant.Municipality?.name_municipality || `ID: ${selectedApplicant.id_municipality}`}</strong>
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Parroquia o Sector</span>
+                    <strong style={{ color: '#0f172a' }}>{selectedApplicant.Parish?.name_parish || `ID: ${selectedApplicant.id_parish}`}</strong>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Dirección Completa</span>
+                    <span style={{ color: '#0f172a', fontSize: '0.9rem', lineHeight: 1.4 }}>{selectedApplicant.full_address}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMN 2: Academic Profile & Obs */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px' }}>
+                <h4 style={{ margin: '0 0 14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                  <Calendar size={18} style={{ color: '#0b5ed7' }} /> Perfil Académico Solicitado
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Carrera de Interés</span>
+                    <strong style={{ color: '#051124', fontSize: '1.05rem' }}>{selectedApplicant.Career?.name_career || `ID: ${selectedApplicant.id_career}`}</strong>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Modalidad Ingreso</span>
+                      <strong style={{ color: '#0f172a' }}>{selectedApplicant.entry_mode}</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Semestre Solicitado</span>
+                      <strong style={{ color: '#0f172a' }}>{selectedApplicant.Semester?.number_semester || '1'}</strong>
+                    </div>
+                  </div>
+                  {selectedApplicant.academic_area && (
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Área de Interés / PNF</span>
+                      <strong style={{ color: '#0f172a' }}>{selectedApplicant.academic_area}</strong>
+                    </div>
+                  )}
+                  <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '4px' }}>
+                    <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Institución de Procedencia</span>
+                    <strong style={{ color: '#0f172a' }}>{selectedApplicant.inst_procedencia || 'No declarada'}</strong>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Tipo de Plantel</span>
+                      <strong style={{ color: '#0f172a' }}>{selectedApplicant.inst_type || 'N/D'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Año de Egreso</span>
+                      <strong style={{ color: '#0f172a' }}>{selectedApplicant.grad_year || 'N/D'}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px' }}>
+                <h4 style={{ margin: '0 0 14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                  <FileText size={18} style={{ color: '#0b5ed7' }} /> Observaciones y Declaraciones
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Observaciones / Documentación Cargada</span>
+                    <div style={{ 
+                      whiteSpace: 'pre-wrap', 
+                      fontSize: '0.88rem', 
+                      color: '#334155', 
+                      background: '#ffffff', 
+                      border: '1px solid #cbd5e1', 
+                      borderRadius: '8px', 
+                      padding: '10px',
+                      maxHeight: '140px',
+                      overflowY: 'auto'
+                    }}>
+                      {selectedApplicant.observations || 'Sin observaciones registradas.'}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.8rem', color: '#475569', marginTop: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: selectedApplicant.confirmo_info ? '#22c55e' : '#cbd5e1' }} />
+                      <span>Información confirmada como verdadera y verificable</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: selectedApplicant.autorizo_datos ? '#22c55e' : '#cbd5e1' }} />
+                      <span>Uso de datos autorizado para fines académicos</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </Modal>
+      )}
+    </AdminPageShell>
+  );
+}

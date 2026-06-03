@@ -15,6 +15,7 @@ import SectionsManagement from './components/pages/admin/SectionsManagement';
 import TeacherAssignment from './components/pages/admin/TeacherAssignment';
 import GradesControl from './components/pages/admin/GradesControl';
 import AcademicHistory from './components/pages/admin/AcademicHistory';
+import Aspirantes from './components/pages/admin/Aspirantes';
 import TeacherDashboard from './components/pages/teacher/Dashboard';
 import TeacherSubjects from './components/pages/teacher/TeacherSubjects';
 import TeacherStudents from './components/pages/teacher/TeacherStudents';
@@ -98,6 +99,8 @@ function App() {
             <Route path="admin/teacher-assignment" element={<TeacherAssignment />} />
             <Route path="admin/grades" element={<GradesControl />} />
             <Route path="admin/history" element={<AcademicHistory />} />
+            <Route path="admin/pre-registrations" element={<Aspirantes />} />
+            <Route path="admin/aspirantes" element={<Navigate to="/admin/pre-registrations" replace />} />
             <Route path="teacher/dashboard" element={<TeacherDashboard />} />
             <Route path="teacher/subjects" element={<TeacherSubjects />} />
             <Route path="teacher/students" element={<TeacherStudents />} />
