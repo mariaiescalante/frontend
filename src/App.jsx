@@ -53,7 +53,13 @@ const PlaceholderPage = ({ title }) => (
 );
 
 const DashboardRedirect = () => {
-  const { isAdmin, isTeacher, isStudent } = useAuth();
+  const { isAdmin, isTeacher, isStudent, loading } = useAuth();
+
+  // While auth is still resolving, render nothing to avoid a premature
+  // redirect to /login before the role has been loaded.
+  if (loading) {
+    return null;
+  }
 
   if (isAdmin) {
     return <Navigate to="/admin/dashboard" replace />;

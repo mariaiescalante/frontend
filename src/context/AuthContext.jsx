@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../services/api';
 import AuthContext from './authContext';
 
@@ -30,6 +30,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const isInitializing = useRef(true);
+
   // Parse user role helpers
   const isAdmin = user?.role === 'Administrador' || user?.role === 'Admin';
   const isStudent = user?.role === 'Estudiante';
@@ -54,10 +56,13 @@ export function AuthProvider({ children }) {
           logout();
         }
       }
+      isInitializing.current = false;
       setLoading(false);
     }
 
-    initAuth();
+    if (isInitializing.current) {
+      initAuth();
+    }
   }, [token, logout]);
 
   const login = async (username, password) => {
@@ -67,7 +72,6 @@ export function AuthProvider({ children }) {
       const response = await api.post('/auth/login', { username, password });
 
       const accessToken = response?.access_token || response?.token;
-      const userData = normalizeUser(response);
 
       if (!accessToken) {
         throw new Error('La respuesta del login no devolvió un token válido');
@@ -76,15 +80,12 @@ export function AuthProvider({ children }) {
       localStorage.setItem(TOKEN_KEY, accessToken);
       setToken(accessToken);
 
-      if (userData) {
-        setUser(userData);
-      } else {
-        const profile = await api.get('/auth/profile');
-        setUser(normalizeUser(profile));
-      }
+      const profile = await api.get('/auth/profile');
+      const userData = normalizeUser(profile);
+      setUser(userData);
 
       setLoading(false);
-      return userData || true;
+      return userData;
     } catch (err) {
       setError(err.message || 'Credenciales inválidas');
       setLoading(false);

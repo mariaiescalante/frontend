@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Search, Users, UserCheck, CheckCircle2, XCircle, AlertCircle, Trash2, Calendar, FileText, MapPin, Eye, Info } from 'lucide-react';
 import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle } from './AdminPageShell';
 import api from '../../../services/api';
@@ -11,7 +11,8 @@ export default function Aspirantes() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [selectedApplicant, setSelectedApplicant] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [updating, setUpdating] = useState(false);
+  // Tracks which specific action button is loading: 'revision' | 'reject' | 'approve' | 'delete' | null
+  const [actionLoading, setActionLoading] = useState(null);
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
 
@@ -74,25 +75,24 @@ export default function Aspirantes() {
     setModalOpen(true);
   };
 
-  const handleUpdateStatus = async (id, newStatus) => {
-    setUpdating(true);
+  const handleUpdateStatus = useCallback(async (id, newStatus, actionKey) => {
+    setActionLoading(actionKey);
     setActionError('');
     setActionSuccess('');
     try {
       const response = await api.put(`/pre-registrations/${id}`, { status_pre: newStatus });
       const updatedItem = response?.data ?? response;
-      
+
       // Update local state
       setApplicants(prev => prev.map(a => a.id_pre === id ? { ...a, ...updatedItem } : a));
-      
+
       // Update selected applicant details view
       if (selectedApplicant && selectedApplicant.id_pre === id) {
         setSelectedApplicant(prev => ({ ...prev, ...updatedItem }));
       }
-      
+
       setActionSuccess(`El estado ha sido cambiado a "${newStatus}" correctamente.`);
-      
-      // Auto close/refresh helpers if needed
+
       setTimeout(() => {
         setActionSuccess('');
       }, 3000);
@@ -100,15 +100,16 @@ export default function Aspirantes() {
       console.error(err);
       setActionError(err.message || 'Error al actualizar el estado del aspirante.');
     } finally {
-      setUpdating(false);
+      setActionLoading(null);
     }
-  };
+  }, [selectedApplicant]);
 
-  const handleDeleteApplicant = async (id) => {
+  const handleDeleteApplicant = useCallback(async (id) => {
     if (!window.confirm('¿Estás seguro de que deseas eliminar permanentemente este pre-registro? Esta acción no se puede deshacer.')) {
       return;
     }
-    
+
+    setActionLoading('delete');
     try {
       await api.delete(`/pre-registrations/${id}`);
       setApplicants(prev => prev.filter(a => a.id_pre !== id));
@@ -116,12 +117,32 @@ export default function Aspirantes() {
         setModalOpen(false);
         setSelectedApplicant(null);
       }
-      alert('Registro eliminado correctamente.');
     } catch (err) {
       console.error(err);
-      alert(err.message || 'Error al eliminar el aspirante.');
+      setActionError(err.message || 'Error al eliminar el aspirante.');
+    } finally {
+      setActionLoading(null);
     }
-  };
+  }, [selectedApplicant]);
+
+  // Inline spinner SVG component
+  const Spinner = ({ size = 14, color = 'currentColor' }) => (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      style={{ animation: 'aspirantes-spin 0.75s linear infinite', flexShrink: 0 }}
+    >
+      <style>{`@keyframes aspirantes-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <path d="M12 2a10 10 0 0 1 10 10" />
+    </svg>
+  );
+
+  const isAnyLoading = actionLoading !== null;
 
   return (
     <AdminPageShell
@@ -213,8 +234,13 @@ export default function Aspirantes() {
                       <ActionButton variant="secondary" onClick={() => handleViewDetails(app)} style={{ padding: '6px 12px' }}>
                         <Eye size={14} /> Detalles
                       </ActionButton>
-                      <ActionButton variant="danger" onClick={() => handleDeleteApplicant(app.id_pre)} style={{ padding: '6px 12px' }}>
-                        <Trash2 size={14} />
+                      <ActionButton
+                        variant="danger"
+                        onClick={() => handleDeleteApplicant(app.id_pre)}
+                        disabled={isAnyLoading}
+                        style={{ padding: '6px 12px' }}
+                      >
+                        {actionLoading === 'delete' ? <Spinner size={14} color="#b91c1c" /> : <Trash2 size={14} />}
                       </ActionButton>
                     </div>
                   </td>
@@ -235,43 +261,69 @@ export default function Aspirantes() {
           footer={
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '10px' }}>
               <div>
-                <ActionButton 
-                  variant="danger" 
+                <ActionButton
+                  variant="danger"
                   onClick={() => handleDeleteApplicant(selectedApplicant.id_pre)}
+                  disabled={isAnyLoading}
+                  style={{ opacity: isAnyLoading && actionLoading !== 'delete' ? 0.5 : 1 }}
                 >
-                  <Trash2 size={16} /> Eliminar Aspirante
+                  {actionLoading === 'delete' ? (
+                    <><Spinner size={15} color="#b91c1c" /> Eliminando...</>
+                  ) : (
+                    <><Trash2 size={16} /> Eliminar Aspirante</>
+                  )}
                 </ActionButton>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <ActionButton variant="ghost" onClick={() => setModalOpen(false)}>
+                <ActionButton variant="ghost" onClick={() => setModalOpen(false)} disabled={isAnyLoading}>
                   Cerrar
                 </ActionButton>
                 {selectedApplicant.status_pre !== 'En Revisión' && (
-                  <ActionButton 
-                    variant="secondary" 
-                    onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'En Revisión')}
-                    disabled={updating}
+                  <ActionButton
+                    variant="secondary"
+                    onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'En Revisión', 'revision')}
+                    disabled={isAnyLoading}
+                    style={{ opacity: isAnyLoading && actionLoading !== 'revision' ? 0.5 : 1, minWidth: '140px' }}
                   >
-                    Poner En Revisión
+                    {actionLoading === 'revision' ? (
+                      <><Spinner size={14} /> Procesando...</>
+                    ) : (
+                      'Poner En Revisión'
+                    )}
                   </ActionButton>
                 )}
                 {selectedApplicant.status_pre !== 'Rechazado' && (
-                  <ActionButton 
-                    variant="ghost" 
-                    onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'Rechazado')}
-                    disabled={updating}
-                    style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#dc2626' }}
+                  <ActionButton
+                    variant="ghost"
+                    onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'Rechazado', 'reject')}
+                    disabled={isAnyLoading}
+                    style={{
+                      background: '#fef2f2',
+                      border: '1px solid #fee2e2',
+                      color: '#dc2626',
+                      opacity: isAnyLoading && actionLoading !== 'reject' ? 0.5 : 1,
+                      minWidth: '100px'
+                    }}
                   >
-                    Rechazar
+                    {actionLoading === 'reject' ? (
+                      <><Spinner size={14} color="#dc2626" /> Procesando...</>
+                    ) : (
+                      'Rechazar'
+                    )}
                   </ActionButton>
                 )}
                 {selectedApplicant.status_pre !== 'Aprobado' && (
-                  <ActionButton 
-                    variant="accent" 
-                    onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'Aprobado')}
-                    disabled={updating}
+                  <ActionButton
+                    variant="accent"
+                    onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'Aprobado', 'approve')}
+                    disabled={isAnyLoading}
+                    style={{ opacity: isAnyLoading && actionLoading !== 'approve' ? 0.5 : 1, minWidth: '140px' }}
                   >
-                    Aprobar Aspirante
+                    {actionLoading === 'approve' ? (
+                      <><Spinner size={14} color="#051124" /> Aprobando...</>
+                    ) : (
+                      'Aprobar Aspirante'
+                    )}
                   </ActionButton>
                 )}
               </div>
