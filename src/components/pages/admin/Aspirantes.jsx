@@ -75,6 +75,8 @@ export default function Aspirantes() {
     setModalOpen(true);
   };
 
+  const getApplicantCode = (applicant) => applicant?.verification_code || `PR-${String(applicant?.id_pre || '').padStart(6, '0')}`;
+
   const handleUpdateStatus = useCallback(async (id, newStatus, actionKey) => {
     setActionLoading(actionKey);
     setActionError('');
@@ -105,7 +107,7 @@ export default function Aspirantes() {
   }, [selectedApplicant]);
 
   const handleDeleteApplicant = useCallback(async (id) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar permanentemente este pre-registro? Esta acción no se puede deshacer.')) {
+    if (!window.confirm('¿Estás seguro de que deseas marcar este pre-registro como eliminado? Se ocultará del listado, pero se conservará en la base de datos.')) {
       return;
     }
 
@@ -207,7 +209,7 @@ export default function Aspirantes() {
             No se encontraron pre-registros que coincidan con la búsqueda.
           </div>
         ) : (
-          <DataTable columns={['Cédula', 'Aspirante', 'Carrera', 'Modalidad', 'Estado', 'Fecha', 'Acciones']}>
+          <DataTable columns={['Código', 'Cédula', 'Aspirante', 'Carrera', 'Modalidad', 'Estado', 'Fecha', 'Acciones']}>
             {filteredApplicants.map((app) => {
               const fullName = `${app.first_name} ${app.first_lastname}`;
               const docText = `${app.document_type}-${app.document_id}`;
@@ -223,6 +225,7 @@ export default function Aspirantes() {
 
               return (
                 <tr key={app.id_pre}>
+                  <td><strong>{getApplicantCode(app)}</strong></td>
                   <td><strong>{docText}</strong></td>
                   <td>{fullName}</td>
                   <td>{app.Career?.name_career || `ID: ${app.id_career}`}</td>
@@ -256,7 +259,7 @@ export default function Aspirantes() {
         <Modal
           open={modalOpen}
           title={`Ficha de Aspirante: ${selectedApplicant.first_name} ${selectedApplicant.first_lastname}`}
-          subtitle={`Pre-registro #${selectedApplicant.id_pre} · Estado: ${selectedApplicant.status_pre || 'Pendiente'}`}
+          subtitle={`Código ${getApplicantCode(selectedApplicant)} · Estado: ${selectedApplicant.status_pre || 'Pendiente'}`}
           onClose={() => setModalOpen(false)}
           footer={
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '10px' }}>
@@ -350,6 +353,10 @@ export default function Aspirantes() {
                   <Users size={18} style={{ color: '#0b5ed7' }} /> Datos Personales
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Código de pre-registro</span>
+                    <strong style={{ color: '#0f172a' }}>{getApplicantCode(selectedApplicant)}</strong>
+                  </div>
                   <div>
                     <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Nombre Completo</span>
                     <strong style={{ color: '#0f172a' }}>
