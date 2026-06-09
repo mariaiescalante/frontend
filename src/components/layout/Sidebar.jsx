@@ -165,6 +165,42 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
       name: 'Dashboard',
       icon: LayoutDashboard,
       visible: isStudent
+    },
+    {
+      path: '/student/profile',
+      name: 'Datos Personales',
+      icon: UserCog,
+      visible: isStudent
+    },
+    {
+      path: '/student/pensum',
+      name: 'Pensum de Estudios',
+      icon: BookOpen,
+      visible: isStudent
+    },
+    {
+      path: '/student/enrollment',
+      name: 'Inscripción de Materias',
+      icon: ClipboardCheck,
+      visible: isStudent
+    },
+    {
+      path: '/student/schedule',
+      name: 'Mi Horario',
+      icon: Calendar,
+      visible: isStudent
+    },
+    {
+      path: '/student/record',
+      name: 'Récord Académico',
+      icon: History,
+      visible: isStudent
+    },
+    {
+      path: '/student/documents',
+      name: 'Constancias y Reportes',
+      icon: FileLock2,
+      visible: isStudent
     }
   ];
 

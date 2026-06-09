@@ -22,6 +22,12 @@ import TeacherStudents from './components/pages/teacher/TeacherStudents';
 import TeacherRecords from './components/pages/teacher/TeacherRecords';
 import TeacherHistory from './components/pages/teacher/TeacherHistory';
 import StudentDashboard from './components/pages/student/Dashboard';
+import StudentProfile from './components/pages/student/StudentProfile';
+import StudentPensum from './components/pages/student/StudentPensum';
+import StudentEnrollment from './components/pages/student/StudentEnrollment';
+import StudentSchedule from './components/pages/student/StudentSchedule';
+import StudentRecord from './components/pages/student/StudentRecord';
+import StudentDocuments from './components/pages/student/StudentDocuments';
 import useAuth from './hooks/useAuth';
 import './App.css';
 
@@ -113,6 +119,12 @@ function App() {
             <Route path="teacher/records" element={<TeacherRecords />} />
             <Route path="teacher/history" element={<TeacherHistory />} />
             <Route path="student/dashboard" element={<StudentDashboard />} />
+            <Route path="student/profile" element={<StudentProfile />} />
+            <Route path="student/pensum" element={<StudentPensum />} />
+            <Route path="student/enrollment" element={<StudentEnrollment />} />
+            <Route path="student/schedule" element={<StudentSchedule />} />
+            <Route path="student/record" element={<StudentRecord />} />
+            <Route path="student/documents" element={<StudentDocuments />} />
 
             {/* Placeholders for Stitch Screens */}
             <Route path="students" element={<PlaceholderPage title="Gestión de Estudiantes" />} />
