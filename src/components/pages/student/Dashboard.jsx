@@ -14,25 +14,62 @@ import {
   ClipboardCheck
 } from 'lucide-react';
 import { AdminPageShell, ActionButton, SectionCard, StatusBadge } from '../admin/AdminPageShell';
-import { loadStudentProfile, loadEnrolledSections, loadAcademicRecord } from './studentStorage';
+import { getStudentDashboard } from '../../../services/dashboardService';
 
 export default function StudentDashboard() {
-  const [profile, setProfile] = useState(() => loadStudentProfile());
-  const [enrolled, setEnrolled] = useState(() => loadEnrolledSections());
-  const [record, setRecord] = useState(() => loadAcademicRecord());
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Reload state if local storage updates (useful when clicking through tabs)
-    setProfile(loadStudentProfile());
-    setEnrolled(loadEnrolledSections());
-    setRecord(loadAcademicRecord());
+    async function loadData() {
+      try {
+        const res = await getStudentDashboard();
+        setData(res);
+      } catch (err) {
+        console.error('Error fetching student dashboard:', err);
+        setError(err.message || 'Error al cargar datos del estudiante');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
   }, []);
 
-  const totalCreditsPassed = record
-    .filter((subj) => subj.status === 'Aprobada')
-    .reduce((sum, subj) => sum + subj.credits, 0);
+  if (loading) {
+    return (
+      <AdminPageShell
+        eyebrow="Portal del Estudiante"
+        title="Bienvenido de nuevo"
+        subtitle="Cargando portal del estudiante..."
+        metrics={[
+          { label: 'Programa Académico', value: '...', hint: 'Cargando...', icon: GraduationCap, tone: 'primary' },
+          { label: 'Promedio General (CUM)', value: '...', hint: 'Cargando...', icon: Award, tone: 'info' },
+          { label: 'Créditos Aprobados', value: '...', hint: 'Cargando...', icon: CheckCircle, tone: 'success' },
+          { label: 'Estado Académico', value: '...', hint: 'Cargando...', icon: AlertTriangle, tone: 'primary' }
+        ]}
+      >
+        <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+          <span>Cargando datos dinámicos desde el servidor...</span>
+        </div>
+      </AdminPageShell>
+    );
+  }
 
-  const pendingPrereqCount = record.filter((subj) => subj.status === 'Reprobada').length;
+  const profile = data?.profile || {
+    name: '',
+    lastname: '',
+    career: '',
+    faculty: '',
+    director: '',
+    cum: 0,
+    creditsRequired: 160,
+    academicStatus: '',
+    currentPeriod: ''
+  };
+
+  const enrolled = data?.enrolled || [];
+  const creditsPassed = data?.metrics?.creditsPassed || 0;
 
   const metrics = [
     {
@@ -51,17 +88,15 @@ export default function StudentDashboard() {
     },
     {
       label: 'Créditos Aprobados',
-      value: `${totalCreditsPassed} / ${profile.creditsRequired}`,
-      hint: `${Math.round((totalCreditsPassed / profile.creditsRequired) * 100)}% de la carrera completada`,
+      value: `${creditsPassed} / ${profile.creditsRequired}`,
+      hint: `${Math.round((creditsPassed / profile.creditsRequired) * 100)}% de la carrera completada`,
       icon: CheckCircle,
       tone: 'success'
     },
     {
       label: 'Estado Académico',
       value: profile.academicStatus,
-      hint: pendingPrereqCount > 0 
-        ? `Tiene ${pendingPrereqCount} materia(s) de arrastre pendiente`
-        : 'Estudiante regular al día',
+      hint: profile.academicStatus === 'Regular' ? 'Estudiante regular al día' : 'Revisar materias pendientes',
       icon: AlertTriangle,
       tone: profile.academicStatus === 'Regular' ? 'success' : 'warning'
     }

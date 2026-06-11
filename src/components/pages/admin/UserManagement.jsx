@@ -278,6 +278,24 @@ export default function UserManagement() {
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [careerList, setCareerList] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCareers() {
+      try {
+        const res = await api.get('/careers');
+        const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+        if (isMounted) {
+          setCareerList(list);
+        }
+      } catch (err) {
+        console.error('Failed to load careers:', err);
+      }
+    }
+    loadCareers();
+    return () => { isMounted = false; };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -344,7 +362,9 @@ export default function UserManagement() {
     });
   }, [records, query, statusFilter]);
 
-  const careerOptions = careerCatalog.map((career) => career.name);
+  const careerOptions = careerList.length > 0
+    ? careerList.map((c) => c.name_career)
+    : careerCatalog.map((career) => career.name);
 
   const openUserModal = (type) => {
     const nextType = type || (activeTab === 'students' ? 'student' : 'teacher');
@@ -409,7 +429,10 @@ export default function UserManagement() {
       email: form.email.trim(),
       phone: formatPhone(form.phone),
       username: form.username.trim(),
-      password: form.password
+      password: form.password,
+      career: form.career,
+      academic_grade: form.academicTitle,
+      profession: form.academicTitle
     };
 
     setSubmitting(true);

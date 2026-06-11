@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { BookOpenCheck, FileDown, FileLock2, History, Users } from 'lucide-react';
 import { AdminPageShell, SectionCard } from '../admin/AdminPageShell';
-import { teacherAssignments, teacherHistory } from './teacherSeedData';
+import { getTeacherDashboard } from '../../../services/dashboardService';
 
 const quickModules = [
   {
@@ -32,7 +32,47 @@ const quickModules = [
 ];
 
 export default function TeacherDashboard() {
-  const openAssignments = teacherAssignments.filter((item) => item.actStatus !== 'cerrada').length;
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const res = await getTeacherDashboard();
+        setData(res);
+      } catch (err) {
+        console.error('Error fetching teacher dashboard:', err);
+        setError(err.message || 'Error al cargar datos del docente');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  if (loading) {
+    return (
+      <AdminPageShell
+        eyebrow="Panel Docente"
+        title="Dashboard Docente"
+        subtitle="Cargando resumen del docente..."
+        metrics={[
+          { label: 'Asignaturas activas', value: '...', hint: 'Cargando...', icon: BookOpenCheck, tone: 'info' },
+          { label: 'Actas pendientes', value: '...', hint: 'Cargando...', icon: FileDown, tone: 'warning' },
+          { label: 'Historial registrado', value: '...', hint: 'Cargando...', icon: History, tone: 'primary' }
+        ]}
+      >
+        <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+          <span>Cargando datos dinámicos desde el servidor...</span>
+        </div>
+      </AdminPageShell>
+    );
+  }
+
+  const activeSubjects = data?.metrics?.activeSubjects || 0;
+  const pendingGrades = data?.metrics?.pendingGrades || 0;
+  const historyCount = data?.metrics?.historyCount || 0;
 
   return (
     <AdminPageShell
@@ -42,21 +82,21 @@ export default function TeacherDashboard() {
       metrics={[
         {
           label: 'Asignaturas activas',
-          value: teacherAssignments.length,
+          value: activeSubjects,
           hint: 'Carga academica total del docente',
           icon: BookOpenCheck,
           tone: 'info'
         },
         {
           label: 'Actas pendientes',
-          value: openAssignments,
+          value: pendingGrades,
           hint: 'Secciones con acta aun abierta',
           icon: FileDown,
-          tone: openAssignments ? 'warning' : 'success'
+          tone: pendingGrades ? 'warning' : 'success'
         },
         {
           label: 'Historial registrado',
-          value: teacherHistory.length,
+          value: historyCount,
           hint: 'Asignaturas historicas disponibles para consulta',
           icon: History,
           tone: 'primary'
