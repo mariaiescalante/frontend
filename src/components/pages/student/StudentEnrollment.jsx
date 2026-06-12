@@ -57,6 +57,7 @@ export default function StudentEnrollment() {
   const [enrolled, setEnrolled] = useState(() => loadEnrolledSections());
   const [selectedSubjects, setSelectedSubjects] = useState({}); // { subjectCode: sectionIndex }
   const [success, setSuccess] = useState(false);
+  const [activeSemester, setActiveSemester] = useState(1);
 
   useEffect(() => {
     setEnrolled(loadEnrolledSections());
@@ -150,6 +151,10 @@ export default function StudentEnrollment() {
     setSuccess(false);
   };
 
+  const activeGroup = useMemo(() => {
+    return pensumSystems.find((group) => group.semester === activeSemester);
+  }, [activeSemester]);
+
   if (enrolled.length > 0) {
     return (
       <AdminPageShell
@@ -193,128 +198,144 @@ export default function StudentEnrollment() {
     >
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
         {/* Available Subjects column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {pensumSystems.map((group) => {
-            // Check if there's any pending subject or we should show this semester
-            return (
-              <SectionCard
-                key={group.semester}
-                title={`Semestre ${group.semester}`}
-                description="Listado de asignaturas y secciones disponibles para ofertar."
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {group.subjects.map((subject) => {
-                    const isPassed = approvedCodes.has(subject.code);
-                    const isPrereqMet = subject.prereq === 'Ninguno' || approvedCodes.has(subject.prereq);
-                    const isBlocked = !isPassed && !isPrereqMet;
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          
+          {/* Semester selection dropdown */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+              Seleccionar Semestre
+            </span>
+            <select
+              className="form-input"
+              value={activeSemester}
+              onChange={(e) => setActiveSemester(Number(e.target.value))}
+              style={{ minHeight: '44px', padding: '10px 14px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px' }}
+            >
+              {pensumSystems.map((group) => (
+                <option key={group.semester} value={group.semester}>
+                  Semestre {group.semester}
+                </option>
+              ))}
+            </select>
+          </div>
 
-                    const sections = availableSections[subject.code] || [];
-                    const isSelected = selectedSubjects[subject.code] !== undefined;
+          {activeGroup && (
+            <SectionCard
+              title={`Asignaturas - Semestre ${activeGroup.semester}`}
+              description={`Unidades curriculares ofertadas correspondientes al semestre ${activeGroup.semester}.`}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {activeGroup.subjects.map((subject) => {
+                  const isPassed = approvedCodes.has(subject.code);
+                  const isPrereqMet = subject.prereq === 'Ninguno' || approvedCodes.has(subject.prereq);
+                  const isBlocked = !isPassed && !isPrereqMet;
 
-                    return (
-                      <div
-                        key={subject.code}
-                        style={{
-                          padding: '16px',
-                          border: isSelected ? '1px solid #ffd100' : '1px solid #e2e8f0',
-                          borderRadius: '14px',
-                          background: isSelected ? 'rgba(255, 209, 0, 0.02)' : '#ffffff',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '12px',
-                          opacity: isBlocked ? 0.6 : 1,
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-                          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              disabled={isPassed || isBlocked}
-                              onChange={() => handleToggleSubject(subject.code)}
-                              style={{
-                                cursor: (isPassed || isBlocked) ? 'not-allowed' : 'pointer',
-                                width: '18px',
-                                height: '18px',
-                                accentColor: '#051124',
-                                marginTop: '4px'
-                              }}
-                            />
-                            <div>
-                              <strong style={{ display: 'block', fontSize: '0.98rem', color: '#0f172a' }}>
-                                {subject.name}
-                              </strong>
-                              <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                                Cód: <strong>{subject.code}</strong> · {subject.credits} UC · Prelación: <em>{subject.prereq}</em>
-                              </span>
-                            </div>
-                          </div>
+                  const sections = availableSections[subject.code] || [];
+                  const isSelected = selectedSubjects[subject.code] !== undefined;
 
+                  return (
+                    <div
+                      key={subject.code}
+                      style={{
+                        padding: '16px',
+                        border: isSelected ? '1px solid #ffd100' : '1px solid #e2e8f0',
+                        borderRadius: '14px',
+                        background: isSelected ? 'rgba(255, 209, 0, 0.02)' : '#ffffff',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        opacity: isBlocked ? 0.6 : 1,
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            disabled={isPassed || isBlocked}
+                            onChange={() => handleToggleSubject(subject.code)}
+                            style={{
+                              cursor: (isPassed || isBlocked) ? 'not-allowed' : 'pointer',
+                              width: '18px',
+                              height: '18px',
+                              accentColor: '#051124',
+                              marginTop: '4px'
+                            }}
+                          />
                           <div>
-                            {isPassed && (
-                              <StatusBadge tone="success" style={{ fontSize: '0.72rem' }}>
-                                Aprobada
-                              </StatusBadge>
-                            )}
-                            {isBlocked && (
-                              <StatusBadge tone="danger" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <AlertTriangle size={10} /> Prelada por {subject.prereq}
-                              </StatusBadge>
-                            )}
-                            {!isPassed && !isBlocked && !isSelected && (
-                              <StatusBadge tone="info" style={{ fontSize: '0.72rem' }}>
-                                Habilitada
-                              </StatusBadge>
-                            )}
-                            {isSelected && (
-                              <StatusBadge tone="warning" style={{ fontSize: '0.72rem' }}>
-                                Seleccionada
-                              </StatusBadge>
-                            )}
+                            <strong style={{ display: 'block', fontSize: '0.98rem', color: '#0f172a' }}>
+                              {subject.name}
+                            </strong>
+                            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                              Cód: <strong>{subject.code}</strong> · {subject.credits} UC · Prelación: <em>{subject.prereq}</em>
+                            </span>
                           </div>
                         </div>
 
-                        {/* If checked, show sections */}
-                        {isSelected && sections.length > 0 && (
-                          <div
-                            style={{
-                              padding: '12px',
-                              background: '#f8fafc',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '10px',
-                              marginTop: '4px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '10px'
-                            }}
-                          >
-                            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
-                                Seleccionar Sección Disponible:
-                              </span>
-                              <select
-                                className="form-input"
-                                value={selectedSubjects[subject.code]}
-                                onChange={(e) => handleSectionChange(subject.code, e.target.value)}
-                                style={{ minHeight: '38px', padding: '6px 12px', background: '#ffffff' }}
-                              >
-                                {sections.map((sec, idx) => (
-                                  <option key={sec.code} value={idx}>
-                                    {sec.code} - {sec.schedule} ({sec.classroom}) - {sec.teacher} [Cupos: {sec.capacity - sec.enrolled}]
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          </div>
-                        )}
+                        <div>
+                          {isPassed && (
+                            <StatusBadge tone="success" style={{ fontSize: '0.72rem' }}>
+                              Aprobada
+                            </StatusBadge>
+                          )}
+                          {isBlocked && (
+                            <StatusBadge tone="danger" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <AlertTriangle size={10} /> Prelada por {subject.prereq}
+                            </StatusBadge>
+                          )}
+                          {!isPassed && !isBlocked && !isSelected && (
+                            <StatusBadge tone="info" style={{ fontSize: '0.72rem' }}>
+                              Habilitada
+                            </StatusBadge>
+                          )}
+                          {isSelected && (
+                            <StatusBadge tone="warning" style={{ fontSize: '0.72rem' }}>
+                              Seleccionada
+                            </StatusBadge>
+                          )}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </SectionCard>
-            );
-          })}
+
+                      {/* If checked, show sections */}
+                      {isSelected && sections.length > 0 && (
+                        <div
+                          style={{
+                            padding: '12px',
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '10px',
+                            marginTop: '4px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px'
+                          }}
+                        >
+                          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                              Seleccionar Sección Disponible:
+                            </span>
+                            <select
+                              className="form-input"
+                              value={selectedSubjects[subject.code]}
+                              onChange={(e) => handleSectionChange(subject.code, e.target.value)}
+                              style={{ minHeight: '38px', padding: '6px 12px', background: '#ffffff' }}
+                            >
+                              {sections.map((sec, idx) => (
+                                <option key={sec.code} value={idx}>
+                                  {sec.code} - {sec.schedule} ({sec.classroom}) - {sec.teacher} [Cupos: {sec.capacity - sec.enrolled}]
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          )}
         </div>
 
         {/* Enrollment summary column */}

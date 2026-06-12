@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, ShieldCheck, KeyRound, AlertTriangle, BadgeCheck, LockKeyhole } from 'lucide-react';
 import { changePassword } from '../../services/auth';
 import useAuth from '../../hooks/useAuth';
+import { AdminPageShell, SectionCard, ActionButton, StatusBadge } from './admin/AdminPageShell';
 
 export default function ChangePassword() {
   const navigate = useNavigate();
@@ -81,94 +82,53 @@ export default function ChangePassword() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div className="glass-panel" style={{ padding: '28px 30px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div
-              style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '14px',
-                background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-blue))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: 'var(--shadow-glow)'
-              }}
-            >
-              <KeyRound size={24} color="#000" />
-            </div>
-            <div>
-              <h2 style={{ fontSize: '1.9rem', marginBottom: '6px' }}>Cambiar contraseña</h2>
-              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-                {user ? `${user.name || ''} ${user.lastname || ''}`.trim() : 'Actualiza tu clave desde el panel autenticado.'}
-              </p>
+    <AdminPageShell
+      eyebrow="Seguridad"
+      title="Cambiar Contraseña"
+      subtitle={user ? `Usuario: ${user.name || ''} ${user.lastname || ''} · Actualiza tu clave de acceso de manera segura.` : 'Actualiza tu clave de acceso desde el panel autenticado.'}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+        <SectionCard
+          title="Seguridad de la Cuenta"
+          description="Detalles técnicos y recomendaciones sobre la actualización de tu clave."
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <InfoRow icon={<ShieldCheck size={18} />} title="Token activo" text="Se adjunta automáticamente en la petición protegida." />
+            <InfoRow icon={<LockKeyhole size={18} />} title="Contraseña actual" text="Debes escribir tu clave actual para confirmar el cambio." />
+            <InfoRow icon={<BadgeCheck size={18} />} title="Redirección" text="Al completar el cambio, la sesión se cerrará por seguridad." />
+            
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', marginTop: '8px' }}>
+              <Link to="/dashboard" style={{ textDecoration: 'none' }}>
+                <ActionButton variant="secondary">
+                  <ArrowLeft size={16} /> Volver al Dashboard
+                </ActionButton>
+              </Link>
             </div>
           </div>
+        </SectionCard>
 
-          <span className="status-badge active">Sesión activa</span>
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(280px, 1fr) minmax(320px, 520px)',
-          gap: '24px',
-          alignItems: 'start'
-        }}
-      >
-        <section className="glass-card" style={{ padding: '28px' }}>
-          <h3 style={{ fontSize: '1.15rem', marginBottom: '12px' }}>Seguridad de la cuenta</h3>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '18px' }}>
-            Esta acción se ejecuta con la sesión actual y usa el token almacenado para validar el cambio.
-          </p>
-
-          <div style={{ display: 'grid', gap: '12px' }}>
-            <InfoRow icon={<ShieldCheck size={16} />} title="Token activo" text="Se adjunta automáticamente en la petición protegida." />
-            <InfoRow icon={<LockKeyhole size={16} />} title="Contraseña actual" text="Debes escribir tu clave actual para confirmar el cambio." />
-            <InfoRow icon={<BadgeCheck size={16} />} title="Redirección" text="Al completar el cambio, la sesión se cierra por seguridad." />
-          </div>
-
-          <div
-            style={{
-              marginTop: '22px',
-              padding: '16px',
-              borderRadius: '12px',
-              border: '1px solid var(--border-color)',
-              background: 'rgba(255,255,255,0.02)'
-            }}
-          >
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '8px' }}>Navegación rápida</p>
-            <Link to="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
-              <ArrowLeft size={14} />
-              Volver al dashboard
-            </Link>
-          </div>
-        </section>
-
-        <section className="glass-card" style={{ padding: '28px' }}>
-          <h3 style={{ fontSize: '1.15rem', marginBottom: '18px' }}>Formulario de actualización</h3>
-
+        <SectionCard
+          title="Formulario de Actualización"
+          description="Escribe tu clave actual y tu nueva clave para continuar."
+        >
           {error && (
             <div
               style={{
                 marginBottom: '16px',
                 padding: '12px 14px',
-                borderRadius: '8px',
-                background: 'rgba(255, 94, 151, 0.08)',
-                color: '#ff9db8',
-                fontSize: '13px',
-                border: '1px solid rgba(255, 94, 151, 0.25)',
+                borderRadius: '12px',
+                background: '#fff1f2',
+                color: '#b91c1c',
+                fontSize: '0.88rem',
+                border: '1px solid #fecdd3',
                 lineHeight: 1.4,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px'
               }}
             >
-              <AlertTriangle size={16} />
-              {error}
+              <AlertTriangle size={18} style={{ flexShrink: 0 }} />
+              <span>{error}</span>
             </div>
           )}
 
@@ -177,19 +137,19 @@ export default function ChangePassword() {
               style={{
                 marginBottom: '16px',
                 padding: '12px 14px',
-                borderRadius: '8px',
-                background: 'rgba(0, 229, 255, 0.08)',
-                color: 'var(--accent-cyan)',
-                fontSize: '13px',
-                border: '1px solid rgba(0, 229, 255, 0.18)',
+                borderRadius: '12px',
+                background: '#ecfdf5',
+                color: '#065f46',
+                fontSize: '0.88rem',
+                border: '1px solid #a7f3d0',
                 lineHeight: 1.4,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px'
               }}
             >
-              <BadgeCheck size={16} />
-              {success}
+              <BadgeCheck size={18} style={{ flexShrink: 0 }} />
+              <span>{success}</span>
             </div>
           )}
 
@@ -221,23 +181,23 @@ export default function ChangePassword() {
               onToggle={() => setShowConfirmPassword((value) => !value)}
             />
 
-            <button
+            <ActionButton
               type="submit"
+              variant="accent"
               disabled={loading}
-              className="btn-primary"
               style={{
+                width: '100%',
                 justifyContent: 'center',
-                marginTop: '6px',
+                marginTop: '10px',
                 opacity: loading ? 0.75 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer'
               }}
             >
               {loading ? 'Actualizando...' : 'Actualizar contraseña'}
-            </button>
+            </ActionButton>
           </form>
-        </section>
+        </SectionCard>
       </div>
-    </div>
+    </AdminPageShell>
   );
 }
 
@@ -247,10 +207,10 @@ function PasswordField({ id, label, value, onChange, showValue, onToggle }) {
       <label
         htmlFor={id}
         style={{
-          fontFamily: "'Inter', sans-serif",
-          fontSize: '12px',
+          fontFamily: "var(--font-heading)",
+          fontSize: '0.8rem',
           fontWeight: '700',
-          color: '#2d3748'
+          color: '#64748b'
         }}
       >
         {label}
@@ -268,16 +228,16 @@ function PasswordField({ id, label, value, onChange, showValue, onToggle }) {
           required
           style={{
             width: '100%',
-            background: '#f8fafc',
+            background: '#ffffff',
             border: '1px solid #cbd5e1',
-            borderRadius: '10px',
+            borderRadius: '12px',
             padding: '13px 44px 13px 16px',
             fontSize: '13.5px',
             color: '#0f172a',
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: "var(--font-body)",
             outline: 'none',
             boxSizing: 'border-box',
-            transition: 'var(--transition)'
+            transition: 'all 0.2s ease'
           }}
           onFocus={(event) => (event.target.style.borderColor = '#051124')}
           onBlur={(event) => (event.target.style.borderColor = '#cbd5e1')}
@@ -296,7 +256,7 @@ function PasswordField({ id, label, value, onChange, showValue, onToggle }) {
             padding: 0,
             display: 'flex',
             alignItems: 'center',
-            color: 'var(--text-muted)'
+            color: '#94a3b8'
           }}
         >
           {showValue ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -312,8 +272,8 @@ function InfoRow({ icon, title, text }) {
       style={{
         padding: '14px 16px',
         borderRadius: '12px',
-        border: '1px solid var(--border-color)',
-        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid #e2e8f0',
+        background: '#f8fafc',
         display: 'flex',
         gap: '12px',
         alignItems: 'flex-start'
@@ -324,8 +284,8 @@ function InfoRow({ icon, title, text }) {
           width: '34px',
           height: '34px',
           borderRadius: '10px',
-          background: 'rgba(0, 229, 255, 0.08)',
-          color: 'var(--accent-cyan)',
+          background: 'rgba(5, 17, 36, 0.08)',
+          color: '#051124',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -335,8 +295,8 @@ function InfoRow({ icon, title, text }) {
         {icon}
       </div>
       <div>
-        <p style={{ fontWeight: '600', marginBottom: '4px' }}>{title}</p>
-        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{text}</span>
+        <p style={{ fontWeight: '700', fontSize: '0.9rem', margin: '0 0 4px 0', color: '#0f172a' }}>{title}</p>
+        <span style={{ color: '#64748b', fontSize: '0.8rem', lineHeight: 1.4 }}>{text}</span>
       </div>
     </div>
   );

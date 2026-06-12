@@ -55,6 +55,7 @@ const normalizeBackendUser = (user) => {
   const roleId = Number(roleValue);
   const isTeacher = roleId === 2 || `${roleValue}`.toLowerCase() === 'docente';
   const isStudent = roleId === 3 || `${roleValue}`.toLowerCase() === 'estudiante';
+  const isAdmin = roleId === 1 || `${roleValue}`.toLowerCase() === 'admin' || `${roleValue}`.toLowerCase() === 'administrador';
 
   const firstName = user?.first_name ?? user?.name ?? '';
   const secondName = user?.second_name ?? '';
@@ -95,21 +96,24 @@ const normalizeBackendUser = (user) => {
 const splitUsersByRole = (users) => {
   const nextStudents = [];
   const nextTeachers = [];
+  const nextAdmins = [];
 
   users.forEach((user) => {
     const roleValue = user?.id_role ?? user?.role ?? user?.user_role ?? '';
     const roleId = Number(roleValue);
     const isTeacher = roleId === 2 || `${roleValue}`.toLowerCase() === 'docente';
+    const isAdmin = roleId === 1 || `${roleValue}`.toLowerCase() === 'admin' || `${roleValue}`.toLowerCase() === 'administrador';
 
     if (isTeacher) {
       nextTeachers.push(normalizeBackendUser(user));
-      return;
+    } else if (isAdmin) {
+      nextAdmins.push(normalizeBackendUser(user));
+    } else {
+      nextStudents.push(normalizeBackendUser(user));
     }
-
-    nextStudents.push(normalizeBackendUser(user));
   });
 
-  return { nextStudents, nextTeachers };
+  return { nextStudents, nextTeachers, nextAdmins };
 };
 
 const createInitialForm = (userType = 'student') => ({
@@ -145,6 +149,17 @@ const buildLocalRecord = (form) => {
       status: 'Activo',
       period: '2026-II',
       cum: 0,
+      username: form.username.trim(),
+      phone: form.phone.trim()
+    };
+  }
+
+  if (form.userType === 'admin') {
+    return {
+      id: documentId,
+      name: fullName,
+      email: form.email.trim(),
+      status: 'Activo',
       username: form.username.trim(),
       phone: form.phone.trim()
     };
@@ -186,6 +201,7 @@ const formatPhone = (value) => {
 };
 
 const ROLE_IDS = {
+  admin: 1,
   teacher: 2,
   student: 3
 };
@@ -265,6 +281,8 @@ const formatApiError = (error) => {
   return error?.message || 'No fue posible registrar el usuario.';
 };
 
+const ADMINS_STORAGE_KEY = 'admin_users_admins';
+
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState('students');
   const [query, setQuery] = useState('');
@@ -273,8 +291,10 @@ export default function UserManagement() {
   const [userType, setUserType] = useState('student');
   const [studentForm, setStudentForm] = useState(createInitialForm('student'));
   const [teacherForm, setTeacherForm] = useState(createInitialForm('teacher'));
+  const [adminForm, setAdminForm] = useState(createInitialForm('admin'));
   const [students, setStudents] = useState(() => readStoredRecords(STUDENTS_STORAGE_KEY, studentsCatalog));
   const [teachers, setTeachers] = useState(() => readStoredRecords(TEACHERS_STORAGE_KEY, teachersCatalog));
+  const [admins, setAdmins] = useState(() => readStoredRecords(ADMINS_STORAGE_KEY, []));
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -304,7 +324,8 @@ export default function UserManagement() {
 
     window.localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(students));
     window.localStorage.setItem(TEACHERS_STORAGE_KEY, JSON.stringify(teachers));
-  }, [students, teachers]);
+    window.localStorage.setItem(ADMINS_STORAGE_KEY, JSON.stringify(admins));
+  }, [students, teachers, admins]);
 
   useEffect(() => {
     let isMounted = true;
@@ -321,7 +342,7 @@ export default function UserManagement() {
             continue;
           }
 
-          const { nextStudents, nextTeachers } = splitUsersByRole(users);
+          const { nextStudents, nextTeachers, nextAdmins } = splitUsersByRole(users);
 
           if (!isMounted) {
             return;
@@ -333,6 +354,10 @@ export default function UserManagement() {
 
           if (nextTeachers.length) {
             setTeachers(nextTeachers);
+          }
+
+          if (nextAdmins.length) {
+            setAdmins(nextAdmins);
           }
 
           return;
@@ -349,25 +374,33 @@ export default function UserManagement() {
     };
   }, []);
 
-  const records = activeTab === 'students' ? students : teachers;
-  const form = userType === 'student' ? studentForm : teacherForm;
+  const records = activeTab === 'students' ? students : (activeTab === 'teachers' ? teachers : admins);
+  const form = userType === 'student' ? studentForm : (userType === 'teacher' ? teacherForm : adminForm);
 
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
       const values = Object.values(record).join(' ').toLowerCase();
       const matchesQuery = values.includes(query.toLowerCase());
-      const statusValue = record.status || 'Disponible';
+      const statusValue = record.status || 'Activo';
       const matchesStatus = statusFilter === 'Todos' || statusValue.toLowerCase() === statusFilter.toLowerCase();
       return matchesQuery && matchesStatus;
     });
   }, [records, query, statusFilter]);
+
+  const activeStudentsCount = useMemo(() => students.filter((s) => (s.status || '').toLowerCase() === 'activo').length, [students]);
+  const activeTeachersCount = useMemo(() => teachers.filter((t) => {
+    const st = (t.status || '').toLowerCase();
+    return st === 'disponible' || st === 'activo';
+  }).length, [teachers]);
+  const activeAdminsCount = useMemo(() => admins.filter((a) => (a.status || '').toLowerCase() === 'activo').length, [admins]);
+  const totalActiveUsers = activeStudentsCount + activeTeachersCount + activeAdminsCount;
 
   const careerOptions = careerList.length > 0
     ? careerList.map((c) => c.name_career)
     : careerCatalog.map((career) => career.name);
 
   const openUserModal = (type) => {
-    const nextType = type || (activeTab === 'students' ? 'student' : 'teacher');
+    const nextType = type || (activeTab === 'students' ? 'student' : (activeTab === 'teachers' ? 'teacher' : 'admin'));
     setUserType(nextType);
     setFormError('');
     setShowPassword(false);
@@ -380,13 +413,17 @@ export default function UserManagement() {
         ...currentForm,
         [field]: value
       }));
-      return;
+    } else if (userType === 'teacher') {
+      setTeacherForm((currentForm) => ({
+        ...currentForm,
+        [field]: value
+      }));
+    } else if (userType === 'admin') {
+      setAdminForm((currentForm) => ({
+        ...currentForm,
+        [field]: value
+      }));
     }
-
-    setTeacherForm((currentForm) => ({
-      ...currentForm,
-      [field]: value
-    }));
   };
 
   const handleUserTypeChange = (nextType) => {
@@ -446,9 +483,12 @@ export default function UserManagement() {
       if (form.userType === 'student') {
         setStudents((currentStudents) => [localRecord, ...currentStudents]);
         setStudentForm(createInitialForm('student'));
-      } else {
+      } else if (form.userType === 'teacher') {
         setTeachers((currentTeachers) => [localRecord, ...currentTeachers]);
         setTeacherForm(createInitialForm('teacher'));
+      } else if (form.userType === 'admin') {
+        setAdmins((currentAdmins) => [localRecord, ...currentAdmins]);
+        setAdminForm(createInitialForm('admin'));
       }
 
       setModalOpen(false);
@@ -464,15 +504,18 @@ export default function UserManagement() {
   return (
     <AdminPageShell
       eyebrow="Gestión de usuarios"
-      title="Registro de estudiantes y docentes"
+      title="Registro de estudiantes, docentes y administradores"
       subtitle="Administra altas, búsquedas y estados con una vista limpia que conserva la misma estética del panel principal."
       actions={
         <>
-          <ActionButton variant="secondary" onClick={() => setActiveTab('students')}>
+          <ActionButton variant={activeTab === 'students' ? 'primary' : 'secondary'} onClick={() => setActiveTab('students')}>
             Estudiantes
           </ActionButton>
-          <ActionButton variant="secondary" onClick={() => setActiveTab('teachers')}>
+          <ActionButton variant={activeTab === 'teachers' ? 'primary' : 'secondary'} onClick={() => setActiveTab('teachers')}>
             Docentes
+          </ActionButton>
+          <ActionButton variant={activeTab === 'admins' ? 'primary' : 'secondary'} onClick={() => setActiveTab('admins')}>
+            Administradores
           </ActionButton>
           <ActionButton variant="accent" onClick={() => openUserModal()}>
             <UserPlus size={16} /> Nuevo usuario
@@ -480,9 +523,10 @@ export default function UserManagement() {
         </>
       }
       metrics={[
-        { label: 'Usuarios activos', value: '3,284', hint: 'Todos los registros con sesión habilitada', icon: Users, tone: 'primary' },
-        { label: 'Estudiantes', value: '2,840', hint: 'Distribuidos en 4 carreras principales', icon: Users, tone: 'info' },
-        { label: 'Docentes', value: '144', hint: 'Carga promedio inferior al 80%', icon: Users, tone: 'success' }
+        { label: 'Usuarios activos', value: String(totalActiveUsers), hint: 'Todos los registros con sesión habilitada', icon: Users, tone: 'primary' },
+        { label: 'Estudiantes', value: String(students.length), hint: `${activeStudentsCount} estudiantes activos actualmente`, icon: Users, tone: 'info' },
+        { label: 'Docentes', value: String(teachers.length), hint: `${activeTeachersCount} docentes disponibles/activos`, icon: Users, tone: 'success' },
+        { label: 'Administradores', value: String(admins.length), hint: `${activeAdminsCount} administradores activos actualmente`, icon: Users, tone: 'warning' }
       ]}
     >
       <SectionCard title="Búsqueda y filtros" description="Filtra por cédula, nombre o estado sin perder la navegación entre estudiantes y docentes.">
@@ -517,22 +561,42 @@ export default function UserManagement() {
         </div>
       </SectionCard>
 
-      <SectionCard title={activeTab === 'students' ? 'Estudiantes registrados' : 'Docentes registrados'} description="Listado detallado con acciones directas para administrar cada ficha.">
+      <SectionCard
+        title={activeTab === 'students' ? 'Estudiantes registrados' : (activeTab === 'teachers' ? 'Docentes registrados' : 'Administradores registrados')}
+        description="Listado detallado con acciones directas para administrar cada ficha."
+      >
         <DataTable columns={activeTab === 'students'
           ? ['Cédula', 'Nombre', 'Correo', 'Carrera', 'Periodo', 'Estado', 'Acciones']
-          : ['Cédula', 'Nombre', 'Departamento', 'Especialidad', 'Estado', 'Carga', 'Acciones']}>
+          : (activeTab === 'teachers'
+            ? ['Cédula', 'Nombre', 'Departamento', 'Especialidad', 'Estado', 'Carga', 'Acciones']
+            : ['Cédula', 'Nombre', 'Correo', 'Teléfono', 'Estado', 'Acciones'])}>
           {filteredRecords.map((record) => (
             <tr key={record.id}>
               <td>{record.id}</td>
               <td>{record.name}</td>
-              {activeTab === 'students' ? <td>{record.email}</td> : <td>{record.department}</td>}
-              {activeTab === 'students' ? <td>{record.career}</td> : <td>{record.expertise}</td>}
-              {activeTab === 'students'
-                ? <td>{record.period}</td>
-                : <td><StatusBadge tone="info">{record.status}</StatusBadge></td>}
-              {activeTab === 'students'
-                ? <td><StatusBadge tone={record.status === 'Activo' ? 'success' : 'danger'}>{record.status}</StatusBadge></td>
-                : <td>{record.load}%</td>}
+              {activeTab === 'students' && (
+                <>
+                  <td>{record.email}</td>
+                  <td>{record.career}</td>
+                  <td>{record.period}</td>
+                  <td><StatusBadge tone={record.status === 'Activo' ? 'success' : 'danger'}>{record.status}</StatusBadge></td>
+                </>
+              )}
+              {activeTab === 'teachers' && (
+                <>
+                  <td>{record.department}</td>
+                  <td>{record.expertise}</td>
+                  <td><StatusBadge tone="info">{record.status}</StatusBadge></td>
+                  <td>{record.load}%</td>
+                </>
+              )}
+              {activeTab === 'admins' && (
+                <>
+                  <td>{record.email}</td>
+                  <td>{record.phone || 'Sin asignar'}</td>
+                  <td><StatusBadge tone={record.status === 'Activo' ? 'success' : 'danger'}>{record.status}</StatusBadge></td>
+                </>
+              )}
               <td>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <ActionButton variant="ghost"><Edit3 size={14} /> Editar</ActionButton>
@@ -546,10 +610,12 @@ export default function UserManagement() {
 
       <Modal
         open={modalOpen}
-        title={userType === 'student' ? 'Registrar estudiante' : 'Registrar docente'}
+        title={userType === 'student' ? 'Registrar estudiante' : (userType === 'teacher' ? 'Registrar docente' : 'Registrar administrador')}
         subtitle={userType === 'student'
           ? 'Completa los datos del estudiante y deja su cuenta lista para iniciar sesión.'
-          : 'Completa los datos del docente y deja su cuenta lista para iniciar sesión.'}
+          : (userType === 'teacher'
+            ? 'Completa los datos del docente y deja su cuenta lista para iniciar sesión.'
+            : 'Completa los datos del administrador y deja su cuenta lista para iniciar sesión.')}
         onClose={() => {
           setModalOpen(false);
           setFormError('');
@@ -570,6 +636,9 @@ export default function UserManagement() {
           </ActionButton>
           <ActionButton variant={userType === 'teacher' ? 'primary' : 'secondary'} onClick={() => handleUserTypeChange('teacher')}>
             Docente
+          </ActionButton>
+          <ActionButton variant={userType === 'admin' ? 'primary' : 'secondary'} onClick={() => handleUserTypeChange('admin')}>
+            Administrador
           </ActionButton>
         </div>
 
@@ -646,7 +715,7 @@ export default function UserManagement() {
             </div>
           </label>
 
-          {userType === 'student' ? (
+          {userType === 'student' && (
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Carrera</span>
               <select className="form-input" value={form.career} onChange={(event) => handleFieldChange('career', event.target.value)}>
@@ -656,7 +725,8 @@ export default function UserManagement() {
                 ))}
               </select>
             </label>
-          ) : (
+          )}
+          {userType === 'teacher' && (
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Título académico</span>
               <select className="form-input" value={form.academicTitle} onChange={(event) => handleFieldChange('academicTitle', event.target.value)}>
@@ -669,7 +739,7 @@ export default function UserManagement() {
 
           <label className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
             <span className="form-label">Tipo de registro</span>
-            <input className="form-input" value={userType === 'student' ? 'Estudiante' : 'Docente'} disabled />
+            <input className="form-input" value={userType === 'student' ? 'Estudiante' : (userType === 'teacher' ? 'Docente' : 'Administrador')} disabled />
           </label>
         </div>
       </Modal>

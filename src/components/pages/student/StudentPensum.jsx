@@ -6,6 +6,7 @@ import { loadAcademicRecord } from './studentStorage';
 
 export default function StudentPensum() {
   const [record] = useState(() => loadAcademicRecord());
+  const [activeSemester, setActiveSemester] = useState(1);
 
   // Helper to determine the status and grade of a subject
   const getSubjectStatus = (code) => {
@@ -17,21 +18,44 @@ export default function StudentPensum() {
     };
   };
 
+  const activeGroup = pensumSystems.find((g) => g.semester === activeSemester);
+
   return (
     <AdminPageShell
       eyebrow="Portal del Estudiante"
       title="Pensum y Malla Curricular de Estudios"
       subtitle="Consulta la malla académica oficial de tu carrera, el estatus de aprobación de tus unidades curriculares y los prerrequisitos (prelación) de cada materia."
     >
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
-        {pensumSystems.map((semesterGroup) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+        
+        {/* Semester Selection Dropdown */}
+        <SectionCard title="Filtrar por Semestre" description="Selecciona el semestre para ver las unidades curriculares correspondientes.">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+              Seleccionar Semestre
+            </span>
+            <select
+              className="form-input"
+              value={activeSemester}
+              onChange={(e) => setActiveSemester(Number(e.target.value))}
+              style={{ minHeight: '44px', padding: '10px 14px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', width: '100%' }}
+            >
+              {pensumSystems.map((group) => (
+                <option key={group.semester} value={group.semester}>
+                  Semestre {group.semester}
+                </option>
+              ))}
+            </select>
+          </div>
+        </SectionCard>
+
+        {activeGroup && (
           <SectionCard
-            key={semesterGroup.semester}
-            title={`Semestre ${semesterGroup.semester}`}
-            description="Asignaturas obligatorias y electivas correspondientes."
+            title={`Asignaturas - Semestre ${activeGroup.semester}`}
+            description="Asignaturas obligatorias y electivas correspondientes al semestre seleccionado."
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {semesterGroup.subjects.map((subject) => {
+              {activeGroup.subjects.map((subject) => {
                 const info = getSubjectStatus(subject.code);
                 let statusColor = '#94a3b8'; // default grey
                 let statusBg = 'rgba(148, 163, 184, 0.05)';
@@ -100,7 +124,7 @@ export default function StudentPensum() {
               })}
             </div>
           </SectionCard>
-        ))}
+        )}
       </div>
     </AdminPageShell>
   );
