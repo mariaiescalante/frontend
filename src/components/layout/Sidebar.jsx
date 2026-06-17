@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
+import api from '../../services/api';
 import {
   LayoutDashboard,
   BookOpen,
@@ -25,8 +26,30 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
   const { user, logout, isAdmin, isStudent, isTeacher } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    async function checkEnrollment() {
+      try {
+        const res = await api.get('/periods');
+        const periodsList = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+        // Check if there is any period with enrollment_status 'Abierta'
+        const hasOpenEnrollment = periodsList.some((p) => p.enrollment_status === 'Abierta');
+        setIsEnrollmentOpen(hasOpenEnrollment);
+      } catch (err) {
+        console.error('Error checking enrollment status in sidebar:', err);
+        setIsEnrollmentOpen(false);
+      }
+    }
+    checkEnrollment();
+
+    window.addEventListener('academic-period-updated', checkEnrollment);
+    return () => {
+      window.removeEventListener('academic-period-updated', checkEnrollment);
+    };
+  }, []);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 900px)');
@@ -182,7 +205,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
       path: '/student/enrollment',
       name: 'Inscripción de Materias',
       icon: ClipboardCheck,
-      visible: isStudent
+      visible: isStudent && isEnrollmentOpen
     },
     {
       path: '/student/schedule',

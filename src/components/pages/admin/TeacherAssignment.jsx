@@ -1,45 +1,271 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { BadgeCheck, UserRoundCog, Slash } from 'lucide-react';
 import { AdminPageShell, ActionButton, SectionCard, StatusBadge } from './AdminPageShell';
-import { careerCatalog, sectionCatalog, teacherAssignments, teachersCatalog, pensumCatalog } from './adminSeedData';
-
-const initialCareerCode = 'ING-SIS';
-const initialSemester = 'Semestre 3';
-const initialSubject = 'Bases de Datos';
-const initialSection = 'SIS-301-A';
-const initialTeacher = teachersCatalog[0].name;
-
-const semesterOptions = (careerCode) => (pensumCatalog[careerCode]?.semesters || []).map((semester) => semester.term);
+import api from '../../../services/api';
 
 export default function TeacherAssignment() {
-  const [careerCode, setCareerCode] = useState(initialCareerCode);
-  const [semester, setSemester] = useState(initialSemester);
-  const [subject, setSubject] = useState(initialSubject);
-  const [section, setSection] = useState(initialSection);
-  const [teacher, setTeacher] = useState(initialTeacher);
+  const [careers, setCareers] = useState([]);
+  const [semesters, setSemesters] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [pensums, setPensums] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const availableSubjects = useMemo(() => {
-    const semesterData = pensumCatalog[careerCode]?.semesters.find((entry) => entry.term === semester);
-    return semesterData ? semesterData.subjects.map((entry) => entry.name) : [];
-  }, [careerCode, semester]);
+  const [form, setForm] = useState({
+    id_career: '',
+    id_semester: '',
+    id_subject: '',
+    id_section: '',
+    id_teacher: '',
+  });
 
-  const availableSections = useMemo(() => {
-    const matches = sectionCatalog.filter((entry) => entry.subject === subject);
-    return matches.length ? matches : sectionCatalog;
-  }, [subject]);
+  async function loadData() {
+    try {
+      setLoading(true);
+      const [careersRes, semestersRes, teachersRes, sectionsRes, pensumsRes] = await Promise.all([
+        api.get('/careers'),
+        api.get('/semesters'),
+        api.get('/teachers'),
+        api.get('/sections'),
+        api.get('/pensums'),
+      ]);
 
-  const warning = subject === 'Bases de Datos' && teacher === 'Ing. Roberto León';
+      const rawCareers = Array.isArray(careersRes.data) ? careersRes.data : (Array.isArray(careersRes) ? careersRes : []);
+      const rawSemesters = Array.isArray(semestersRes.data) ? semestersRes.data : (Array.isArray(semestersRes) ? semestersRes : []);
+      const rawTeachers = Array.isArray(teachersRes.data) ? teachersRes.data : (Array.isArray(teachersRes) ? teachersRes : []);
+      const rawSections = Array.isArray(sectionsRes.data) ? sectionsRes.data : (Array.isArray(sectionsRes) ? sectionsRes : []);
+      const rawPensums = Array.isArray(pensumsRes.data) ? pensumsRes.data : (Array.isArray(pensumsRes) ? pensumsRes : []);
 
-  const handleCareerChange = (nextCareer) => {
-    const nextSemester = semesterOptions(nextCareer)[0] || 'Semestre 1';
-    const nextSubject = pensumCatalog[nextCareer]?.semesters.find((entry) => entry.term === nextSemester)?.subjects[0]?.name || '';
-    const nextSection = sectionCatalog.find((entry) => entry.subject === nextSubject)?.code || sectionCatalog[0].code;
+      setCareers(rawCareers);
+      setSemesters(rawSemesters);
+      setTeachers(rawTeachers);
+      setSections(rawSections);
+      setPensums(rawPensums);
 
-    setCareerCode(nextCareer);
-    setSemester(nextSemester);
-    setSubject(nextSubject);
-    setSection(nextSection);
+      // Initialize form fields
+      const initialForm = {
+        id_career: rawCareers[0]?.id_career || '',
+        id_semester: rawSemesters[0]?.id_semester || '',
+        id_subject: '',
+        id_section: '',
+        id_teacher: rawTeachers[0]?.id_teacher || '',
+      };
+
+      // Set first matching subject and section if available
+      const activePensum = rawPensums.find(p => p.id_career === rawCareers[0]?.id_career && p.is_active) ||
+                           rawPensums.find(p => p.id_career === rawCareers[0]?.id_career);
+      if (activePensum && rawSemesters[0]) {
+        const matchingSubjects = (activePensum.PensumSubjects || [])
+          .filter(ps => ps.id_semester === rawSemesters[0].id_semester)
+          .map(ps => ps.Subject)
+          .filter(Boolean);
+        
+        if (matchingSubjects[0]) {
+          initialForm.id_subject = matchingSubjects[0].id_subject;
+          
+          const matchingSections = rawSections.filter(sec => 
+            sec.id_subject === matchingSubjects[0].id_subject &&
+            sec.id_career === rawCareers[0].id_career
+          );
+          if (matchingSections[0]) {
+            initialForm.id_section = matchingSections[0].id_section;
+          }
+        }
+      }
+
+      setForm(initialForm);
+    } catch (err) {
+      console.error('Error loading teacher assignment data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const selectedCareer = useMemo(() => {
+    return careers.find(c => c.id_career === Number(form.id_career));
+  }, [careers, form.id_career]);
+
+  const currentPensum = useMemo(() => {
+    if (!selectedCareer) return null;
+    return pensums.find(p => p.id_career === selectedCareer.id_career && p.is_active) ||
+           pensums.find(p => p.id_career === selectedCareer.id_career);
+  }, [pensums, selectedCareer]);
+
+  const eligibleSubjects = useMemo(() => {
+    if (!currentPensum || !form.id_semester) return [];
+    return (currentPensum.PensumSubjects || [])
+      .filter(ps => ps.id_semester === Number(form.id_semester))
+      .map(ps => ps.Subject)
+      .filter(Boolean);
+  }, [currentPensum, form.id_semester]);
+
+  const eligibleSections = useMemo(() => {
+    if (!form.id_subject || !form.id_career) return [];
+    return sections.filter(sec => 
+      sec.id_subject === Number(form.id_subject) && 
+      sec.id_career === Number(form.id_career)
+    );
+  }, [sections, form.id_subject, form.id_career]);
+
+  // Handle cascading dropdown state changes
+  const handleCareerChange = (id_career) => {
+    const activePensum = pensums.find(p => p.id_career === Number(id_career) && p.is_active) ||
+                         pensums.find(p => p.id_career === Number(id_career));
+    
+    let nextSubjectId = '';
+    let nextSectionId = '';
+    
+    if (activePensum && form.id_semester) {
+      const matchSubjects = (activePensum.PensumSubjects || [])
+        .filter(ps => ps.id_semester === Number(form.id_semester))
+        .map(ps => ps.Subject)
+        .filter(Boolean);
+      
+      if (matchSubjects[0]) {
+        nextSubjectId = matchSubjects[0].id_subject;
+        const matchSections = sections.filter(sec => 
+          sec.id_subject === matchSubjects[0].id_subject &&
+          sec.id_career === Number(id_career)
+        );
+        if (matchSections[0]) {
+          nextSectionId = matchSections[0].id_section;
+        }
+      }
+    }
+    
+    setForm(prev => ({
+      ...prev,
+      id_career,
+      id_subject: nextSubjectId,
+      id_section: nextSectionId
+    }));
   };
+
+  const handleSemesterChange = (id_semester) => {
+    let nextSubjectId = '';
+    let nextSectionId = '';
+    
+    if (currentPensum) {
+      const matchSubjects = (currentPensum.PensumSubjects || [])
+        .filter(ps => ps.id_semester === Number(id_semester))
+        .map(ps => ps.Subject)
+        .filter(Boolean);
+      
+      if (matchSubjects[0]) {
+        nextSubjectId = matchSubjects[0].id_subject;
+        const matchSections = sections.filter(sec => 
+          sec.id_subject === matchSubjects[0].id_subject &&
+          sec.id_career === Number(form.id_career)
+        );
+        if (matchSections[0]) {
+          nextSectionId = matchSections[0].id_section;
+        }
+      }
+    }
+    
+    setForm(prev => ({
+      ...prev,
+      id_semester,
+      id_subject: nextSubjectId,
+      id_section: nextSectionId
+    }));
+  };
+
+  const handleSubjectChange = (id_subject) => {
+    let nextSectionId = '';
+    const matchSections = sections.filter(sec => 
+      sec.id_subject === Number(id_subject) &&
+      sec.id_career === Number(form.id_career)
+    );
+    if (matchSections[0]) {
+      nextSectionId = matchSections[0].id_section;
+    }
+    
+    setForm(prev => ({
+      ...prev,
+      id_subject,
+      id_section: nextSectionId
+    }));
+  };
+
+  // Real-time schedule overlap collision detector
+  const scheduleConflict = useMemo(() => {
+    if (!form.id_teacher || !form.id_section) return false;
+    const selectedSection = sections.find(s => s.id_section === Number(form.id_section));
+    if (!selectedSection || !selectedSection.schedule_info) return false;
+    
+    return sections.some(sec => 
+      sec.id_section !== selectedSection.id_section &&
+      sec.id_teacher === Number(form.id_teacher) &&
+      sec.schedule_info === selectedSection.schedule_info
+    );
+  }, [sections, form.id_teacher, form.id_section]);
+
+  const handleSave = async () => {
+    try {
+      const { id_section, id_teacher } = form;
+      if (!id_section || !id_teacher) {
+        alert('Por favor seleccione una sección y un docente.');
+        return;
+      }
+      setSubmitting(true);
+
+      const sectionObj = sections.find(s => s.id_section === Number(id_section));
+      if (!sectionObj) {
+        alert('Sección no encontrada.');
+        return;
+      }
+
+      // Payload matching backend validateZod criteria
+      const payload = {
+        id_period: sectionObj.id_period,
+        id_subject: sectionObj.id_subject,
+        id_career: sectionObj.id_career,
+        section_code: sectionObj.section_code,
+        quota_max: sectionObj.quota_max,
+        classroom: sectionObj.classroom,
+        schedule_info: sectionObj.schedule_info,
+        id_teacher: Number(id_teacher)
+      };
+
+      await api.put(`/sections/${id_section}`, payload);
+      alert('Asignación de docente realizada con éxito.');
+      await loadData();
+    } catch (err) {
+      console.error('Error updating section teacher:', err);
+      alert(err.response?.data?.message || err.message || 'Error al guardar la asignación');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const assignedSections = useMemo(() => {
+    return sections.filter(sec => sec.id_teacher !== null);
+  }, [sections]);
+
+  if (loading) {
+    return (
+      <AdminPageShell
+        eyebrow="Asignación docente"
+        title="Flujo jerárquico de vinculación académica"
+        subtitle="Cargando información..."
+        metrics={[
+          { label: 'Asignaciones vigentes', value: '...', hint: 'Cargando...', icon: UserRoundCog, tone: 'primary' },
+          { label: 'Docentes registrados', value: '...', hint: 'Cargando...', icon: BadgeCheck, tone: 'success' },
+          { label: 'Conflictos', value: '...', hint: 'Cargando...', icon: Slash, tone: 'info' }
+        ]}
+      >
+        <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+          <span>Cargando datos desde la base de datos...</span>
+        </div>
+      </AdminPageShell>
+    );
+  }
 
   return (
     <AdminPageShell
@@ -47,9 +273,9 @@ export default function TeacherAssignment() {
       title="Flujo jerárquico de vinculación académica"
       subtitle="Selecciona carrera, ciclo, materia, sección y docente en una secuencia clara que respeta el lenguaje visual del resto del portal."
       metrics={[
-        { label: 'Asignaciones vigentes', value: `${teacherAssignments.length}`, hint: 'Vínculos activos en auditoría rápida', icon: UserRoundCog, tone: 'primary' },
-        { label: 'Docentes disponibles', value: `${teachersCatalog.filter((teacherRecord) => teacherRecord.status === 'Disponible').length}`, hint: 'Profesores listos para nueva carga', icon: BadgeCheck, tone: 'success' },
-        { label: 'Conflictos', value: warning ? '1' : '0', hint: 'Validación de horario al vuelo', icon: Slash, tone: warning ? 'danger' : 'info' }
+        { label: 'Asignaciones vigentes', value: `${assignedSections.length}`, hint: 'Secciones activas con docente asignado', icon: UserRoundCog, tone: 'primary' },
+        { label: 'Docentes registrados', value: `${teachers.length}`, hint: 'Cuerpo docente registrado', icon: BadgeCheck, tone: 'success' },
+        { label: 'Conflictos', value: scheduleConflict ? '1' : '0', hint: 'Validación de choque de horario', icon: Slash, tone: scheduleConflict ? 'danger' : 'info' }
       ]}
     >
       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '18px', alignItems: 'start' }}>
@@ -57,60 +283,89 @@ export default function TeacherAssignment() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Carrera</span>
-              <select className="form-input" value={careerCode} onChange={(event) => handleCareerChange(event.target.value)}>
-                {careerCatalog.map((career) => <option key={career.code} value={career.code}>{career.name}</option>)}
+              <select className="form-input" value={form.id_career} onChange={(e) => handleCareerChange(e.target.value)}>
+                {careers.map((c) => <option key={c.id_career} value={c.id_career}>{c.name_career}</option>)}
               </select>
             </label>
+            
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Semestre</span>
-              <select className="form-input" value={semester} onChange={(event) => setSemester(event.target.value)}>
-                {semesterOptions(careerCode).map((semesterOption) => <option key={semesterOption}>{semesterOption}</option>)}
+              <select className="form-input" value={form.id_semester} onChange={(e) => handleSemesterChange(e.target.value)}>
+                {semesters.map((s) => <option key={s.id_semester} value={s.id_semester}>{s.name_semester}</option>)}
               </select>
             </label>
+            
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Asignatura</span>
-              <select className="form-input" value={subject} onChange={(event) => setSubject(event.target.value)}>
-                {availableSubjects.map((subjectOption) => <option key={subjectOption}>{subjectOption}</option>)}
+              <select className="form-input" value={form.id_subject} onChange={(e) => handleSubjectChange(e.target.value)}>
+                <option value="">Seleccione una asignatura...</option>
+                {eligibleSubjects.map((s) => <option key={s.id_subject} value={s.id_subject}>{s.name_subject}</option>)}
               </select>
             </label>
+            
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Sección</span>
-              <select className="form-input" value={section} onChange={(event) => setSection(event.target.value)}>
-                {availableSections.map((sectionOption) => <option key={sectionOption.code} value={sectionOption.code}>{sectionOption.code} - {sectionOption.classroom}</option>)}
+              <select className="form-input" value={form.id_section} onChange={(e) => setForm(prev => ({ ...prev, id_section: e.target.value }))}>
+                <option value="">Seleccione una sección...</option>
+                {eligibleSections.map((sec) => (
+                  <option key={sec.id_section} value={sec.id_section}>
+                    {sec.section_code} - {sec.classroom || 'Sin aula'}
+                  </option>
+                ))}
               </select>
             </label>
+            
             <label className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
               <span className="form-label">Docente</span>
-              <select className="form-input" value={teacher} onChange={(event) => setTeacher(event.target.value)}>
-                {teachersCatalog.map((teacherOption) => <option key={teacherOption.id}>{teacherOption.name}</option>)}
+              <select className="form-input" value={form.id_teacher} onChange={(e) => setForm(prev => ({ ...prev, id_teacher: e.target.value }))}>
+                {teachers.map((t) => (
+                  <option key={t.id_teacher} value={t.id_teacher}>
+                    {t.User ? `${t.User.first_name} ${t.User.first_lastname}` : `ID Docente: ${t.id_teacher}`} ({t.profession})
+                  </option>
+                ))}
               </select>
             </label>
           </div>
-          {warning ? (
+          
+          {scheduleConflict && (
             <div style={{ marginTop: '16px', padding: '14px 16px', borderRadius: '14px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.18)', color: '#b91c1c', fontSize: '0.9rem', lineHeight: 1.55 }}>
-              Se detectó un posible conflicto de horario. Revisa la carga antes de consolidar la asignación.
+              ⚠️ conflicto de horario: El docente seleccionado ya tiene asignada otra sección en el mismo horario y día de clase.
             </div>
-          ) : null}
+          )}
+          
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
-            <ActionButton variant="secondary">Previsualizar</ActionButton>
-            <ActionButton variant="accent">Asignar docente</ActionButton>
+            <ActionButton variant="accent" onClick={handleSave} disabled={submitting || !form.id_section || !form.id_teacher}>
+              {submitting ? 'Asignando...' : 'Asignar docente'}
+            </ActionButton>
           </div>
         </SectionCard>
 
         <SectionCard title="Asignaciones vigentes" description="Agrupación útil para auditoría rápida y revisión de carga.">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {teacherAssignments.map((assignment) => (
-              <article key={`${assignment.section}-${assignment.teacher}`} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px', background: '#f8fafc', display: 'grid', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                  <strong style={{ color: '#0f172a' }}>{assignment.subject}</strong>
-                  <StatusBadge tone="info">{assignment.section}</StatusBadge>
-                </div>
-                <span style={{ color: '#475569' }}>{assignment.teacher}</span>
-                <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{assignment.career} · {assignment.semester}</span>
-                <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{assignment.schedule}</span>
-              </article>
-            ))}
-          </div>
+          {assignedSections.length === 0 ? (
+            <div style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+              No hay docentes asignados a ninguna sección actualmente.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {assignedSections.map((sec) => (
+                <article key={sec.id_section} style={{ border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px', background: '#f8fafc', display: 'grid', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                    <strong style={{ color: '#0f172a' }}>{sec.Subject?.name_subject || 'Asignatura'}</strong>
+                    <StatusBadge tone="info">{sec.section_code}</StatusBadge>
+                  </div>
+                  <span style={{ color: '#475569', fontWeight: 600 }}>
+                    {sec.Teacher?.User ? `${sec.Teacher.User.first_name} ${sec.Teacher.User.first_lastname}` : 'Docente asignado'}
+                  </span>
+                  <span style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                    {sec.Career?.name_career || 'Carrera'}
+                  </span>
+                  <span style={{ color: '#64748b', fontSize: '0.85rem' }}>
+                    Horario: {sec.schedule_info || 'Sin asignar'}
+                  </span>
+                </article>
+              ))}
+            </div>
+          )}
         </SectionCard>
       </div>
     </AdminPageShell>

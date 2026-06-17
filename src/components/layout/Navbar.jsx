@@ -1,9 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Bell, Menu } from 'lucide-react';
+import api from '../../services/api';
 
 export default function Navbar({ onMenuClick }) {
   const location = useLocation();
+  const [activePeriod, setActivePeriod] = useState('...');
+
+  useEffect(() => {
+    async function fetchActivePeriod() {
+      try {
+        const res = await api.get('/periods');
+        const periodsList = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+        const active = periodsList.find((p) => p.period_status === 'Activo');
+        if (active) {
+          setActivePeriod(active.name_period);
+        } else if (periodsList.length > 0) {
+          setActivePeriod(periodsList[0].name_period);
+        } else {
+          setActivePeriod('Ninguno');
+        }
+      } catch (err) {
+        console.error('Error fetching active period in navbar:', err);
+        setActivePeriod('2026-II');
+      }
+    }
+    fetchActivePeriod();
+
+    window.addEventListener('academic-period-updated', fetchActivePeriod);
+    return () => {
+      window.removeEventListener('academic-period-updated', fetchActivePeriod);
+    };
+  }, []);
 
   // Determine page title dynamically based on active route path
   const getPageTitle = (path) => {
@@ -68,7 +96,7 @@ export default function Navbar({ onMenuClick }) {
         </h1>
         <div className="sgums-navbar-divider"></div>
         <div className="sgums-navbar-ciclo">
-          CICLO ACTUAL: <span className="sgums-navbar-badge">2026-II</span>
+          CICLO ACTUAL: <span className="sgums-navbar-badge">{activePeriod}</span>
         </div>
       </div>
 

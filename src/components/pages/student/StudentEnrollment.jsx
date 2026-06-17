@@ -14,6 +14,7 @@ import {
 import { AdminPageShell, SectionCard, ActionButton, StatusBadge } from '../admin/AdminPageShell';
 import { pensumSystems, availableSections } from './studentSeedData';
 import { loadAcademicRecord, loadEnrolledSections, saveEnrolledSections, resetEnrollment } from './studentStorage';
+import api from '../../../services/api';
 
 // Schedule parsing helper to detect collisions
 function parseSchedule(scheduleStr) {
@@ -58,6 +59,36 @@ export default function StudentEnrollment() {
   const [selectedSubjects, setSelectedSubjects] = useState({}); // { subjectCode: sectionIndex }
   const [success, setSuccess] = useState(false);
   const [activeSemester, setActiveSemester] = useState(1);
+
+  // Enrollment process states from API
+  const [loadingEnrollment, setLoadingEnrollment] = useState(true);
+  const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(false);
+  const [activePeriodName, setActivePeriodName] = useState('');
+
+  useEffect(() => {
+    async function checkEnrollment() {
+      try {
+        setLoadingEnrollment(true);
+        const res = await api.get('/periods');
+        const periodsList = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+        // Find if there is an active period with registration open
+        const activePeriod = periodsList.find((p) => p.enrollment_status === 'Abierta');
+        if (activePeriod) {
+          setIsEnrollmentOpen(true);
+          setActivePeriodName(activePeriod.name_period);
+        } else {
+          setIsEnrollmentOpen(false);
+          setActivePeriodName('');
+        }
+      } catch (err) {
+        console.error('Error fetching enrollment process status:', err);
+        setIsEnrollmentOpen(false);
+      } finally {
+        setLoadingEnrollment(false);
+      }
+    }
+    checkEnrollment();
+  }, []);
 
   useEffect(() => {
     setEnrolled(loadEnrolledSections());
@@ -155,6 +186,45 @@ export default function StudentEnrollment() {
     return pensumSystems.find((group) => group.semester === activeSemester);
   }, [activeSemester]);
 
+  if (loadingEnrollment) {
+    return (
+      <AdminPageShell
+        eyebrow="Inscripción de Materias"
+        title="Proceso de Inscripción de Unidades Curriculares"
+        subtitle="Verificando estado del período..."
+      >
+        <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+          <span>Consultando estado del proceso de inscripción en la base de datos...</span>
+        </div>
+      </AdminPageShell>
+    );
+  }
+
+  if (!isEnrollmentOpen) {
+    return (
+      <AdminPageShell
+        eyebrow="Inscripción de Materias"
+        title="Proceso de Inscripción Cerrado"
+        subtitle="El período de matriculación para el ciclo académico actual no se encuentra disponible."
+      >
+        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', background: '#ffffff', borderRadius: '18px' }}>
+          <AlertTriangle size={64} style={{ color: '#eab308', margin: '0 auto 16px' }} />
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>
+            Inscripción Fuera de Período
+          </h2>
+          <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '600px', margin: '0 auto 24px', lineHeight: 1.6 }}>
+            El período de inscripciones para estudiantes no está abierto en este momento. Por favor, mantente atento a los canales informativos institucionales para conocer las fechas de apertura del próximo ciclo académico, o ponte en contacto con el departamento de Control de Estudios.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <Link to="/student/dashboard" style={{ textDecoration: 'none' }}>
+              <ActionButton variant="primary">Volver al Dashboard</ActionButton>
+            </Link>
+          </div>
+        </div>
+      </AdminPageShell>
+    );
+  }
+
   if (enrolled.length > 0) {
     return (
       <AdminPageShell
@@ -168,7 +238,7 @@ export default function StudentEnrollment() {
             Inscripción Confirmada Exitosamente
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '600px', margin: '0 auto 24px', lineHeight: 1.6 }}>
-            Has completado el proceso de matriculación para el periodo <strong>2026-II</strong>. Puedes consultar tu horario de clases o generar tu comprobante de inscripción oficial.
+            Has completado el proceso de matriculación para el periodo <strong>{activePeriodName}</strong>. Puedes consultar tu horario de clases o generar tu comprobante de inscripción oficial.
           </p>
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '24px' }}>
@@ -194,7 +264,7 @@ export default function StudentEnrollment() {
     <AdminPageShell
       eyebrow="Inscripción de Materias"
       title="Selección de Unidades Curriculares"
-      subtitle="Período Académico Activo: 2026-II. Selecciona las asignaturas que deseas inscribir, respetando el límite de unidades de crédito y las prelaciones."
+      subtitle={`Período Académico Activo: ${activePeriodName}. Selecciona las asignaturas que deseas inscribir, respetando el límite de unidades de crédito y las prelaciones.`}
     >
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
         {/* Available Subjects column */}

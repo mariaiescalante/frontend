@@ -7,6 +7,9 @@ export default function PensumManagement() {
   const [careers, setCareers] = useState([]);
   const [pensums, setPensums] = useState([]);
   const [semesters, setSemesters] = useState([]);
+  const [globalSubjects, setGlobalSubjects] = useState([]);
+  const [selectedGlobalSubjectId, setSelectedGlobalSubjectId] = useState('');
+  const [isCreatingNewSubject, setIsCreatingNewSubject] = useState(false);
   const [loading, setLoading] = useState(true);
   const [careerCode, setCareerCode] = useState('');
   const [semesterFilter, setSemesterFilter] = useState('Todos');
@@ -37,19 +40,22 @@ export default function PensumManagement() {
   async function loadData() {
     try {
       setLoading(true);
-      const [careersRes, pensumsRes, semestersRes] = await Promise.all([
+      const [careersRes, pensumsRes, semestersRes, subjectsRes] = await Promise.all([
         api.get('/careers'),
         api.get('/pensums'),
         api.get('/semesters'),
+        api.get('/subjects'),
       ]);
 
       const rawCareers = Array.isArray(careersRes.data) ? careersRes.data : (Array.isArray(careersRes) ? careersRes : []);
       const rawPensums = Array.isArray(pensumsRes.data) ? pensumsRes.data : (Array.isArray(pensumsRes) ? pensumsRes : []);
       const rawSemesters = Array.isArray(semestersRes.data) ? semestersRes.data : (Array.isArray(semestersRes) ? semestersRes : []);
+      const rawSubjects = Array.isArray(subjectsRes.data) ? subjectsRes.data : (Array.isArray(subjectsRes) ? subjectsRes : []);
 
       setCareers(rawCareers);
       setPensums(rawPensums);
       setSemesters(rawSemesters);
+      setGlobalSubjects(rawSubjects);
 
       // Auto-select first active career if not set
       if (rawCareers.length > 0 && !careerCode) {
@@ -170,6 +176,8 @@ export default function PensumManagement() {
       id_prerequisite_2: '',
       id_prerequisite_3: '',
     });
+    setSelectedGlobalSubjectId('');
+    setIsCreatingNewSubject(false);
     setModalOpen(true);
   };
 
@@ -496,37 +504,149 @@ export default function PensumManagement() {
             </select>
           </label>
 
+          {/* Segmented control to choose between selecting an existing subject or creating a new one */}
+          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginTop: '6px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreatingNewSubject(false);
+                setSelectedGlobalSubjectId('');
+                setForm(prev => ({
+                  ...prev,
+                  code_subject: '',
+                  name_subject: '',
+                  credit_units: 3
+                }));
+              }}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '0.82rem',
+                fontWeight: '700',
+                border: '1px solid',
+                borderColor: !isCreatingNewSubject ? '#3b82f6' : '#e2e8f0',
+                background: !isCreatingNewSubject ? '#eff6ff' : 'transparent',
+                color: !isCreatingNewSubject ? '#1d4ed8' : '#64748b',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              Materia Existente
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCreatingNewSubject(true);
+                setSelectedGlobalSubjectId('');
+                setForm(prev => ({
+                  ...prev,
+                  code_subject: '',
+                  name_subject: '',
+                  credit_units: 3
+                }));
+              }}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '0.82rem',
+                fontWeight: '700',
+                border: '1px solid',
+                borderColor: isCreatingNewSubject ? '#3b82f6' : '#e2e8f0',
+                background: isCreatingNewSubject ? '#eff6ff' : 'transparent',
+                color: isCreatingNewSubject ? '#1d4ed8' : '#64748b',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              + Crear Nueva Materia
+            </button>
+          </div>
+
+          {!isCreatingNewSubject ? (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Buscar Materia Registrada</span>
+              <select
+                className="form-input"
+                value={selectedGlobalSubjectId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setSelectedGlobalSubjectId(id);
+                  if (id) {
+                    const sub = globalSubjects.find(s => String(s.id_subject) === String(id));
+                    if (sub) {
+                      setForm(prev => ({
+                        ...prev,
+                        code_subject: sub.code_subject || '',
+                        name_subject: sub.name_subject || '',
+                        credit_units: sub.credit_units || 3
+                      }));
+                    }
+                  } else {
+                    setForm(prev => ({
+                      ...prev,
+                      code_subject: '',
+                      name_subject: '',
+                      credit_units: 3
+                    }));
+                  }
+                }}
+              >
+                <option value="">Seleccione una materia registrada...</option>
+                {globalSubjects.map((sub) => (
+                  <option key={sub.id_subject} value={sub.id_subject}>
+                    {sub.name_subject} ({sub.code_subject})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #e2e8f0', fontSize: '0.78rem', color: '#475569' }}>
+              ℹ️ Estás creando una materia nueva a nivel global. Al guardarla, se agregará a la base de datos y se asociará a este pensum.
+            </div>
+          )}
+
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Código Base (ej: MAT-101)</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>
+              Código Base (ej: MAT-101) {!isCreatingNewSubject && '🔒'}
+            </span>
             <input
               className="form-input"
               value={form.code_subject}
               onChange={(e) => setForm({ ...form, code_subject: e.target.value })}
-              placeholder="Código único de la materia"
+              placeholder={!isCreatingNewSubject && !selectedGlobalSubjectId ? "Seleccione una materia arriba..." : "Código único de la materia"}
+              disabled={!isCreatingNewSubject}
+              style={{ background: !isCreatingNewSubject ? '#f1f5f9' : '#ffffff', cursor: !isCreatingNewSubject ? 'not-allowed' : 'text' }}
             />
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-              Si el código ya existe a nivel global, se reutilizará la misma asignatura eliminando duplicados.
-            </span>
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Nombre</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>
+              Nombre {!isCreatingNewSubject && '🔒'}
+            </span>
             <input
               className="form-input"
               value={form.name_subject}
               onChange={(e) => setForm({ ...form, name_subject: e.target.value })}
-              placeholder="Nombre de la materia"
+              placeholder={!isCreatingNewSubject && !selectedGlobalSubjectId ? "Seleccione una materia arriba..." : "Nombre de la materia"}
+              disabled={!isCreatingNewSubject}
+              style={{ background: !isCreatingNewSubject ? '#f1f5f9' : '#ffffff', cursor: !isCreatingNewSubject ? 'not-allowed' : 'text' }}
             />
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Unidades de Crédito</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>
+              Unidades de Crédito {!isCreatingNewSubject && '🔒'}
+            </span>
             <input
               className="form-input"
               type="number"
               value={form.credit_units}
               onChange={(e) => setForm({ ...form, credit_units: e.target.value })}
               placeholder="Número de créditos"
+              disabled={!isCreatingNewSubject}
+              style={{ background: !isCreatingNewSubject ? '#f1f5f9' : '#ffffff', cursor: !isCreatingNewSubject ? 'not-allowed' : 'text' }}
             />
           </label>
 
