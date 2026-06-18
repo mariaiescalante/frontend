@@ -69,7 +69,8 @@ const normalizeBackendUser = (user) => {
     email: user?.email ?? '',
     username: user?.username ?? '',
     phone: user?.phone ?? '',
-    status: user?.status ?? (isTeacher ? 'Disponible' : 'Activo')
+    status: user?.status ?? (isTeacher ? 'Disponible' : 'Activo'),
+    rawUser: user
   };
 
   if (isTeacher) {
@@ -130,7 +131,8 @@ const createInitialForm = (userType = 'student') => ({
   username: '',
   password: '',
   career: '',
-  academicTitle: teacherTitleOptions[0]
+  academicTitle: teacherTitleOptions[0],
+  status: 'Activo'
 });
 
 const buildLocalRecord = (form) => {
@@ -299,6 +301,11 @@ export default function UserManagement() {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [careerList, setCareerList] = useState([]);
+  const [extraFilter, setExtraFilter] = useState('');
+
+  useEffect(() => {
+    setExtraFilter('');
+  }, [activeTab]);
 
   useEffect(() => {
     let isMounted = true;
@@ -379,13 +386,32 @@ export default function UserManagement() {
 
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
-      const values = Object.values(record).join(' ').toLowerCase();
-      const matchesQuery = values.includes(query.toLowerCase());
+      // 1. Matches Query
+      let matchesQuery = false;
+      if (activeTab === 'admins') {
+        // Search by name only
+        matchesQuery = (record.name || '').toLowerCase().includes(query.toLowerCase());
+      } else {
+        // Search by name, email, phone, or id (cedula)
+        const searchFields = [record.id, record.name, record.email, record.phone, record.username].filter(Boolean).join(' ').toLowerCase();
+        matchesQuery = searchFields.includes(query.toLowerCase());
+      }
+
+      // 2. Matches Status
       const statusValue = record.status || 'Activo';
       const matchesStatus = statusFilter === 'Todos' || statusValue.toLowerCase() === statusFilter.toLowerCase();
-      return matchesQuery && matchesStatus;
+
+      // 3. Matches Extra Filter (Career or Title)
+      let matchesExtra = true;
+      if (activeTab === 'students') {
+        matchesExtra = !extraFilter || record.career === extraFilter;
+      } else if (activeTab === 'teachers') {
+        matchesExtra = !extraFilter || record.department === extraFilter;
+      }
+
+      return matchesQuery && matchesStatus && matchesExtra;
     });
-  }, [records, query, statusFilter]);
+  }, [records, query, statusFilter, extraFilter, activeTab]);
 
   const activeStudentsCount = useMemo(() => students.filter((s) => (s.status || '').toLowerCase() === 'activo').length, [students]);
   const activeTeachersCount = useMemo(() => teachers.filter((t) => {
@@ -440,11 +466,95 @@ export default function UserManagement() {
     if (normalizeDocumentNumber(form.documentNumber).length !== 8) return 'La cédula debe tener 8 dígitos.';
     if (normalizePhoneNumber(form.phone).length !== 11) return 'El teléfono debe tener 11 dígitos.';
     if (!form.username.trim()) return 'El username es obligatorio.';
-    if (!form.password.trim() || form.password.trim().length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
+
+    if (!editingUser) {
+      if (!form.password.trim() || form.password.trim().length < 6) {
+        return 'La contraseña debe tener al menos 6 caracteres.';
+      }
+    } else {
+      if (form.password.trim() && form.password.trim().length < 6) {
+        return 'La contraseña debe tener al menos 6 caracteres.';
+      }
+    }
+
     if (form.userType === 'student' && !form.career.trim()) return 'Selecciona una carrera para el estudiante.';
     if (form.userType === 'teacher' && !form.academicTitle.trim()) return 'Selecciona el título académico del docente.';
 
     return '';
+  };
+
+  const [editingUser, setEditingUser] = useState(null);
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditingUser(null);
+    setFormError('');
+    setShowPassword(false);
+  };
+
+  const handleStartEdit = (record) => {
+    setEditingUser(record);
+
+    const tabToType = activeTab === 'students' ? 'student' : (activeTab === 'teachers' ? 'teacher' : 'admin');
+    setUserType(tabToType);
+
+    const raw = record.rawUser;
+    const docId = record.id || '';
+    const docParts = docId.split('-');
+    const docType = docParts[0] || 'V';
+    const docNum = docParts[1] || docId.replace(/^[VEP]-/, '') || '';
+
+    const nameParts = record.name.split(' ');
+    const firstName = raw?.first_name || nameParts[0] || '';
+    const secondName = raw?.second_name || '';
+    const lastName = raw?.first_lastname || nameParts.slice(1).join(' ') || '';
+    const secondLastName = raw?.second_lastname || '';
+
+    const birthDate = raw?.date_birth ? raw.date_birth.split('T')[0] : '';
+
+    const initialForm = {
+      userType: tabToType,
+      firstName,
+      secondName,
+      lastName,
+      secondLastName,
+      birthDate,
+      email: record.email,
+      documentType: docType,
+      documentNumber: docNum,
+      phone: record.phone.replace('-', ''),
+      username: record.username,
+      password: '',
+      career: record.career || '',
+      academicTitle: record.department || teacherTitleOptions[0],
+      status: record.status || 'Activo'
+    };
+
+    if (tabToType === 'student') {
+      setStudentForm(initialForm);
+    } else if (tabToType === 'teacher') {
+      setTeacherForm(initialForm);
+    } else {
+      setAdminForm(initialForm);
+    }
+
+    setFormError('');
+    setShowPassword(false);
+    setModalOpen(true);
+  };
+
+  const handleDeleteUser = async (record) => {
+    try {
+      const id = record.rawUser?.id_user || record.id;
+      if (!id) return;
+      await api.delete(`/users/${id}`);
+
+      setStudents((current) => current.filter((s) => s.id !== record.id));
+      setTeachers((current) => current.filter((t) => t.id !== record.id));
+      setAdmins((current) => current.filter((a) => a.id !== record.id));
+    } catch (err) {
+      console.error('Error deleting user:', err);
+    }
   };
 
   const handleSubmit = async () => {
@@ -456,45 +566,73 @@ export default function UserManagement() {
     }
 
     const payload = {
-      document_id: formatDocumentId(form.documentType, form.documentNumber),
-      name: form.firstName.trim(),
-      lastname: form.lastName.trim(),
-      second_name: form.secondName.trim(),
-      second_lastname: form.secondLastName.trim(),
-      date_birth: form.birthDate,
+      first_name: form.firstName.trim(),
+      first_lastname: form.lastName.trim(),
+      second_name: form.secondName.trim() || undefined,
+      second_lastname: form.secondLastName.trim() || undefined,
+      date_birth: form.birthDate || null,
       id_role: ROLE_IDS[form.userType] ?? ROLE_IDS.student,
       email: form.email.trim(),
       phone: formatPhone(form.phone),
       username: form.username.trim(),
-      password: form.password,
-      career: form.career,
-      academic_grade: form.academicTitle,
-      profession: form.academicTitle
+      status: form.status || 'Activo'
     };
+
+    if (!editingUser) {
+      payload.document_id = formatDocumentId(form.documentType, form.documentNumber);
+    }
+
+    if (form.userType === 'student') {
+      payload.career = form.career;
+    } else if (form.userType === 'teacher') {
+      payload.academic_grade = form.academicTitle;
+      payload.profession = form.academicTitle;
+    }
+
+    if (form.password.trim()) {
+      payload.password = form.password.trim();
+    }
 
     setSubmitting(true);
     setFormError('');
 
     try {
-      const response = await registerUser(payload);
-      const backendUser = response?.user || response?.data?.user || response?.data || response;
-      const localRecord = { ...buildLocalRecord(form), ...(backendUser && typeof backendUser === 'object' ? backendUser : {}) };
+      let response;
+      if (editingUser) {
+        response = await api.put(`/users/${editingUser.rawUser.id_user}`, payload);
+      } else {
+        response = await registerUser(payload);
+      }
 
-      if (form.userType === 'student') {
-        setStudents((currentStudents) => [localRecord, ...currentStudents]);
-        setStudentForm(createInitialForm('student'));
-      } else if (form.userType === 'teacher') {
-        setTeachers((currentTeachers) => [localRecord, ...currentTeachers]);
-        setTeacherForm(createInitialForm('teacher'));
-      } else if (form.userType === 'admin') {
-        setAdmins((currentAdmins) => [localRecord, ...currentAdmins]);
-        setAdminForm(createInitialForm('admin'));
+      const backendUser = response?.user || response?.data?.user || response?.data || response;
+      const localRecord = normalizeBackendUser(backendUser);
+
+      if (editingUser) {
+        if (form.userType === 'student') {
+          setStudents((current) => current.map((s) => s.id === editingUser.id ? localRecord : s));
+        } else if (form.userType === 'teacher') {
+          setTeachers((current) => current.map((t) => t.id === editingUser.id ? localRecord : t));
+        } else if (form.userType === 'admin') {
+          setAdmins((current) => current.map((a) => a.id === editingUser.id ? localRecord : a));
+        }
+      } else {
+        if (form.userType === 'student') {
+          setStudents((currentStudents) => [localRecord, ...currentStudents]);
+          setStudentForm(createInitialForm('student'));
+        } else if (form.userType === 'teacher') {
+          setTeachers((currentTeachers) => [localRecord, ...currentTeachers]);
+          setTeacherForm(createInitialForm('teacher'));
+        } else if (form.userType === 'admin') {
+          setAdmins((currentAdmins) => [localRecord, ...currentAdmins]);
+          setAdminForm(createInitialForm('admin'));
+        }
       }
 
       setModalOpen(false);
+      setEditingUser(null);
       setShowPassword(false);
     } catch (error) {
-      console.error('registerUser validation error:', error?.data || error);
+      console.error('User save error:', error?.data || error);
       setFormError(formatApiError(error));
     } finally {
       setSubmitting(false);
@@ -549,12 +687,22 @@ export default function UserManagement() {
               <option>En supervisión</option>
             </select>
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Carrera / Departamento</span>
-            <select defaultValue="" style={fieldStyle}>
-              <option value="">Todas las opciones</option>
-              {careerOptions.map((option) => (
-                <option key={option}>{option}</option>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', opacity: activeTab === 'admins' ? 0.5 : 1 }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              {activeTab === 'students' ? 'Carrera' : (activeTab === 'teachers' ? 'Título Académico' : 'Filtro')}
+            </span>
+            <select
+              value={extraFilter}
+              onChange={(event) => setExtraFilter(event.target.value)}
+              disabled={activeTab === 'admins'}
+              style={fieldStyle}
+            >
+              <option value="">{activeTab === 'admins' ? 'No aplicable' : 'Todas las opciones'}</option>
+              {activeTab === 'students' && careerOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+              {activeTab === 'teachers' && teacherTitleOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
               ))}
             </select>
           </label>
@@ -599,8 +747,8 @@ export default function UserManagement() {
               )}
               <td>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <ActionButton variant="ghost"><Edit3 size={14} /> Editar</ActionButton>
-                  <ActionButton variant="danger"><Trash2 size={14} /> Eliminar</ActionButton>
+                  <ActionButton variant="ghost" onClick={() => handleStartEdit(record)}><Edit3 size={14} /> Editar</ActionButton>
+                  <ActionButton variant="danger" onClick={() => handleDeleteUser(record)}><Trash2 size={14} /> Eliminar</ActionButton>
                 </div>
               </td>
             </tr>
@@ -610,37 +758,38 @@ export default function UserManagement() {
 
       <Modal
         open={modalOpen}
-        title={userType === 'student' ? 'Registrar estudiante' : (userType === 'teacher' ? 'Registrar docente' : 'Registrar administrador')}
+        title={editingUser
+          ? (userType === 'student' ? 'Editar estudiante' : (userType === 'teacher' ? 'Editar docente' : 'Editar administrador'))
+          : (userType === 'student' ? 'Registrar estudiante' : (userType === 'teacher' ? 'Registrar docente' : 'Registrar administrador'))
+        }
         subtitle={userType === 'student'
           ? 'Completa los datos del estudiante y deja su cuenta lista para iniciar sesión.'
           : (userType === 'teacher'
             ? 'Completa los datos del docente y deja su cuenta lista para iniciar sesión.'
             : 'Completa los datos del administrador y deja su cuenta lista para iniciar sesión.')}
-        onClose={() => {
-          setModalOpen(false);
-          setFormError('');
-          setShowPassword(false);
-        }}
+        onClose={handleCloseModal}
         footer={
           <>
-            <ActionButton variant="ghost" onClick={() => setModalOpen(false)} disabled={submitting}>Cancelar</ActionButton>
+            <ActionButton variant="ghost" onClick={handleCloseModal} disabled={submitting}>Cancelar</ActionButton>
             <ActionButton variant="accent" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? 'Guardando...' : 'Guardar usuario'}
+              {submitting ? 'Guardando...' : (editingUser ? 'Guardar cambios' : 'Guardar usuario')}
             </ActionButton>
           </>
         }
       >
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
-          <ActionButton variant={userType === 'student' ? 'primary' : 'secondary'} onClick={() => handleUserTypeChange('student')}>
-            Estudiante
-          </ActionButton>
-          <ActionButton variant={userType === 'teacher' ? 'primary' : 'secondary'} onClick={() => handleUserTypeChange('teacher')}>
-            Docente
-          </ActionButton>
-          <ActionButton variant={userType === 'admin' ? 'primary' : 'secondary'} onClick={() => handleUserTypeChange('admin')}>
-            Administrador
-          </ActionButton>
-        </div>
+        {!editingUser && (
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+            <ActionButton variant={userType === 'student' ? 'primary' : 'secondary'} onClick={() => handleUserTypeChange('student')}>
+              Estudiante
+            </ActionButton>
+            <ActionButton variant={userType === 'teacher' ? 'primary' : 'secondary'} onClick={() => handleUserTypeChange('teacher')}>
+              Docente
+            </ActionButton>
+            <ActionButton variant={userType === 'admin' ? 'primary' : 'secondary'} onClick={() => handleUserTypeChange('admin')}>
+              Administrador
+            </ActionButton>
+          </div>
+        )}
 
         {formError ? (
           <div style={{ marginBottom: '16px', padding: '12px 14px', borderRadius: '12px', background: '#fff1f2', color: '#b91c1c', border: '1px solid #fecdd3', fontSize: '0.92rem', fontWeight: 600 }}>
@@ -693,25 +842,29 @@ export default function UserManagement() {
             <span className="form-label">Username</span>
             <input className="form-input" value={form.username} onChange={(event) => handleFieldChange('username', event.target.value)} />
           </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Contraseña</span>
+          <label className="form-group" style={{ marginBottom: 0, opacity: editingUser ? 0.6 : 1 }}>
+            <span className="form-label">Contraseña {editingUser ? '(Bloqueada en edición)' : ''}</span>
             <div style={{ position: 'relative' }}>
               <input
                 className="form-input"
                 type={showPassword ? 'text' : 'password'}
-                value={form.password}
+                value={editingUser ? '••••••••' : form.password}
                 onChange={(event) => handleFieldChange('password', event.target.value)}
                 autoComplete="new-password"
-                style={{ paddingRight: '48px' }}
+                style={{ paddingRight: '48px', cursor: editingUser ? 'not-allowed' : 'text' }}
+                placeholder={editingUser ? 'Bloqueada' : ''}
+                disabled={!!editingUser}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: '#64748b', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+              {!editingUser && (
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: '#64748b', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              )}
             </div>
           </label>
 
@@ -736,6 +889,15 @@ export default function UserManagement() {
               </select>
             </label>
           )}
+
+          <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Estado</span>
+            <select className="form-input" value={form.status || 'Activo'} onChange={(event) => handleFieldChange('status', event.target.value)}>
+              <option value="Activo">Activo</option>
+              <option value="Inactivo">Inactivo</option>
+              <option value="Bloqueado">Bloqueado</option>
+            </select>
+          </label>
 
           <label className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
             <span className="form-label">Tipo de registro</span>
