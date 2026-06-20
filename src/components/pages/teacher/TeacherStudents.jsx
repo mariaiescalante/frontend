@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { Download, Search, Users } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Download, Search, Users, Save } from 'lucide-react';
 import { ActionButton, AdminPageShell, SectionCard, StatusBadge } from '../admin/AdminPageShell';
-import { cloneEnrollments, teacherAssignments } from './teacherSeedData';
-import { loadActStatusMap } from './teacherStorage';
+import api from '../../../services/api';
+import useAuth from '../../../hooks/useAuth';
 
 const cuts = ['c1', 'c2', 'c3', 'c4'];
 
@@ -24,107 +24,195 @@ function clampGrade(raw) {
 }
 
 export default function TeacherStudents() {
-  const [enrollments, setEnrollments] = useState(() => cloneEnrollments());
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState('');
 
-  const careerOptions = useMemo(
-    () => [...new Set(teacherAssignments.map((item) => item.career))],
-    []
-  );
+  const [assignments, setAssignments] = useState([]);
+  const [allDetails, setAllDetails] = useState([]);
+  const [allRegistrations, setAllRegistrations] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
 
-  const [career, setCareer] = useState(careerOptions[0] || '');
+  useEffect(() => {
+    async function loadData() {
+      if (!user?.id_teacher) return;
+      try {
+        setLoading(true);
+        const [secRes, detRes, regRes, userRes] = await Promise.all([
+          api.get('/sections'),
+          api.get('/registration-details'),
+          api.get('/registrations'),
+          api.get('/users')
+        ]);
+        
+        const teacherSections = (Array.isArray(secRes) ? secRes : secRes?.data).filter(s => s.id_teacher === user.id_teacher);
+        setAssignments(teacherSections);
+        setAllDetails((Array.isArray(detRes) ? detRes : detRes?.data));
+        setAllRegistrations(regRes.data);
+        setAllUsers(userRes.data);
+      } catch(err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [user]);
+
+  // Dropdown selections
+  const careerOptions = useMemo(() => {
+    return [...new Set(assignments.map(a => a.Career?.name_career || 'N/A'))];
+  }, [assignments]);
+  
+  const [career, setCareer] = useState('');
+  useEffect(() => { 
+    if (!careerOptions.includes(career) && careerOptions.length > 0) setCareer(careerOptions[0]); 
+  }, [careerOptions, career]);
 
   const subjectOptions = useMemo(() => {
-    return teacherAssignments
-      .filter((item) => item.career === career)
-      .map((item) => item.subject);
-  }, [career]);
-
-  const [subject, setSubject] = useState(subjectOptions[0] || '');
+    return [...new Set(assignments.filter(a => (a.Career?.name_career || 'N/A') === career).map(a => a.Subject?.name_subject || 'N/A'))];
+  }, [career, assignments]);
+  
+  const [subject, setSubject] = useState('');
+  useEffect(() => { 
+    if (!subjectOptions.includes(subject) && subjectOptions.length > 0) setSubject(subjectOptions[0]); 
+  }, [subjectOptions, subject]);
 
   const sectionOptions = useMemo(() => {
-    return teacherAssignments
-      .filter((item) => item.career === career && item.subject === subject)
-      .map((item) => item.section);
-  }, [career, subject]);
+    return assignments.filter(a => (a.Career?.name_career || 'N/A') === career && (a.Subject?.name_subject || 'N/A') === subject);
+  }, [career, subject, assignments]);
+  
+  const [sectionObj, setSectionObj] = useState(null);
+  const [selectedSectionId, setSelectedSectionId] = useState('');
 
-  const [section, setSection] = useState(sectionOptions[0] || '');
+  useEffect(() => { 
+    if (sectionOptions.length > 0) {
+      if (!selectedSectionId || !sectionOptions.find(s => s.id_section === Number(selectedSectionId))) {
+        setSelectedSectionId(String(sectionOptions[0].id_section));
+        setSectionObj(sectionOptions[0]);
+      } else {
+        setSectionObj(sectionOptions.find(s => s.id_section === Number(selectedSectionId)));
+      }
+    } else {
+      setSectionObj(null);
+      setSelectedSectionId('');
+    }
+  }, [sectionOptions, selectedSectionId]);
 
-  const assignment = useMemo(() => {
-    return teacherAssignments.find(
-      (item) => item.career === career && item.subject === subject && item.section === section
-    );
-  }, [career, subject, section]);
+  // Derived records
+  const records = useMemo(() => {
+    if (!sectionObj) return [];
+    const details = allDetails.filter(d => d.id_section === sectionObj.id_section);
+    return details.map(d => {
+      const reg = allRegistrations.find(r => r.id_registration === d.id_registration);
+      const studentUser = allUsers.find(u => u.Student?.id_student === reg?.id_student);
+      
+      return {
+        id_detail: d.id_detail,
+        cedula: studentUser?.document_id || 'Sin CI',
+        name: `${studentUser?.first_name || ''} ${studentUser?.first_lastname || ''}`.trim() || 'Estudiante Desconocido',
+        grades: {
+          c1: d.corte_1 || '',
+          c2: d.corte_2 || '',
+          c3: d.corte_3 || '',
+          c4: d.corte_4 || ''
+        },
+        contents: { c1: '', c2: '', c3: '', c4: '' }, // We don't store this in DB currently
+        grade_status: d.grade_status
+      };
+    });
+  }, [sectionObj, allDetails, allRegistrations, allUsers]);
 
-  const statusMap = useMemo(() => loadActStatusMap(), []);
-  const currentActStatus = assignment ? (statusMap[assignment.id] || assignment.actStatus) : 'abierta';
+  const [editableRecords, setEditableRecords] = useState([]);
+  
+  useEffect(() => {
+    setEditableRecords(records);
+  }, [records]);
 
   const isEditWindowOpen = useMemo(() => {
-    if (!assignment) return false;
-    const editableByDate = new Date() <= new Date(assignment.editableUntil);
-    return editableByDate && currentActStatus !== 'cerrada';
-  }, [assignment, currentActStatus]);
-
-  const records = assignment ? enrollments[assignment.id] || [] : [];
+    if (!sectionObj) return false;
+    // If any student has grade_status === Confirmada, acta is closed.
+    if (editableRecords.length > 0 && editableRecords[0].grade_status === 'Confirmada') return false;
+    return true;
+  }, [sectionObj, editableRecords]);
 
   const filteredRecords = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return records;
+    if (!term) return editableRecords;
 
-    return records.filter((student) => {
+    return editableRecords.filter((student) => {
       return student.cedula.toLowerCase().includes(term) || student.name.toLowerCase().includes(term);
     });
-  }, [records, search]);
+  }, [editableRecords, search]);
 
-  const metrics = [
-    {
-      label: 'Estudiantes inscritos',
-      value: records.length,
-      hint: assignment ? `${assignment.subject} - ${assignment.section}` : 'Selecciona una asignatura',
-      icon: Users,
-      tone: 'primary'
-    }
-  ];
-
-  const updateStudent = (studentId, updater) => {
-    if (!assignment || !isEditWindowOpen) return;
-
-    setEnrollments((prev) => {
-      const currentList = prev[assignment.id] || [];
-      const nextList = currentList.map((student) => {
-        if (student.id !== studentId) return student;
-        return updater(student);
-      });
-      return { ...prev, [assignment.id]: nextList };
-    });
-  };
-
-  const handleGradeChange = (studentId, cut, nextValue) => {
+  const handleGradeChange = (detailId, cut, nextValue) => {
+    if (!isEditWindowOpen) return;
     const normalized = clampGrade(nextValue);
 
-    updateStudent(studentId, (student) => ({
-      ...student,
-      grades: {
-        ...student.grades,
-        [cut]: normalized
-      }
-    }));
+    setEditableRecords((prev) => 
+      prev.map(r => r.id_detail === detailId ? { ...r, grades: { ...r.grades, [cut]: normalized } } : r)
+    );
   };
 
-  const handleContentChange = (studentId, cut, nextValue) => {
-    updateStudent(studentId, (student) => ({
-      ...student,
-      contents: {
-        ...student.contents,
-        [cut]: nextValue
-      }
-    }));
+  const handleContentChange = (detailId, cut, nextValue) => {
+    if (!isEditWindowOpen) return;
+    setEditableRecords((prev) => 
+      prev.map(r => r.id_detail === detailId ? { ...r, contents: { ...r.contents, [cut]: nextValue } } : r)
+    );
+  };
+
+  const handleSaveGrades = async () => {
+    if (!sectionObj) return;
+    try {
+      setIsSaving(true);
+      await Promise.all(editableRecords.map(r => {
+        const d = allDetails.find(detail => detail.id_detail === r.id_detail);
+        if(!d) return Promise.resolve();
+        
+        // Simple 4-cut average
+        const c1 = Number(r.grades.c1) || 0;
+        const c2 = Number(r.grades.c2) || 0;
+        const c3 = Number(r.grades.c3) || 0;
+        const c4 = Number(r.grades.c4) || 0;
+        let count = 0;
+        if(r.grades.c1 !== '') count++;
+        if(r.grades.c2 !== '') count++;
+        if(r.grades.c3 !== '') count++;
+        if(r.grades.c4 !== '') count++;
+        
+        const avg = count === 0 ? 0 : (c1 + c2 + c3 + c4) / count;
+        
+        let status = 'Cursando';
+        if (avg >= 9.5 && count === 4) status = 'Aprobada'; // Simplified criteria
+        else if (count === 4) status = 'Reprobada';
+
+        return api.put(`/registration-details/${r.id_detail}`, {
+          corte_1: r.grades.c1 === '' ? 0 : r.grades.c1,
+          corte_2: r.grades.c2 === '' ? 0 : r.grades.c2,
+          corte_3: r.grades.c3 === '' ? 0 : r.grades.c3,
+          corte_4: r.grades.c4 === '' ? 0 : r.grades.c4,
+          final_note: avg,
+          subject_status: status
+        });
+      }));
+      alert('Notas guardadas correctamente en la base de datos.');
+      
+      // Reload details to sync state
+      const detRes = await api.get('/registration-details');
+      setAllDetails((Array.isArray(detRes) ? detRes : detRes?.data));
+    } catch(err) {
+      console.error(err);
+      alert('Error guardando notas.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDownloadRecord = () => {
-    if (!assignment) return;
+    if (!sectionObj) return;
 
-    const reportRows = records
+    const reportRows = editableRecords
       .map((student) => {
         const row = cuts
           .map((cut, index) => {
@@ -148,7 +236,7 @@ export default function TeacherStudents() {
     const printable = `
       <html>
         <head>
-          <title>Acta de Notas - ${assignment.subject}</title>
+          <title>Acta de Notas - ${sectionObj.Subject?.name_subject}</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
             h1 { margin-bottom: 8px; }
@@ -163,10 +251,10 @@ export default function TeacherStudents() {
         <body>
           <h1>Constancia de Carga de Notas</h1>
           <div class="meta">
-            <div><strong>Asignatura:</strong> ${assignment.subject}</div>
-            <div><strong>Seccion:</strong> ${assignment.section}</div>
-            <div><strong>Carrera:</strong> ${assignment.career}</div>
-            <div><strong>Periodo:</strong> ${assignment.period}</div>
+            <div><strong>Asignatura:</strong> ${sectionObj.Subject?.name_subject}</div>
+            <div><strong>Seccion:</strong> ${sectionObj.section_code}</div>
+            <div><strong>Carrera:</strong> ${sectionObj.Career?.name_career}</div>
+            <div><strong>Periodo:</strong> ${sectionObj.AcademicPeriod?.name_period}</div>
             <div><strong>Fecha de emision:</strong> ${new Date().toLocaleString()}</div>
           </div>
 
@@ -196,16 +284,45 @@ export default function TeacherStudents() {
     popup.print();
   };
 
+  const metrics = [
+    {
+      label: 'Estudiantes inscritos',
+      value: editableRecords.length,
+      hint: sectionObj ? `${sectionObj.Subject?.name_subject} - ${sectionObj.section_code}` : 'Selecciona una asignatura',
+      icon: Users,
+      tone: 'primary'
+    }
+  ];
+
+  if (loading) {
+    return (
+      <AdminPageShell
+        eyebrow="Modulo Docente"
+        title="Cargar Calificaciones"
+        subtitle="Cargando secciones y estudiantes..."
+      >
+        <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+          <span>Obteniendo datos desde el sistema...</span>
+        </div>
+      </AdminPageShell>
+    );
+  }
+
   return (
     <AdminPageShell
       eyebrow="Modulo Docente"
       title="Ver Estudiantes Inscritos y Registrar Evaluaciones"
-      subtitle="Selecciona carrera, asignatura y seccion para cargar notas por estudiante, registrar contenido evaluado y descargar constancia."
+      subtitle="Selecciona carrera, asignatura y seccion para cargar notas por estudiante en la base de datos."
       metrics={metrics}
       actions={(
-        <ActionButton variant="accent" onClick={handleDownloadRecord} disabled={!assignment || !records.length}>
-          <Download size={16} /> Descargar acta/listado
-        </ActionButton>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <ActionButton variant="primary" onClick={handleSaveGrades} disabled={!sectionObj || !isEditWindowOpen || isSaving}>
+            <Save size={16} /> {isSaving ? 'Guardando...' : 'Guardar Notas'}
+          </ActionButton>
+          <ActionButton variant="accent" onClick={handleDownloadRecord} disabled={!sectionObj || !editableRecords.length}>
+            <Download size={16} /> Descargar acta/listado
+          </ActionButton>
+        </div>
       )}
     >
       <SectionCard
@@ -215,27 +332,7 @@ export default function TeacherStudents() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Carrera</span>
-            <select
-              className="form-input"
-              value={career}
-              onChange={(event) => {
-                const nextCareer = event.target.value;
-                setCareer(nextCareer);
-
-                const nextSubjectOptions = teacherAssignments
-                  .filter((item) => item.career === nextCareer)
-                  .map((item) => item.subject);
-
-                const nextSubject = nextSubjectOptions[0] || '';
-                setSubject(nextSubject);
-
-                const nextSections = teacherAssignments
-                  .filter((item) => item.career === nextCareer && item.subject === nextSubject)
-                  .map((item) => item.section);
-
-                setSection(nextSections[0] || '');
-              }}
-            >
+            <select className="form-input" value={career} onChange={(e) => setCareer(e.target.value)}>
               {careerOptions.map((option) => (
                 <option key={option} value={option}>{option}</option>
               ))}
@@ -244,18 +341,7 @@ export default function TeacherStudents() {
 
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Asignatura</span>
-            <select
-              className="form-input"
-              value={subject}
-              onChange={(event) => {
-                const nextSubject = event.target.value;
-                setSubject(nextSubject);
-                const nextSections = teacherAssignments
-                  .filter((item) => item.career === career && item.subject === nextSubject)
-                  .map((item) => item.section);
-                setSection(nextSections[0] || '');
-              }}
-            >
+            <select className="form-input" value={subject} onChange={(e) => setSubject(e.target.value)}>
               {subjectOptions.map((option) => (
                 <option key={option} value={option}>{option}</option>
               ))}
@@ -264,9 +350,9 @@ export default function TeacherStudents() {
 
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Seccion</span>
-            <select className="form-input" value={section} onChange={(event) => setSection(event.target.value)}>
+            <select className="form-input" value={selectedSectionId} onChange={(e) => setSelectedSectionId(e.target.value)}>
               {sectionOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
+                <option key={option.id_section} value={option.id_section}>{option.section_code}</option>
               ))}
             </select>
           </label>
@@ -274,11 +360,11 @@ export default function TeacherStudents() {
 
         <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <StatusBadge tone={isEditWindowOpen ? 'success' : 'warning'}>
-            {isEditWindowOpen ? 'Edicion habilitada' : 'Fuera de tiempo o acta cerrada'}
+            {isEditWindowOpen ? 'Edicion habilitada' : 'Acta cerrada / Solo lectura'}
           </StatusBadge>
-          {assignment ? (
+          {sectionObj && isEditWindowOpen ? (
             <span style={{ fontSize: '0.88rem', color: '#64748b' }}>
-              Puedes modificar notas hasta {new Date(assignment.editableUntil).toLocaleDateString()}.
+              No olvides pulsar "Guardar Notas" luego de hacer los cambios.
             </span>
           ) : null}
         </div>
@@ -286,7 +372,7 @@ export default function TeacherStudents() {
 
       <SectionCard
         title="Listado de estudiantes y evaluaciones"
-        description="Busca por cedula o nombre. Registra 4 cortes y el contenido evaluado por cada nota."
+        description="Busca por cedula o nombre. Registra los cortes. Se autoguardarán los valores."
       >
         <div style={{ position: 'relative', marginBottom: '14px' }}>
           <Search size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: '#64748b' }} />
@@ -317,39 +403,47 @@ export default function TeacherStudents() {
               </tr>
             </thead>
             <tbody>
-              {filteredRecords.map((student) => (
-                <tr key={student.id}>
-                  <td>{student.cedula}</td>
-                  <td>{student.name}</td>
-
-                  {cuts.map((cut, idx) => (
-                    <React.Fragment key={`${student.id}-${cut}`}>
-                      <td>
-                        <input
-                          className="form-input"
-                          value={student.grades[cut]}
-                          disabled={!isEditWindowOpen}
-                          onChange={(event) => handleGradeChange(student.id, cut, event.target.value)}
-                          placeholder={`C${idx + 1}`}
-                          style={{ minWidth: '86px', padding: '9px 10px' }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          className="form-input"
-                          value={student.contents[cut]}
-                          disabled={!isEditWindowOpen}
-                          onChange={(event) => handleContentChange(student.id, cut, event.target.value)}
-                          placeholder={`Contenido corte ${idx + 1}`}
-                          style={{ minWidth: '200px', padding: '9px 10px' }}
-                        />
-                      </td>
-                    </React.Fragment>
-                  ))}
-
-                  <td>{computeAverage(student.grades)}</td>
+              {filteredRecords.length === 0 ? (
+                <tr>
+                  <td colSpan="11" style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
+                    No hay estudiantes inscritos en esta sección.
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                filteredRecords.map((student) => (
+                  <tr key={student.id_detail}>
+                    <td>{student.cedula}</td>
+                    <td>{student.name}</td>
+
+                    {cuts.map((cut, idx) => (
+                      <React.Fragment key={`${student.id_detail}-${cut}`}>
+                        <td>
+                          <input
+                            className="form-input"
+                            value={student.grades[cut]}
+                            disabled={!isEditWindowOpen}
+                            onChange={(event) => handleGradeChange(student.id_detail, cut, event.target.value)}
+                            placeholder={`C${idx + 1}`}
+                            style={{ minWidth: '86px', padding: '9px 10px' }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            className="form-input"
+                            value={student.contents[cut]}
+                            disabled={!isEditWindowOpen}
+                            onChange={(event) => handleContentChange(student.id_detail, cut, event.target.value)}
+                            placeholder={`Contenido corte ${idx + 1}`}
+                            style={{ minWidth: '200px', padding: '9px 10px' }}
+                          />
+                        </td>
+                      </React.Fragment>
+                    ))}
+
+                    <td>{computeAverage(student.grades)}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

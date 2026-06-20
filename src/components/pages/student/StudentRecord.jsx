@@ -1,37 +1,81 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Award, BookOpen, CheckCircle2, FileText, Printer, ShieldAlert } from 'lucide-react';
 import { AdminPageShell, ActionButton, SectionCard, DataTable, StatusBadge } from '../admin/AdminPageShell';
-import { loadAcademicRecord, loadEnrolledSections, loadStudentProfile } from './studentStorage';
+import api from '../../../services/api';
+import useAuth from '../../../hooks/useAuth';
 
 export default function StudentRecord() {
-  const [profile] = useState(() => loadStudentProfile());
-  const [record] = useState(() => loadAcademicRecord());
-  const [enrolled] = useState(() => loadEnrolledSections());
+  const { user } = useAuth();
+  const [fullHistory, setFullHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Merge historical record with current enrolled courses (without grades)
-  const fullHistory = React.useMemo(() => {
-    const history = [...record];
-    
-    // Add enrolled sections as "Cursando" if they aren't already in history
-    enrolled.forEach((course) => {
-      const alreadyInHistory = history.some((h) => h.code === course.code && h.period === profile.currentPeriod);
-      if (!alreadyInHistory) {
-        history.push({
-          code: course.code,
-          name: course.name,
-          credits: course.credits,
-          grade: '--',
-          status: 'Cursando',
-          period: profile.currentPeriod
+  useEffect(() => {
+    async function fetchRecord() {
+      if (!user) return;
+      try {
+        setLoading(true);
+        const [regRes, regDetRes, secRes, periodsRes] = await Promise.all([
+          api.get('/registrations'),
+          api.get('/registration-details'),
+          api.get('/sections'),
+          api.get('/periods')
+        ]);
+        
+        const rawReg = Array.isArray(reg) ? reg : (reg?.data || []);
+        const rawRegDetails = Array.isArray(regDetRes) ? regDetRes : (regDetRes?.data || []);
+        const rawSections = Array.isArray(sectionsRes) ? sectionsRes : (sectionsRes?.data || []);
+        const periodsList = Array.isArray(periodsList) ? periodsList : (periodsList?.data || []);
+        
+        const periodMap = {};
+        periodsList.forEach(p => {
+          periodMap[p.id_period] = p.name_period;
         });
+
+        const studentRegistrations = rawReg.filter(r => r.id_student === user.id_student);
+        const studentRegIds = studentRegistrations.map(r => r.id_registration);
+        const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration));
+
+        const history = studentDetails.map(d => {
+          const sec = rawSections.find(s => s.id_section === d.id_section);
+          const subj = sec?.Subject;
+          const reg = studentRegistrations.find(r => r.id_registration === d.id_registration);
+          const periodName = periodMap[reg?.id_period] || 'Desconocido';
+          
+          let statusStr = 'Pendiente';
+          if (d.subject_status === 'Aprobada') statusStr = 'Aprobada';
+          else if (d.subject_status === 'Reprobada') statusStr = 'Reprobada';
+          else if (d.subject_status === 'En curso') statusStr = 'Cursando';
+
+          return {
+            code: subj?.code_subject || '',
+            name: subj?.name_subject || 'Desconocido',
+            credits: subj?.credit_units || 0,
+            grade: (statusStr === 'Cursando' || statusStr === 'Pendiente') ? '--' : d.final_note,
+            status: statusStr,
+            period: periodName
+          };
+        });
+
+        setFullHistory(history);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
-    });
+    }
+    fetchRecord();
+  }, [user]);
 
-    return history;
-  }, [record, enrolled, profile]);
+  const profile = {
+    name: user?.first_name || '',
+    lastname: user?.first_lastname || '',
+    cedula: user?.document_id || '',
+    career: user?.career || '',
+    faculty: 'N/A', // Assuming faculty is not provided directly in user profile
+    creditsRequired: 160 // Fallback assuming 160 UC required for graduation
+  };
 
-  // Group history by period for rendering
-  const historyByPeriod = React.useMemo(() => {
+  const historyByPeriod = useMemo(() => {
     const periods = {};
     fullHistory.forEach((item) => {
       if (!periods[item.period]) {
@@ -42,22 +86,20 @@ export default function StudentRecord() {
     return periods;
   }, [fullHistory]);
 
-  // Calculations
-  const completedCourses = record.filter((item) => item.status === 'Aprobada' || item.status === 'Reprobada');
+  const completedCourses = fullHistory.filter((item) => item.status === 'Aprobada' || item.status === 'Reprobada');
   
-  const totalPassedCredits = record
+  const totalPassedCredits = fullHistory
     .filter((item) => item.status === 'Aprobada')
     .reduce((sum, item) => sum + item.credits, 0);
 
-  const averageGrade = React.useMemo(() => {
-    const graded = completedCourses.filter((c) => typeof c.grade === 'number');
+  const averageGrade = useMemo(() => {
+    const graded = completedCourses.filter((c) => typeof c.grade === 'number' || !isNaN(Number(c.grade)));
     if (graded.length === 0) return 0;
-    const sum = graded.reduce((acc, c) => acc + c.grade, 0);
+    const sum = graded.reduce((acc, c) => acc + Number(c.grade), 0);
     return sum / graded.length;
   }, [completedCourses]);
 
   const handlePrintRecord = () => {
-    // Generate chronological rows for the PDF printout
     const sortedPeriods = Object.keys(historyByPeriod).sort();
     
     let tableHtml = '';
@@ -284,7 +326,7 @@ export default function StudentRecord() {
           <div class="summary-box">
             <div class="summary-stat">
               <small>Índice de Rendimiento Acumulado (CUM)</small>
-              <span>${averageGrade.toFixed(2)} / 20</span>
+              <span>${Number(averageGrade || 0).toFixed(2)} / 20</span>
             </div>
             <div class="summary-stat">
               <small>Créditos Aprobados Acumulados</small>
@@ -325,7 +367,7 @@ export default function StudentRecord() {
   const metrics = [
     {
       label: 'Promedio General (CUM)',
-      value: `${averageGrade.toFixed(2)} / 20`,
+      value: `${Number(averageGrade || 0).toFixed(2)} / 20`,
       hint: 'Cálculo basado en materias finalizadas',
       icon: Award,
       tone: 'info'
@@ -340,11 +382,25 @@ export default function StudentRecord() {
     {
       label: 'Materias Históricas',
       value: completedCourses.length,
-      hint: `${record.filter((c) => c.status === 'Aprobada').length} Aprobadas · ${record.filter((c) => c.status === 'Reprobada').length} Reprobadas`,
+      hint: `${fullHistory.filter((c) => c.status === 'Aprobada').length} Aprobadas · ${fullHistory.filter((c) => c.status === 'Reprobada').length} Reprobadas`,
       icon: CheckCircle2,
       tone: 'primary'
     }
   ];
+
+  if (loading) {
+    return (
+      <AdminPageShell
+        eyebrow="Portal del Estudiante"
+        title="Récord y Trayectoria Académica"
+        subtitle="Cargando récord académico..."
+      >
+        <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+          <span>Consultando datos académicos...</span>
+        </div>
+      </AdminPageShell>
+    );
+  }
 
   return (
     <AdminPageShell
@@ -353,45 +409,58 @@ export default function StudentRecord() {
       subtitle="Consulta tu historial oficial de calificaciones obtenidas por periodo lectivo, créditos aprobados y descarga tu expediente de notas digital."
       metrics={metrics}
       actions={
-        <ActionButton variant="accent" onClick={handlePrintRecord}>
-          <Printer size={16} /> Descargar Récord Académico
-        </ActionButton>
+        fullHistory.length > 0 && (
+          <ActionButton variant="accent" onClick={handlePrintRecord}>
+            <Printer size={16} /> Descargar Récord Académico
+          </ActionButton>
+        )
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        {/* Render periods in descending order (newest first) */}
-        {Object.keys(historyByPeriod)
-          .sort((a, b) => b.localeCompare(a))
-          .map((period) => (
-            <SectionCard
-              key={period}
-              title={`Periodo Académico: ${period}`}
-              description="Calificaciones finales consolidadas en este ciclo de estudios."
-            >
-              <DataTable columns={['Código', 'Asignatura', 'Créditos', 'Calificación', 'Estatus']}>
-                {historyByPeriod[period].map((course) => {
-                  let tone = 'neutral';
-                  if (course.status === 'Aprobada') tone = 'success';
-                  if (course.status === 'Reprobada') tone = 'danger';
-                  if (course.status === 'Cursando') tone = 'info';
+        {Object.keys(historyByPeriod).length === 0 ? (
+           <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', background: '#ffffff', borderRadius: '18px' }}>
+             <FileText size={64} style={{ color: '#cbd5e1', margin: '0 auto 16px' }} />
+             <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>
+               Sin Récord Académico
+             </h2>
+             <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '500px', margin: '0 auto' }}>
+               Aún no tienes calificaciones registradas en el sistema.
+             </p>
+           </div>
+        ) : (
+          Object.keys(historyByPeriod)
+            .sort((a, b) => b.localeCompare(a))
+            .map((period) => (
+              <SectionCard
+                key={period}
+                title={`Periodo Académico: ${period}`}
+                description="Calificaciones finales consolidadas en este ciclo de estudios."
+              >
+                <DataTable columns={['Código', 'Asignatura', 'Créditos', 'Calificación', 'Estatus']}>
+                  {historyByPeriod[period].map((course) => {
+                    let tone = 'neutral';
+                    if (course.status === 'Aprobada') tone = 'success';
+                    if (course.status === 'Reprobada') tone = 'danger';
+                    if (course.status === 'Cursando') tone = 'info';
 
-                  return (
-                    <tr key={course.code}>
-                      <td>
-                        <strong>{course.code}</strong>
-                      </td>
-                      <td>{course.name}</td>
-                      <td>{course.credits} UC</td>
-                      <td style={{ fontWeight: '800' }}>{course.grade}</td>
-                      <td>
-                        <StatusBadge tone={tone}>{course.status}</StatusBadge>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </DataTable>
-            </SectionCard>
-          ))}
+                    return (
+                      <tr key={course.code}>
+                        <td>
+                          <strong>{course.code}</strong>
+                        </td>
+                        <td>{course.name}</td>
+                        <td>{course.credits} UC</td>
+                        <td style={{ fontWeight: '800' }}>{course.grade}</td>
+                        <td>
+                          <StatusBadge tone={tone}>{course.status}</StatusBadge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </DataTable>
+              </SectionCard>
+            ))
+        )}
       </div>
     </AdminPageShell>
   );

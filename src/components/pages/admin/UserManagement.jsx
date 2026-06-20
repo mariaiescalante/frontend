@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Users, UserPlus, Edit3, Trash2, Eye, EyeOff } from 'lucide-react';
 import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle } from './AdminPageShell';
-import { careerCatalog, teachersCatalog, studentsCatalog } from './adminSeedData';
+import { careerCatalog } from './adminSeedData';
 import { registerUser } from '../../../services/auth';
 import api from '../../../services/api';
 
@@ -11,28 +11,7 @@ const documentTypeOptions = [
   { value: 'E', label: 'E - Extranjero' },
   { value: 'P', label: 'P - Pasaporte' }
 ];
-const STUDENTS_STORAGE_KEY = 'admin_users_students';
-const TEACHERS_STORAGE_KEY = 'admin_users_teachers';
 
-const readStoredRecords = (storageKey, fallbackRecords) => {
-  if (typeof window === 'undefined') {
-    return fallbackRecords;
-  }
-
-  try {
-    const storedValue = window.localStorage.getItem(storageKey);
-
-    if (!storedValue) {
-      return fallbackRecords;
-    }
-
-    const parsedValue = JSON.parse(storedValue);
-
-    return Array.isArray(parsedValue) ? parsedValue : fallbackRecords;
-  } catch {
-    return fallbackRecords;
-  }
-};
 
 const unwrapArrayPayload = (payload) => {
   if (Array.isArray(payload)) {
@@ -283,7 +262,7 @@ const formatApiError = (error) => {
   return error?.message || 'No fue posible registrar el usuario.';
 };
 
-const ADMINS_STORAGE_KEY = 'admin_users_admins';
+
 
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState('students');
@@ -294,9 +273,9 @@ export default function UserManagement() {
   const [studentForm, setStudentForm] = useState(createInitialForm('student'));
   const [teacherForm, setTeacherForm] = useState(createInitialForm('teacher'));
   const [adminForm, setAdminForm] = useState(createInitialForm('admin'));
-  const [students, setStudents] = useState(() => readStoredRecords(STUDENTS_STORAGE_KEY, studentsCatalog));
-  const [teachers, setTeachers] = useState(() => readStoredRecords(TEACHERS_STORAGE_KEY, teachersCatalog));
-  const [admins, setAdmins] = useState(() => readStoredRecords(ADMINS_STORAGE_KEY, []));
+  const [students, setStudents] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [admins, setAdmins] = useState([]);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -324,15 +303,7 @@ export default function UserManagement() {
     return () => { isMounted = false; };
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
 
-    window.localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(students));
-    window.localStorage.setItem(TEACHERS_STORAGE_KEY, JSON.stringify(teachers));
-    window.localStorage.setItem(ADMINS_STORAGE_KEY, JSON.stringify(admins));
-  }, [students, teachers, admins]);
 
   useEffect(() => {
     let isMounted = true;

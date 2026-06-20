@@ -12,17 +12,16 @@ import {
   Trash2
 } from 'lucide-react';
 import { AdminPageShell, SectionCard, ActionButton, StatusBadge } from '../admin/AdminPageShell';
-import { pensumSystems, availableSections } from './studentSeedData';
-import { loadAcademicRecord, loadEnrolledSections, saveEnrolledSections, resetEnrollment } from './studentStorage';
 import api from '../../../services/api';
+import useAuth from '../../../hooks/useAuth';
 
 // Schedule parsing helper to detect collisions
 function parseSchedule(scheduleStr) {
   try {
     const parts = scheduleStr.split(' ');
     if (parts.length < 2) return null;
-    const daysPart = parts[0]; // "Lunes/Miércoles"
-    const hoursPart = parts.slice(1).join(''); // "08:00-10:00"
+    const daysPart = parts[0]; 
+    const hoursPart = parts.slice(1).join(''); 
     
     const days = daysPart.split('/');
     const [startStr, endStr] = hoursPart.split('-');
@@ -54,28 +53,148 @@ function hasOverlap(sch1, sch2) {
 }
 
 export default function StudentEnrollment() {
-  const [record] = useState(() => loadAcademicRecord());
-  const [enrolled, setEnrolled] = useState(() => loadEnrolledSections());
-  const [selectedSubjects, setSelectedSubjects] = useState({}); // { subjectCode: sectionIndex }
+  const { user } = useAuth();
+  const [record, setRecord] = useState([]);
+  const [enrolled, setEnrolled] = useState([]);
+  const [selectedSubjects, setSelectedSubjects] = useState({});
   const [success, setSuccess] = useState(false);
   const [activeSemester, setActiveSemester] = useState(1);
+  
+  const [pensumSystems, setPensumSystems] = useState([]);
+  const [availableSections, setAvailableSections] = useState({});
 
   // Enrollment process states from API
   const [loadingEnrollment, setLoadingEnrollment] = useState(true);
   const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(false);
   const [activePeriodName, setActivePeriodName] = useState('');
+  const [activePeriodId, setActivePeriodId] = useState(null);
 
   useEffect(() => {
     async function checkEnrollment() {
+      if (!user) return;
       try {
         setLoadingEnrollment(true);
-        const res = await api.get('/periods');
-        const periodsList = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
-        // Find if there is an active period with registration open
+        const resPeriods = await api.get('/periods');
+        const periodsList = (Array.isArray(resPeriods) ? resPeriods : (Array.isArray(resPeriods?.data) ? resPeriods.data : []));
         const activePeriod = periodsList.find((p) => p.enrollment_status === 'Abierta');
+        
         if (activePeriod) {
           setIsEnrollmentOpen(true);
           setActivePeriodName(activePeriod.name_period);
+          setActivePeriodId(activePeriod.id_period);
+          
+          // Fetch data
+          const [pensumsRes, semestersRes, sectionsRes, regRes, regDetRes] = await Promise.all([
+            api.get('/pensums'),
+            api.get('/semesters'),
+            api.get(`/sections`),
+            api.get('/registrations'),
+            api.get('/registration-details')
+          ]);
+
+          const rawPensums = Array.isArray(pensumsRes) ? pensumsRes : (pensumsRes?.data || []);
+          const rawSemesters = Array.isArray(semestersRes) ? semestersRes : (semestersRes?.data || []);
+          const rawSections = Array.isArray(sectionsRes) ? sectionsRes : (sectionsRes?.data || []);
+          const rawRegistrations = Array.isArray(regRes) ? regRes : (regRes?.data || []);
+          const rawRegDetails = Array.isArray(regDetRes) ? regDetRes : (regDetRes?.data || []);
+
+          // 1. Build record
+          const studentRegistrations = rawRegistrations.filter(r => r.id_student === user.id_student);
+          const studentRegIds = studentRegistrations.map(r => r.id_registration);
+          const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration));
+
+          const fetchedRecord = studentDetails.map(d => {
+            const sec = rawSections.find(s => s.id_section === d.id_section);
+            const subj = sec?.Subject;
+            return {
+              code: subj?.code_subject || '',
+              name: subj?.name_subject || 'Desconocido',
+              credits: subj?.credit_units || 0,
+              grade: d.final_note,
+              status: d.subject_status === 'Aprobada' ? 'Aprobada' : (d.subject_status === 'Reprobada' ? 'Reprobada' : 'Pendiente')
+            };
+          });
+          setRecord(fetchedRecord);
+
+          // Check if already enrolled in this period
+          const currentPeriodReg = studentRegistrations.find(r => r.id_period === activePeriod.id_period);
+          if (currentPeriodReg) {
+            const currentDetails = rawRegDetails.filter(d => d.id_registration === currentPeriodReg.id_registration);
+            const currentEnrolled = currentDetails.map(d => {
+              const sec = rawSections.find(s => s.id_section === d.id_section);
+              return {
+                code: sec?.Subject?.code_subject || '',
+                name: sec?.Subject?.name_subject || '',
+                credits: sec?.Subject?.credit_units || 0,
+                sectionCode: sec?.section_code || '',
+                schedule: sec?.schedule_info || '',
+                classroom: sec?.classroom || '',
+                id_section: sec?.id_section
+              };
+            });
+            setEnrolled(currentEnrolled);
+          }
+
+          // 2. Build pensumSystems (like StudentPensum.jsx)
+          const currentPensum = (rawPensums.find((p) => p.Career?.name_career?.toLowerCase() === user.career.toLowerCase() && p.is_active) ||
+                                rawPensums.find((p) => p.Career?.name_career?.toLowerCase() === user.career.toLowerCase()));
+          
+          if (currentPensum) {
+            const limit = currentPensum.Career?.total_semesters || 8;
+            const activeSemesters = rawSemesters
+              .filter((s) => s.number_semester <= limit)
+              .sort((a, b) => a.number_semester - b.number_semester);
+
+            const mappedPensum = activeSemesters.map((sem) => {
+              const psList = currentPensum.PensumSubjects || [];
+              const subjectsInSemester = psList
+                .filter((ps) => ps.id_semester === sem.id_semester)
+                .map((ps) => {
+                  const prereqCodes = Array.isArray(ps.Prerequisites)
+                    ? ps.Prerequisites.map((pr) => {
+                        const sub = pr.RequiredPensumSubject?.Subject;
+                        return sub?.code_subject || sub?.code || pr.RequiredPensumSubject?.code_subject;
+                      }).filter(Boolean)
+                    : [];
+                  const prereqText = prereqCodes.length > 0 ? prereqCodes.join(', ') : 'Ninguno';
+
+                  return {
+                    code: ps.Subject?.code_subject || ps.code_subject || '',
+                    name: ps.Subject?.name_subject || 'Sin nombre',
+                    credits: ps.Subject?.credit_units || 0,
+                    mandatory: true,
+                    prereq: prereqText,
+                  };
+                });
+
+              return {
+                semester: sem.number_semester,
+                subjects: subjectsInSemester,
+              };
+            });
+            setPensumSystems(mappedPensum);
+          }
+
+          // 3. Build availableSections map
+          const sectionsMap = {};
+          rawSections.filter(s => s.id_period === activePeriod.id_period).forEach(sec => {
+             const code = sec.Subject?.code_subject || '';
+             if(!sectionsMap[code]) sectionsMap[code] = [];
+             
+             const enrolledCount = rawRegDetails.filter(d => d.id_section === sec.id_section).length;
+
+             sectionsMap[code].push({
+                id_section: sec.id_section,
+                code: sec.section_code,
+                schedule: sec.schedule_info || 'Por asignar',
+                classroom: sec.classroom || 'Por asignar',
+                teacher: sec.Teacher?.User ? `${sec.Teacher.User.first_name} ${sec.Teacher.User.first_lastname}` : 'Sin profesor',
+                capacity: sec.quota_max || 30,
+                enrolled: enrolledCount
+             });
+          });
+          setAvailableSections(sectionsMap);
+
         } else {
           setIsEnrollmentOpen(false);
           setActivePeriodName('');
@@ -88,11 +207,7 @@ export default function StudentEnrollment() {
       }
     }
     checkEnrollment();
-  }, []);
-
-  useEffect(() => {
-    setEnrolled(loadEnrolledSections());
-  }, []);
+  }, [user]);
 
   const approvedCodes = useMemo(() => {
     return new Set(record.filter((item) => item.status === 'Aprobada').map((item) => item.code));
@@ -122,7 +237,6 @@ export default function StudentEnrollment() {
   // List of selected subject info objects
   const selectedList = useMemo(() => {
     return Object.keys(selectedSubjects).map((code) => {
-      // Find subject in pensum
       let subjectObj = null;
       for (const group of pensumSystems) {
         const found = group.subjects.find((s) => s.code === code);
@@ -143,10 +257,11 @@ export default function StudentEnrollment() {
         sectionCode: sectionObj ? sectionObj.code : '',
         schedule: sectionObj ? sectionObj.schedule : '',
         classroom: sectionObj ? sectionObj.classroom : '',
-        teacher: sectionObj ? sectionObj.teacher : ''
+        teacher: sectionObj ? sectionObj.teacher : '',
+        id_section: sectionObj ? sectionObj.id_section : null
       };
     });
-  }, [selectedSubjects]);
+  }, [selectedSubjects, pensumSystems, availableSections]);
 
   // Calculate total credits selected
   const totalCredits = useMemo(() => {
@@ -168,23 +283,52 @@ export default function StudentEnrollment() {
     return conflicts;
   }, [selectedList]);
 
-  const handleEnrollSubmit = () => {
+  const handleEnrollSubmit = async () => {
     if (totalCredits === 0 || totalCredits > 24 || scheduleConflicts.length > 0) return;
-    saveEnrolledSections(selectedList);
-    setEnrolled(selectedList);
-    setSuccess(true);
-    setSelectedSubjects({});
+    
+    try {
+      setLoadingEnrollment(true);
+      const res = await api.post('/registrations', {
+        id_student: user.id_student,
+        id_period: activePeriodId,
+        status: 'Inscrito'
+      });
+      const id_registration = res?.id_registration || res?.data?.id_registration;
+
+      await Promise.all(selectedList.map(async (item) => {
+        return api.post('/registration-details', {
+          id_registration,
+          id_section: item.id_section,
+          corte_1: 0, corte_2: 0, corte_3: 0, corte_4: 0, recuperatorio: 0,
+          final_note: 0, attendance_percentage: 0, subject_status: 'En curso'
+        });
+      }));
+
+      setEnrolled(selectedList);
+      setSuccess(true);
+      setSelectedSubjects({});
+    } catch (err) {
+      console.error('Error in handleEnrollSubmit:', err);
+      if (err.data && err.data.errors) {
+        const errorDetails = err.data.errors.map(e => `${e.campo || e.path || 'Error'}: ${e.mensaje || e.message || ''}`).join('\n');
+        alert(`Error de validación:\n${errorDetails}`);
+      } else {
+        alert(err.message || 'Error al procesar inscripción');
+      }
+    } finally {
+      setLoadingEnrollment(false);
+    }
   };
 
-  const handleReset = () => {
-    resetEnrollment();
-    setEnrolled([]);
-    setSuccess(false);
+  const handleReset = async () => {
+    // In a real scenario we'd call a DELETE to remove the registration
+    // Since this is just replacing the simulator, we'll alert that cancellation needs to go through admin
+    alert('Para anular su inscripción, por favor contacte a Control de Estudios.');
   };
 
   const activeGroup = useMemo(() => {
     return pensumSystems.find((group) => group.semester === activeSemester);
-  }, [activeSemester]);
+  }, [activeSemester, pensumSystems]);
 
   if (loadingEnrollment) {
     return (
@@ -194,7 +338,7 @@ export default function StudentEnrollment() {
         subtitle="Verificando estado del período..."
       >
         <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-          <span>Consultando estado del proceso de inscripción en la base de datos...</span>
+          <span>Consultando datos en el sistema...</span>
         </div>
       </AdminPageShell>
     );
@@ -252,7 +396,7 @@ export default function StudentEnrollment() {
 
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '24px', maxWidth: '300px', margin: '0 auto' }}>
             <ActionButton variant="danger" onClick={handleReset} style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
-              <Trash2 size={12} /> Deshacer inscripción (Simulador)
+              <Info size={12} /> Solicitar retiro de asignaturas
             </ActionButton>
           </div>
         </div>
@@ -297,7 +441,7 @@ export default function StudentEnrollment() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {activeGroup.subjects.map((subject) => {
                   const isPassed = approvedCodes.has(subject.code);
-                  const isPrereqMet = subject.prereq === 'Ninguno' || approvedCodes.has(subject.prereq);
+                  const isPrereqMet = subject.prereq === 'Ninguno' || subject.prereq.split(', ').every(pr => approvedCodes.has(pr));
                   const isBlocked = !isPassed && !isPrereqMet;
 
                   const sections = availableSections[subject.code] || [];
@@ -323,10 +467,10 @@ export default function StudentEnrollment() {
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            disabled={isPassed || isBlocked}
+                            disabled={isPassed || isBlocked || sections.length === 0}
                             onChange={() => handleToggleSubject(subject.code)}
                             style={{
-                              cursor: (isPassed || isBlocked) ? 'not-allowed' : 'pointer',
+                              cursor: (isPassed || isBlocked || sections.length === 0) ? 'not-allowed' : 'pointer',
                               width: '18px',
                               height: '18px',
                               accentColor: '#051124',
@@ -354,9 +498,14 @@ export default function StudentEnrollment() {
                               <AlertTriangle size={10} /> Prelada por {subject.prereq}
                             </StatusBadge>
                           )}
-                          {!isPassed && !isBlocked && !isSelected && (
+                          {!isPassed && !isBlocked && !isSelected && sections.length > 0 && (
                             <StatusBadge tone="info" style={{ fontSize: '0.72rem' }}>
                               Habilitada
+                            </StatusBadge>
+                          )}
+                          {!isPassed && !isBlocked && !isSelected && sections.length === 0 && (
+                            <StatusBadge tone="neutral" style={{ fontSize: '0.72rem' }}>
+                              Sin secciones
                             </StatusBadge>
                           )}
                           {isSelected && (

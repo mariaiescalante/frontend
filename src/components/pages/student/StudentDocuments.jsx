@@ -1,11 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Printer, CheckCircle, AlertCircle, FileCheck, Layers } from 'lucide-react';
 import { AdminPageShell, ActionButton, SectionCard } from '../admin/AdminPageShell';
-import { loadStudentProfile, loadEnrolledSections } from './studentStorage';
+import api from '../../../services/api';
+import useAuth from '../../../hooks/useAuth';
 
 export default function StudentDocuments() {
-  const [profile] = useState(() => loadStudentProfile());
-  const [enrolled] = useState(() => loadEnrolledSections());
+  const { user } = useAuth();
+  const [enrolled, setEnrolled] = useState([]);
+  const [activePeriodName, setActivePeriodName] = useState('');
+
+  useEffect(() => {
+    async function loadDocumentsData() {
+      if (!user) return;
+      try {
+        const [regRes, regDetRes, secRes, periodsRes] = await Promise.all([
+          api.get('/registrations'),
+          api.get('/registration-details'),
+          api.get('/sections'),
+          api.get('/periods')
+        ]);
+        
+        const activePeriod = periodsRes.data.find(p => p.enrollment_status === 'Abierta');
+        if (activePeriod) setActivePeriodName(activePeriod.name_period);
+        
+        if (!activePeriod) return;
+
+        const rawReg = Array.isArray(reg) ? reg : (reg?.data || []);
+        const studentReg = rawReg.find(r => r.id_student === user.id_student && r.id_period === activePeriod.id_period);
+        
+        if (!studentReg) return;
+
+        const studentDetails = (regDetRes.data || []).filter(d => d.id_registration === studentReg.id_registration);
+        
+        const mappedEnrolled = studentDetails.map(d => {
+          const sec = (secRes.data || []).find(s => s.id_section === d.id_section);
+          return {
+            code: sec?.Subject?.code_subject || '',
+            name: sec?.Subject?.name_subject || '',
+            sectionCode: sec?.section_code || '',
+            credits: sec?.Subject?.credit_units || 0,
+            schedule: sec?.schedule_info || '',
+            classroom: sec?.classroom || '',
+            teacher: sec?.Teacher?.User ? `${sec.Teacher.User.first_name} ${sec.Teacher.User.first_lastname}` : 'Sin docente'
+          };
+        });
+
+        setEnrolled(mappedEnrolled);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadDocumentsData();
+  }, [user]);
+
+  const profile = {
+    name: user?.first_name || '',
+    lastname: user?.first_lastname || '',
+    cedula: user?.document_id || '',
+    career: user?.career || '',
+    currentPeriod: activePeriodName || 'Actual'
+  };
 
   const isEnrolled = enrolled.length > 0;
 

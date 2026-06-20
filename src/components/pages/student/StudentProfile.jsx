@@ -235,7 +235,7 @@ export default function StudentProfile() {
                   <Award size={18} style={{ color: '#1d4ed8' }} />
                   <div>
                     <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>Índice (CUM)</span>
-                    <strong style={{ color: '#0f172a', fontSize: '1.05rem' }}>{(profile.cum || 16.45).toFixed(2)}</strong>
+                    <strong style={{ color: '#0f172a', fontSize: '1.05rem' }}>{Number(profile.cum || 16.45).toFixed(2)}</strong>
                   </div>
                 </div>
 

@@ -1,15 +1,80 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Download, Printer, Clock, MapPin, User, FileText } from 'lucide-react';
 import { AdminPageShell, ActionButton, SectionCard, DataTable } from '../admin/AdminPageShell';
-import { loadEnrolledSections, loadStudentProfile } from './studentStorage';
+import api from '../../../services/api';
+import useAuth from '../../../hooks/useAuth';
 
 export default function StudentSchedule() {
-  const [enrolled] = useState(() => loadEnrolledSections());
-  const [profile] = useState(() => loadStudentProfile());
+  const { user } = useAuth();
+  const [enrolled, setEnrolled] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activePeriodName, setActivePeriodName] = useState('');
+
+  useEffect(() => {
+    async function loadSchedule() {
+      if (!user) return;
+      try {
+        setLoading(true);
+        const [regRes, regDetRes, secRes, periodsRes] = await Promise.all([
+          api.get('/registrations'),
+          api.get('/registration-details'),
+          api.get('/sections'),
+          api.get('/periods')
+        ]);
+        
+        // Find active period
+        const activePeriod = periodsRes.data.find(p => p.enrollment_status === 'Abierta');
+        if (!activePeriod) {
+          setEnrolled([]);
+          return;
+        }
+
+        setActivePeriodName(activePeriod.name_period);
+
+        const rawReg = Array.isArray(reg) ? reg : (reg?.data || []);
+        const studentReg = rawReg.find(r => r.id_student === user.id_student && r.id_period === activePeriod.id_period);
+        
+        if (!studentReg) {
+          setEnrolled([]);
+          return;
+        }
+
+        const studentDetails = (regDetRes.data || []).filter(d => d.id_registration === studentReg.id_registration);
+        
+        const mappedEnrolled = studentDetails.map(d => {
+          const sec = (secRes.data || []).find(s => s.id_section === d.id_section);
+          return {
+            code: sec?.Subject?.code_subject || '',
+            name: sec?.Subject?.name_subject || '',
+            sectionCode: sec?.section_code || '',
+            credits: sec?.Subject?.credit_units || 0,
+            schedule: sec?.schedule_info || '',
+            classroom: sec?.classroom || '',
+            teacher: sec?.Teacher?.User ? `${sec.Teacher.User.first_name} ${sec.Teacher.User.first_lastname}` : 'Sin docente'
+          };
+        });
+
+        setEnrolled(mappedEnrolled);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSchedule();
+  }, [user]);
+
+  const profile = {
+    name: user?.first_name || '',
+    lastname: user?.first_lastname || '',
+    cedula: user?.document_id || '',
+    career: user?.career || '',
+    currentPeriod: activePeriodName || 'Actual'
+  };
 
   // Group classes by day for the visual weekly planner
-  const weeklyPlanner = React.useMemo(() => {
+  const weeklyPlanner = useMemo(() => {
     const days = {
       Lunes: [],
       Martes: [],
@@ -19,11 +84,11 @@ export default function StudentSchedule() {
     };
 
     enrolled.forEach((course) => {
-      // e.g. "Lunes/Miércoles 08:00 - 10:00"
+      if (!course.schedule) return;
       const parts = course.schedule.split(' ');
       if (parts.length < 2) return;
-      const daysPart = parts[0]; // "Lunes/Miércoles"
-      const timePart = parts.slice(1).join(' '); // "08:00 - 10:00"
+      const daysPart = parts[0]; 
+      const timePart = parts.slice(1).join(' '); 
 
       const scheduleDays = daysPart.split('/');
       scheduleDays.forEach((d) => {
@@ -39,7 +104,6 @@ export default function StudentSchedule() {
       });
     });
 
-    // Sort classes inside each day by time
     Object.keys(days).forEach((d) => {
       days[d].sort((a, b) => a.time.localeCompare(b.time));
     });
@@ -275,11 +339,24 @@ export default function StudentSchedule() {
     popup.document.write(printableHtml);
     popup.document.close();
     popup.focus();
-    // Tiny delay to ensure font resources/layouts render prior to print popup
     setTimeout(() => {
       popup.print();
     }, 250);
   };
+
+  if (loading) {
+    return (
+      <AdminPageShell
+        eyebrow="Portal del Estudiante"
+        title="Consulta de Horario Escolar"
+        subtitle="Visualiza tu agenda semanal de clases..."
+      >
+        <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+          <span>Cargando horario...</span>
+        </div>
+      </AdminPageShell>
+    );
+  }
 
   return (
     <AdminPageShell
@@ -301,7 +378,7 @@ export default function StudentSchedule() {
             Sin Carga Académica Registrada
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '500px', margin: '0 auto 24px', lineHeight: 1.6 }}>
-            Aún no has inscrito asignaturas para el periodo actual <strong>2026-II</strong>. Para ver tu horario, primero debes completar el proceso de inscripción.
+            Aún no has inscrito asignaturas para el periodo actual <strong>{activePeriodName || 'Actual'}</strong>. Para ver tu horario, primero debes completar el proceso de inscripción.
           </p>
           <Link to="/student/enrollment" style={{ textDecoration: 'none' }}>
             <ActionButton variant="primary">Ir a Inscribir Materias</ActionButton>
@@ -309,7 +386,6 @@ export default function StudentSchedule() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Day by Day Weekly Grid Plan */}
           <SectionCard
             title="Planificador Semanal"
             description="Distribución de tus clases de Lunes a Viernes según las secciones inscritas."
@@ -395,7 +471,6 @@ export default function StudentSchedule() {
             </div>
           </SectionCard>
 
-          {/* List Table of courses */}
           <SectionCard
             title="Listado Detallado de Carga Horaria"
             description="Detalle completo de materias, docentes y ubicación de aulas."

@@ -22,10 +22,12 @@ export default function SectionsManagement() {
     id_subject: '',
     id_teacher: '',
     id_career: '',
-    section_code: '',
+    section_code: 'A',
     quota_max: 30,
-    classroom: '',
-    schedule_info: ''
+    classroom: 'Aula 01',
+    schedule_day: 'Lunes',
+    schedule_start: '08:00',
+    schedule_end: '10:00'
   });
 
   async function loadData() {
@@ -72,16 +74,30 @@ export default function SectionsManagement() {
       id_subject: subjects[0]?.id_subject || '',
       id_teacher: teachers[0]?.id_teacher || '',
       id_career: careers[0]?.id_career || '',
-      section_code: '',
+      section_code: 'A',
       quota_max: 30,
-      classroom: '',
-      schedule_info: ''
+      classroom: 'Aula 01',
+      schedule_day: 'Lunes',
+      schedule_start: '08:00',
+      schedule_end: '10:00'
     });
     setModalOpen(true);
   };
 
   const handleEditSection = (section) => {
     setEditingSection(section);
+    let day = 'Lunes';
+    let start = '08:00';
+    let end = '10:00';
+    if (section.schedule_info) {
+      const match = section.schedule_info.match(/^(\w+)\s+(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/);
+      if (match) {
+        day = match[1];
+        start = match[2];
+        end = match[3];
+      }
+    }
+
     setForm({
       id_period: section.id_period,
       id_subject: section.id_subject,
@@ -89,8 +105,10 @@ export default function SectionsManagement() {
       id_career: section.id_career,
       section_code: section.section_code,
       quota_max: section.quota_max,
-      classroom: section.classroom || '',
-      schedule_info: section.schedule_info || ''
+      classroom: section.classroom || 'Aula 01',
+      schedule_day: day,
+      schedule_start: start,
+      schedule_end: end
     });
     setModalOpen(true);
   };
@@ -104,8 +122,8 @@ export default function SectionsManagement() {
         id_career: Number(form.id_career),
         section_code: form.section_code.trim(),
         quota_max: Number(form.quota_max),
-        classroom: form.classroom.trim() || null,
-        schedule_info: form.schedule_info.trim() || null
+        classroom: form.classroom,
+        schedule_info: `${form.schedule_day} ${form.schedule_start} - ${form.schedule_end}`
       };
 
       if (!payload.id_period || !payload.id_subject || !payload.id_teacher || !payload.id_career || !payload.section_code || !payload.quota_max) {
@@ -254,7 +272,14 @@ export default function SectionsManagement() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Código de Sección</span>
-            <input className="form-input" value={form.section_code} onChange={e => setForm({...form, section_code: e.target.value})} placeholder="Código (ej: INF-A)" />
+            <select className="form-input" value={form.section_code} onChange={e => setForm({...form, section_code: e.target.value})}>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+              <option value="E">E</option>
+              <option value="F">F</option>
+            </select>
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Materia</span>
@@ -287,13 +312,32 @@ export default function SectionsManagement() {
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Cupos Máximos</span>
             <input className="form-input" type="number" value={form.quota_max} onChange={e => setForm({...form, quota_max: e.target.value})} placeholder="Cupos máximos" />
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Horario</span>
-            <input className="form-input" value={form.schedule_info} onChange={e => setForm({...form, schedule_info: e.target.value})} placeholder="Horario (ej: Lun/Mie 08:00 - 10:00)" />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+              <select className="form-input" value={form.schedule_day} onChange={e => setForm({...form, schedule_day: e.target.value})}>
+                {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <select className="form-input" value={form.schedule_start} onChange={e => setForm({...form, schedule_start: e.target.value})}>
+                {['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(t => <option key={t} value={t}>Desde {t}</option>)}
+              </select>
+              <select className="form-input" value={form.schedule_end} onChange={e => setForm({...form, schedule_end: e.target.value})}>
+                {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map(t => <option key={t} value={t}>Hasta {t}</option>)}
+              </select>
+            </div>
+          </div>
+          
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Aula</span>
-            <input className="form-input" value={form.classroom} onChange={e => setForm({...form, classroom: e.target.value})} placeholder="Aula (ej: Aula 04)" />
+            <select className="form-input" value={form.classroom} onChange={e => setForm({...form, classroom: e.target.value})}>
+              <optgroup label="Aulas">
+                {['Aula 01', 'Aula 02', 'Aula 03', 'Aula 04', 'Aula 05', 'Aula 06', 'Aula 07'].map(a => <option key={a} value={a}>{a}</option>)}
+              </optgroup>
+              <optgroup label="Laboratorios">
+                {['Lab 01', 'Lab 02', 'Lab 03', 'Lab 04'].map(a => <option key={a} value={a}>{a}</option>)}
+              </optgroup>
+            </select>
           </label>
         </div>
       </Modal>

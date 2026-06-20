@@ -1,29 +1,68 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { BookOpenCheck, Filter } from 'lucide-react';
 import { AdminPageShell, DataTable, SectionCard, StatusBadge } from '../admin/AdminPageShell';
-import { teacherAssignments } from './teacherSeedData';
+import api from '../../../services/api';
+import useAuth from '../../../hooks/useAuth';
 
 export default function TeacherSubjects() {
+  const { user } = useAuth();
   const [careerFilter, setCareerFilter] = useState('Todas');
   const [periodFilter, setPeriodFilter] = useState('Todos');
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadAssignments() {
+      if (!user?.id_teacher) {
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        const res = await api.get('/sections');
+        const allSections = Array.isArray(secRes) ? secRes : (secRes?.data || []);
+        
+        // Filtrar las secciones que corresponden a este profesor
+        const teacherSections = allSections.filter(s => s.id_teacher === user.id_teacher);
+        
+        const mapped = teacherSections.map(s => ({
+          id: s.id_section,
+          code: s.Subject?.code_subject || '',
+          subject: s.Subject?.name_subject || 'Desconocido',
+          section: s.section_code || '',
+          career: s.Career?.name_career || 'No definida',
+          semester: 'N/A', // Semester is derived from PensumSubject usually, showing N/A
+          period: s.AcademicPeriod?.name_period || '',
+          actStatus: 'abierta' // Por defecto abierta
+        }));
+        
+        setAssignments(mapped);
+      } catch (err) {
+        console.error('Error loading teacher subjects:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadAssignments();
+  }, [user]);
 
   const careerOptions = useMemo(
-    () => ['Todas', ...new Set(teacherAssignments.map((item) => item.career))],
-    []
+    () => ['Todas', ...new Set(assignments.map((item) => item.career))],
+    [assignments]
   );
 
   const periodOptions = useMemo(
-    () => ['Todos', ...new Set(teacherAssignments.map((item) => item.period))],
-    []
+    () => ['Todos', ...new Set(assignments.map((item) => item.period))],
+    [assignments]
   );
 
   const filteredAssignments = useMemo(() => {
-    return teacherAssignments.filter((item) => {
+    return assignments.filter((item) => {
       const byCareer = careerFilter === 'Todas' || item.career === careerFilter;
       const byPeriod = periodFilter === 'Todos' || item.period === periodFilter;
       return byCareer && byPeriod;
     });
-  }, [careerFilter, periodFilter]);
+  }, [careerFilter, periodFilter, assignments]);
 
   const metrics = [
     {
@@ -41,6 +80,20 @@ export default function TeacherSubjects() {
       tone: 'primary'
     }
   ];
+
+  if (loading) {
+    return (
+      <AdminPageShell
+        eyebrow="Modulo Docente"
+        title="Consultar Asignaturas Impartidas"
+        subtitle="Cargando carga académica..."
+      >
+        <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+          <span>Cargando asignaturas...</span>
+        </div>
+      </AdminPageShell>
+    );
+  }
 
   return (
     <AdminPageShell

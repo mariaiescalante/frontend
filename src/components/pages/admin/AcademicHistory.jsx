@@ -19,7 +19,7 @@ export default function AcademicHistory() {
       title="Seguimiento integral del estudiante"
       subtitle="Busca por cédula o nombre y revisa el acumulado, créditos aprobados y la línea de tiempo de su rendimiento."
       metrics={[
-        { label: 'CUM promedio', value: selectedStudent.cum.toFixed(1), hint: 'Promedio acumulado del estudiante seleccionado', icon: History, tone: 'primary' },
+        { label: 'CUM promedio', value: Number(selectedStudent.cum || 0).toFixed(1), hint: 'Promedio acumulado del estudiante seleccionado', icon: History, tone: 'primary' },
         { label: 'Créditos aprobados', value: selectedStudent.credits, hint: 'Carga académica superada con éxito', icon: GraduationCap, tone: 'success' },
         { label: 'Materias cursadas', value: selectedStudent.courses, hint: 'Registro histórico disponible', icon: History, tone: 'info' }
       ]}
@@ -67,7 +67,7 @@ export default function AcademicHistory() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '18px' }}>
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px' }}>
               <span className="form-label">CUM</span>
-              <strong style={{ display: 'block', fontSize: '1.6rem', color: '#051124' }}>{selectedStudent.cum.toFixed(1)}</strong>
+              <strong style={{ display: 'block', fontSize: '1.6rem', color: '#051124' }}>{Number(selectedStudent.cum || 0).toFixed(1)}</strong>
             </div>
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px' }}>
               <span className="form-label">Créditos</span>
@@ -88,7 +88,7 @@ export default function AcademicHistory() {
                   <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Nota final consolidada</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <StatusBadge tone={entry.grade >= 8 ? 'success' : entry.grade >= 6.5 ? 'warning' : 'danger'}>{entry.grade.toFixed(1)}</StatusBadge>
+                  <StatusBadge tone={entry.grade >= 8 ? 'success' : entry.grade >= 6.5 ? 'warning' : 'danger'}>{Number(entry.grade || 0).toFixed(1)}</StatusBadge>
                   <StatusBadge tone="info">{entry.status}</StatusBadge>
                 </div>
               </article>

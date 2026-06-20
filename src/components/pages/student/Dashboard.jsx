@@ -81,7 +81,7 @@ export default function StudentDashboard() {
     },
     {
       label: 'Promedio General (CUM)',
-      value: `${profile.cum.toFixed(2)} / 20`,
+      value: `${Number(profile.cum || 0).toFixed(2)} / 20`,
       hint: 'Escala nacional aprobatoria (10-20)',
       icon: Award,
       tone: 'info'

@@ -73,7 +73,7 @@ export default function StudentPensum() {
 
           return {
             id_pensum_subject: ps.id_pensum_subject,
-            code: ps.code_subject || ps.Subject?.code_subject || '',
+            code: ps.Subject?.code_subject || ps.code_subject || '',
             name: ps.Subject?.name_subject || 'Sin nombre',
             credits: ps.Subject?.credit_units || 0,
             mandatory: true,
