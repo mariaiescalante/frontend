@@ -4,7 +4,8 @@ import { ArrowLeft, User, Eye, EyeOff, ShieldAlert, LifeBuoy } from 'lucide-reac
 import useAuth from '../../hooks/useAuth';
 import universityLogo from '../../assets/logo-uptnt.png';
 
-const publicWebsiteUrl = import.meta.env.VITE_PUBLIC_SITE_URL || 'http://localhost:5174/';
+//const publicWebsiteUrl = import.meta.env.VITE_PUBLIC_SITE_URL || 'http://localhost:5174/';
+const publicWebsiteUrl = import.meta.env.VITE_PUBLIC_SITE_URL || 'https://sgumswebsite.netlify.app/';
 
 export default function Login() {
   const navigate = useNavigate();
