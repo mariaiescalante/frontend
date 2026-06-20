@@ -300,7 +300,7 @@ export default function StudentEnrollment() {
           id_registration,
           id_section: item.id_section,
           corte_1: 0, corte_2: 0, corte_3: 0, corte_4: 0, recuperatorio: 0,
-          final_note: 0, attendance_percentage: 0, subject_status: 'En curso'
+          final_note: 0, attendance_percentage: 0, subject_status: 'Cursando'
         });
       }));
 

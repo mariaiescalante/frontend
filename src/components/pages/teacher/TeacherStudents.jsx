@@ -46,11 +46,12 @@ export default function TeacherStudents() {
           api.get('/users')
         ]);
         
-        const teacherSections = (Array.isArray(secRes) ? secRes : secRes?.data).filter(s => s.id_teacher === user.id_teacher);
+        const rawSec = Array.isArray(secRes) ? secRes : (secRes?.data || []);
+        const teacherSections = rawSec.filter(s => s.id_teacher === user.id_teacher);
         setAssignments(teacherSections);
-        setAllDetails((Array.isArray(detRes) ? detRes : detRes?.data));
-        setAllRegistrations(regRes.data);
-        setAllUsers(userRes.data);
+        setAllDetails(Array.isArray(detRes) ? detRes : (detRes?.data || []));
+        setAllRegistrations(Array.isArray(regRes) ? regRes : (regRes?.data || []));
+        setAllUsers(Array.isArray(userRes) ? userRes : (userRes?.data || []));
       } catch(err) {
         console.error(err);
       } finally {
@@ -184,8 +185,8 @@ export default function TeacherStudents() {
         const avg = count === 0 ? 0 : (c1 + c2 + c3 + c4) / count;
         
         let status = 'Cursando';
-        if (avg >= 9.5 && count === 4) status = 'Aprobada'; // Simplified criteria
-        else if (count === 4) status = 'Reprobada';
+        if (avg >= 9.5 && count === 4) status = 'Aprobado'; // Simplified criteria
+        else if (count === 4) status = 'Reprobado';
 
         return api.put(`/registration-details/${r.id_detail}`, {
           corte_1: r.grades.c1 === '' ? 0 : r.grades.c1,
@@ -200,7 +201,7 @@ export default function TeacherStudents() {
       
       // Reload details to sync state
       const detRes = await api.get('/registration-details');
-      setAllDetails((Array.isArray(detRes) ? detRes : detRes?.data));
+      setAllDetails(Array.isArray(detRes) ? detRes : (detRes?.data || []));
     } catch(err) {
       console.error(err);
       alert('Error guardando notas.');
