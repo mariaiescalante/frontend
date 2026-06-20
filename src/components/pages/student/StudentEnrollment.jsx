@@ -111,7 +111,7 @@ export default function StudentEnrollment() {
               name: subj?.name_subject || 'Desconocido',
               credits: subj?.credit_units || 0,
               grade: d.final_note,
-              status: d.subject_status === 'Aprobada' ? 'Aprobada' : (d.subject_status === 'Reprobada' ? 'Reprobada' : 'Pendiente')
+              status: (d.subject_status === 'Aprobada' || d.subject_status === 'Aprobado') ? 'Aprobada' : ((d.subject_status === 'Reprobada' || d.subject_status === 'Reprobado') ? 'Reprobada' : 'Pendiente')
             };
           });
           setRecord(fetchedRecord);

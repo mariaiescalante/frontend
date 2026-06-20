@@ -98,8 +98,8 @@ export default function GradesControl() {
       setIsSaving(true);
       await Promise.all(grades.map(r => {
         let status = 'Cursando';
-        if (r.final >= 9.5) status = 'Aprobada'; // Simplified criteria
-        else status = 'Reprobada';
+        if (r.final >= 9.5) status = 'Aprobado'; // Simplified criteria
+        else status = 'Reprobado';
 
         return api.put(`/registration-details/${r.id}`, {
           corte_1: r.c1,

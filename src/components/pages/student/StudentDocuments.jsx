@@ -20,20 +20,23 @@ export default function StudentDocuments() {
           api.get('/periods')
         ]);
         
-        const activePeriod = periodsRes.data.find(p => p.enrollment_status === 'Abierta');
+        const rawPeriods = Array.isArray(periodsRes) ? periodsRes : (periodsRes?.data || []);
+        const activePeriod = rawPeriods.find(p => p.enrollment_status === 'Abierta');
         if (activePeriod) setActivePeriodName(activePeriod.name_period);
         
         if (!activePeriod) return;
 
-        const rawReg = Array.isArray(reg) ? reg : (reg?.data || []);
+        const rawReg = Array.isArray(regRes) ? regRes : (regRes?.data || []);
         const studentReg = rawReg.find(r => r.id_student === user.id_student && r.id_period === activePeriod.id_period);
         
         if (!studentReg) return;
 
-        const studentDetails = (regDetRes.data || []).filter(d => d.id_registration === studentReg.id_registration);
+        const rawRegDetails = Array.isArray(regDetRes) ? regDetRes : (regDetRes?.data || []);
+        const studentDetails = rawRegDetails.filter(d => d.id_registration === studentReg.id_registration);
         
+        const rawSec = Array.isArray(secRes) ? secRes : (secRes?.data || []);
         const mappedEnrolled = studentDetails.map(d => {
-          const sec = (secRes.data || []).find(s => s.id_section === d.id_section);
+          const sec = rawSec.find(s => s.id_section === d.id_section);
           return {
             code: sec?.Subject?.code_subject || '',
             name: sec?.Subject?.name_subject || '',

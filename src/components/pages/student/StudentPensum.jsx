@@ -12,22 +12,54 @@ export default function StudentPensum() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeSemester, setActiveSemester] = useState(null);
-  const [record] = useState(() => loadAcademicRecord());
+  const [record, setRecord] = useState([]);
 
   useEffect(() => {
     async function loadData() {
+      if (!user) return;
       try {
         setLoading(true);
-        const [pensumsRes, semestersRes] = await Promise.all([
+        const [pensumsRes, semestersRes, regRes, regDetRes, secRes] = await Promise.all([
           api.get('/pensums'),
-          api.get('/semesters')
+          api.get('/semesters'),
+          api.get('/registrations'),
+          api.get('/registration-details'),
+          api.get('/sections')
         ]);
 
         const rawPensums = Array.isArray(pensumsRes.data) ? pensumsRes.data : (Array.isArray(pensumsRes) ? pensumsRes : []);
         const rawSemesters = Array.isArray(semestersRes.data) ? semestersRes.data : (Array.isArray(semestersRes) ? semestersRes : []);
+        const rawReg = Array.isArray(regRes) ? regRes : (regRes?.data || []);
+        const rawRegDetails = Array.isArray(regDetRes) ? regDetRes : (regDetRes?.data || []);
+        const rawSections = Array.isArray(secRes) ? secRes : (secRes?.data || []);
 
         setPensums(rawPensums);
         setSemesters(rawSemesters);
+
+        // Build actual student record from backend database
+        const studentRegistrations = rawReg.filter(r => r.id_student === user.id_student);
+        const studentRegIds = studentRegistrations.map(r => r.id_registration);
+        const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration));
+
+        const fetchedRecord = studentDetails.map(d => {
+          const sec = rawSections.find(s => s.id_section === d.id_section);
+          const subj = sec?.Subject;
+          
+          let statusStr = 'Pendiente';
+          if (d.subject_status === 'Aprobada' || d.subject_status === 'Aprobado') statusStr = 'Aprobada';
+          else if (d.subject_status === 'Reprobada' || d.subject_status === 'Reprobado') statusStr = 'Reprobada';
+          else if (d.subject_status === 'En curso' || d.subject_status === 'Cursando') statusStr = 'Cursando';
+
+          return {
+            code: subj?.code_subject || '',
+            name: subj?.name_subject || 'Desconocido',
+            credits: subj?.credit_units || 0,
+            grade: d.final_note,
+            status: statusStr
+          };
+        });
+
+        setRecord(fetchedRecord);
       } catch (err) {
         console.error('Error fetching student pensum data:', err);
         setError('Error al conectar con el servidor para cargar el pensum.');
@@ -37,7 +69,7 @@ export default function StudentPensum() {
     }
 
     loadData();
-  }, []);
+  }, [user]);
 
   // Find the pensum matching student's career name (active first)
   const currentPensum = useMemo(() => {

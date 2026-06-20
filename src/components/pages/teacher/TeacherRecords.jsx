@@ -150,13 +150,13 @@ export default function TeacherRecords() {
                 <td>{record.career}</td>
                 <td>{record.period}</td>
                 <td>
-                  <StatusBadge tone={record.status === 'cerrada' ? 'neutral' : 'warning'}>
+                  <StatusBadge tone={record.status === 'cerrada' ? 'warning' : 'success'}>
                     {record.status}
                   </StatusBadge>
                 </td>
                 <td>
                   {record.status === 'cerrada' ? (
-                    <StatusBadge tone="success">Bloqueada</StatusBadge>
+                    <StatusBadge tone="warning">Bloqueada</StatusBadge>
                   ) : (
                     <ActionButton 
                       variant="secondary" 

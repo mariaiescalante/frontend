@@ -21,10 +21,10 @@ export default function StudentRecord() {
           api.get('/periods')
         ]);
         
-        const rawReg = Array.isArray(reg) ? reg : (reg?.data || []);
+        const rawReg = Array.isArray(regRes) ? regRes : (regRes?.data || []);
         const rawRegDetails = Array.isArray(regDetRes) ? regDetRes : (regDetRes?.data || []);
-        const rawSections = Array.isArray(sectionsRes) ? sectionsRes : (sectionsRes?.data || []);
-        const periodsList = Array.isArray(periodsList) ? periodsList : (periodsList?.data || []);
+        const rawSections = Array.isArray(secRes) ? secRes : (secRes?.data || []);
+        const periodsList = Array.isArray(periodsRes) ? periodsRes : (periodsRes?.data || []);
         
         const periodMap = {};
         periodsList.forEach(p => {
@@ -42,9 +42,9 @@ export default function StudentRecord() {
           const periodName = periodMap[reg?.id_period] || 'Desconocido';
           
           let statusStr = 'Pendiente';
-          if (d.subject_status === 'Aprobada') statusStr = 'Aprobada';
-          else if (d.subject_status === 'Reprobada') statusStr = 'Reprobada';
-          else if (d.subject_status === 'En curso') statusStr = 'Cursando';
+          if (d.subject_status === 'Aprobada' || d.subject_status === 'Aprobado') statusStr = 'Aprobada';
+          else if (d.subject_status === 'Reprobada' || d.subject_status === 'Reprobado') statusStr = 'Reprobada';
+          else if (d.subject_status === 'En curso' || d.subject_status === 'Cursando') statusStr = 'Cursando';
 
           return {
             code: subj?.code_subject || '',

@@ -19,7 +19,7 @@ export default function TeacherSubjects() {
       }
       try {
         setLoading(true);
-        const res = await api.get('/sections');
+        const secRes = await api.get('/sections');
         const allSections = Array.isArray(secRes) ? secRes : (secRes?.data || []);
         
         // Filtrar las secciones que corresponden a este profesor
