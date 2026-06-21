@@ -1,5 +1,6 @@
 import axios from 'axios';
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://backend-sgums.onrender.com/api';
+//const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const TOKEN_KEY = 'stitch_token';
 
 const getToken = () => localStorage.getItem(TOKEN_KEY);
