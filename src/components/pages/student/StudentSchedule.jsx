@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, Download, Printer, Clock, MapPin, User, FileText } from 'lucide-react';
 import { AdminPageShell, ActionButton, SectionCard, DataTable } from '../admin/AdminPageShell';
 import api from '../../../services/api';
@@ -8,6 +8,7 @@ import { logoBase64 } from '../../../assets/logoConstant';
 
 
 export default function StudentSchedule() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [enrolled, setEnrolled] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -194,6 +195,8 @@ export default function StudentSchedule() {
   }, [enrolled]);
 
   const handlePrintComprobante = () => {
+    navigate('/student/documents');
+    return;
     if (enrolled.length === 0) return;
 
     const tableRows = enrolled
