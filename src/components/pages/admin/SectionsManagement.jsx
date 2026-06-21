@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Layers3, PlusSquare, Search } from 'lucide-react';
-import { AdminPageShell, ActionButton, Modal, ProgressBar, SectionCard, StatusBadge, fieldStyle } from './AdminPageShell';
+import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, ProgressBar, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function SectionsManagement() {
@@ -200,17 +200,25 @@ export default function SectionsManagement() {
           </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Materia</span>
-            <select className="form-input" value={subjectFilter} onChange={(event) => setSubjectFilter(event.target.value)}>
-              <option value="Todas">Todas</option>
-              {subjects.map((sub) => <option key={sub.id_subject} value={sub.id_subject}>{sub.name_subject}</option>)}
-            </select>
+            <CustomSelect
+              value={subjectFilter}
+              onChange={(value) => setSubjectFilter(value)}
+              options={[
+                { value: 'Todas', label: 'Todas' },
+                ...subjects.map((sub) => ({ value: sub.id_subject, label: sub.name_subject }))
+              ]}
+            />
           </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Carrera</span>
-            <select className="form-input" value={careerFilter} onChange={(event) => setCareerFilter(event.target.value)}>
-              <option value="Todas">Todas</option>
-              {careers.map((car) => <option key={car.id_career} value={car.id_career}>{car.name_career}</option>)}
-            </select>
+            <CustomSelect
+              value={careerFilter}
+              onChange={(value) => setCareerFilter(value)}
+              options={[
+                { value: 'Todas', label: 'Todas' },
+                ...careers.map((car) => ({ value: car.id_career, label: car.name_career }))
+              ]}
+            />
           </label>
         </div>
       </SectionCard>
@@ -272,41 +280,53 @@ export default function SectionsManagement() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Código de Sección</span>
-            <select className="form-input" value={form.section_code} onChange={e => setForm({...form, section_code: e.target.value})}>
-              <option value="A">A</option>
-              <option value="B">B</option>
-              <option value="C">C</option>
-              <option value="D">D</option>
-              <option value="E">E</option>
-              <option value="F">F</option>
-            </select>
+            <CustomSelect
+              value={form.section_code}
+              onChange={value => setForm({...form, section_code: value})}
+              options={[
+                { value: 'A', label: 'A' },
+                { value: 'B', label: 'B' },
+                { value: 'C', label: 'C' },
+                { value: 'D', label: 'D' },
+                { value: 'E', label: 'E' },
+                { value: 'F', label: 'F' }
+              ]}
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Materia</span>
-            <select className="form-input" value={form.id_subject} onChange={e => setForm({...form, id_subject: e.target.value})}>
-              {subjects.map(s => <option key={s.id_subject} value={s.id_subject}>{s.name_subject}</option>)}
-            </select>
+            <CustomSelect
+              value={form.id_subject}
+              onChange={value => setForm({...form, id_subject: value})}
+              options={subjects.map(s => ({ value: s.id_subject, label: s.name_subject }))}
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Carrera</span>
-            <select className="form-input" value={form.id_career} onChange={e => setForm({...form, id_career: e.target.value})}>
-              {careers.map(c => <option key={c.id_career} value={c.id_career}>{c.name_career}</option>)}
-            </select>
+            <CustomSelect
+              value={form.id_career}
+              onChange={value => setForm({...form, id_career: value})}
+              options={careers.map(c => ({ value: c.id_career, label: c.name_career }))}
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Periodo Académico</span>
-            <select className="form-input" value={form.id_period} onChange={e => setForm({...form, id_period: e.target.value})}>
-              {periods.map(p => <option key={p.id_period} value={p.id_period}>{p.name_period}</option>)}
-            </select>
+            <CustomSelect
+              value={form.id_period}
+              onChange={value => setForm({...form, id_period: value})}
+              options={periods.map(p => ({ value: p.id_period, label: p.name_period }))}
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Docente</span>
-            <select className="form-input" value={form.id_teacher} onChange={e => setForm({...form, id_teacher: e.target.value})}>
-              {teachers.map(t => {
-                const name = t.User ? `${t.User.first_name || ''} ${t.User.first_lastname || ''}`.trim() : 'Docente sin nombre';
-                return <option key={t.id_teacher} value={t.id_teacher}>{name}</option>;
-              })}
-            </select>
+            <CustomSelect
+              value={form.id_teacher}
+              onChange={value => setForm({...form, id_teacher: value})}
+              options={teachers.map(t => ({
+                value: t.id_teacher,
+                label: t.User ? `${t.User.first_name || ''} ${t.User.first_lastname || ''}`.trim() : 'Docente sin nombre'
+              }))}
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Cupos Máximos</span>
@@ -316,28 +336,34 @@ export default function SectionsManagement() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Horario</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-              <select className="form-input" value={form.schedule_day} onChange={e => setForm({...form, schedule_day: e.target.value})}>
-                {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <select className="form-input" value={form.schedule_start} onChange={e => setForm({...form, schedule_start: e.target.value})}>
-                {['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(t => <option key={t} value={t}>Desde {t}</option>)}
-              </select>
-              <select className="form-input" value={form.schedule_end} onChange={e => setForm({...form, schedule_end: e.target.value})}>
-                {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map(t => <option key={t} value={t}>Hasta {t}</option>)}
-              </select>
+              <CustomSelect
+                value={form.schedule_day}
+                onChange={value => setForm({...form, schedule_day: value})}
+                options={['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'].map(d => ({ value: d, label: d }))}
+              />
+              <CustomSelect
+                value={form.schedule_start}
+                onChange={value => setForm({...form, schedule_start: value})}
+                options={['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(t => ({ value: t, label: `Desde ${t}` }))}
+              />
+              <CustomSelect
+                value={form.schedule_end}
+                onChange={value => setForm({...form, schedule_end: value})}
+                options={['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map(t => ({ value: t, label: `Hasta ${t}` }))}
+              />
             </div>
           </div>
           
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Aula</span>
-            <select className="form-input" value={form.classroom} onChange={e => setForm({...form, classroom: e.target.value})}>
-              <optgroup label="Aulas">
-                {['Aula 01', 'Aula 02', 'Aula 03', 'Aula 04', 'Aula 05', 'Aula 06', 'Aula 07'].map(a => <option key={a} value={a}>{a}</option>)}
-              </optgroup>
-              <optgroup label="Laboratorios">
-                {['Lab 01', 'Lab 02', 'Lab 03', 'Lab 04'].map(a => <option key={a} value={a}>{a}</option>)}
-              </optgroup>
-            </select>
+            <CustomSelect
+              value={form.classroom}
+              onChange={value => setForm({...form, classroom: value})}
+              options={[
+                ...['Aula 01', 'Aula 02', 'Aula 03', 'Aula 04', 'Aula 05', 'Aula 06', 'Aula 07'].map(a => ({ value: a, label: a })),
+                ...['Lab 01', 'Lab 02', 'Lab 03', 'Lab 04'].map(a => ({ value: a, label: a }))
+              ]}
+            />
           </label>
         </div>
       </Modal>

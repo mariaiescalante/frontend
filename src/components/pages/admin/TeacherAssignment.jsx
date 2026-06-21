@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { BadgeCheck, UserRoundCog, Slash } from 'lucide-react';
-import { AdminPageShell, ActionButton, SectionCard, StatusBadge } from './AdminPageShell';
+import { AdminPageShell, ActionButton, SectionCard, StatusBadge, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function TeacherAssignment() {
@@ -283,47 +283,59 @@ export default function TeacherAssignment() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Carrera</span>
-              <select className="form-input" value={form.id_career} onChange={(e) => handleCareerChange(e.target.value)}>
-                {careers.map((c) => <option key={c.id_career} value={c.id_career}>{c.name_career}</option>)}
-              </select>
+              <CustomSelect
+                value={form.id_career}
+                onChange={(value) => handleCareerChange(value)}
+                options={careers.map((c) => ({ value: c.id_career, label: c.name_career }))}
+              />
             </label>
             
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Semestre</span>
-              <select className="form-input" value={form.id_semester} onChange={(e) => handleSemesterChange(e.target.value)}>
-                {semesters.map((s) => <option key={s.id_semester} value={s.id_semester}>{s.name_semester}</option>)}
-              </select>
+              <CustomSelect
+                value={form.id_semester}
+                onChange={(value) => handleSemesterChange(value)}
+                options={semesters.map((s) => ({ value: s.id_semester, label: s.name_semester }))}
+              />
             </label>
             
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Asignatura</span>
-              <select className="form-input" value={form.id_subject} onChange={(e) => handleSubjectChange(e.target.value)}>
-                <option value="">Seleccione una asignatura...</option>
-                {eligibleSubjects.map((s) => <option key={s.id_subject} value={s.id_subject}>{s.name_subject}</option>)}
-              </select>
+              <CustomSelect
+                value={form.id_subject}
+                onChange={(value) => handleSubjectChange(value)}
+                options={[
+                  { value: '', label: 'Seleccione una asignatura...' },
+                  ...eligibleSubjects.map((s) => ({ value: s.id_subject, label: s.name_subject }))
+                ]}
+              />
             </label>
             
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Sección</span>
-              <select className="form-input" value={form.id_section} onChange={(e) => setForm(prev => ({ ...prev, id_section: e.target.value }))}>
-                <option value="">Seleccione una sección...</option>
-                {eligibleSections.map((sec) => (
-                  <option key={sec.id_section} value={sec.id_section}>
-                    {sec.section_code} - {sec.classroom || 'Sin aula'}
-                  </option>
-                ))}
-              </select>
+              <CustomSelect
+                value={form.id_section}
+                onChange={(value) => setForm(prev => ({ ...prev, id_section: value }))}
+                options={[
+                  { value: '', label: 'Seleccione una sección...' },
+                  ...eligibleSections.map((sec) => ({
+                    value: sec.id_section,
+                    label: `${sec.section_code} - ${sec.classroom || 'Sin aula'}`
+                  }))
+                ]}
+              />
             </label>
             
             <label className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
               <span className="form-label">Docente</span>
-              <select className="form-input" value={form.id_teacher} onChange={(e) => setForm(prev => ({ ...prev, id_teacher: e.target.value }))}>
-                {teachers.map((t) => (
-                  <option key={t.id_teacher} value={t.id_teacher}>
-                    {t.User ? `${t.User.first_name} ${t.User.first_lastname}` : `ID Docente: ${t.id_teacher}`} ({t.profession})
-                  </option>
-                ))}
-              </select>
+              <CustomSelect
+                value={form.id_teacher}
+                onChange={(value) => setForm(prev => ({ ...prev, id_teacher: value }))}
+                options={teachers.map((t) => ({
+                  value: t.id_teacher,
+                  label: `${t.User ? `${t.User.first_name} ${t.User.first_lastname}` : `ID Docente: ${t.id_teacher}`} (${t.profession})`
+                }))}
+              />
             </label>
           </div>
           

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BookOpen, CheckCircle, HelpCircle, XCircle } from 'lucide-react';
-import { AdminPageShell, SectionCard, StatusBadge } from '../admin/AdminPageShell';
+import { AdminPageShell, SectionCard, StatusBadge, CustomSelect } from '../admin/AdminPageShell';
 import { loadAcademicRecord } from './studentStorage';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
@@ -203,18 +203,14 @@ export default function StudentPensum() {
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
               Seleccionar Semestre
             </span>
-            <select
-              className="form-input"
+            <CustomSelect
               value={activeSemester || ''}
-              onChange={(e) => setActiveSemester(Number(e.target.value))}
-              style={{ minHeight: '44px', padding: '10px 14px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', width: '100%' }}
-            >
-              {semestersWithSubjects.map((group) => (
-                <option key={group.id_semester} value={group.id_semester}>
-                  {group.term}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setActiveSemester(Number(val))}
+              options={semestersWithSubjects.map((group) => ({
+                value: group.id_semester,
+                label: group.term
+              }))}
+            />
           </div>
         </SectionCard>
 

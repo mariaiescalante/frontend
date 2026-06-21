@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { CheckCircle2, CircleX, Eye, ClipboardList } from 'lucide-react';
-import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge } from './AdminPageShell';
+import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function EnrollmentsManagement() {
@@ -107,11 +107,15 @@ export default function EnrollmentsManagement() {
         title="Inscripciones por Carrera"
         description="Listado detallado de solicitudes con acceso a su ficha de materias registradas."
         actions={
-          <select className="form-input" value={filter} onChange={(event) => setFilter(event.target.value)} style={{ minWidth: '220px' }}>
-            {careers.map(career => (
-              <option key={career} value={career}>{career}</option>
-            ))}
-          </select>
+          <CustomSelect
+            value={filter}
+            onChange={(val) => setFilter(String(val))}
+            options={careers.map(career => ({
+              value: career,
+              label: career
+            }))}
+            style={{ minWidth: '220px' }}
+          />
         }
       >
         <DataTable columns={["Solicitud", "Estudiante", "Carrera", "Período", "Materias", "Acciones"]}>

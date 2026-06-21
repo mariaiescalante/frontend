@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Users, UserPlus, Edit3, Trash2, Eye, EyeOff } from 'lucide-react';
-import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle } from './AdminPageShell';
+import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect } from './AdminPageShell';
 import { careerCatalog } from './adminSeedData';
 import { registerUser } from '../../../services/auth';
 import api from '../../../services/api';
@@ -649,33 +649,38 @@ export default function UserManagement() {
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Estado</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} style={fieldStyle}>
-              <option>Todos</option>
-              <option>Activo</option>
-              <option>Inactivo</option>
-              <option>Disponible</option>
-              <option>Asignado</option>
-              <option>En supervisión</option>
-            </select>
+            <CustomSelect
+              value={statusFilter}
+              onChange={(value) => setStatusFilter(value)}
+              options={[
+                { value: 'Todos', label: 'Todos' },
+                { value: 'Activo', label: 'Activo' },
+                { value: 'Inactivo', label: 'Inactivo' },
+                { value: 'Disponible', label: 'Disponible' },
+                { value: 'Asignado', label: 'Asignado' },
+                { value: 'En supervisión', label: 'En supervisión' }
+              ]}
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', opacity: activeTab === 'admins' ? 0.5 : 1 }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               {activeTab === 'students' ? 'Carrera' : (activeTab === 'teachers' ? 'Título Académico' : 'Filtro')}
             </span>
-            <select
+            <CustomSelect
               value={extraFilter}
-              onChange={(event) => setExtraFilter(event.target.value)}
-              disabled={activeTab === 'admins'}
-              style={fieldStyle}
-            >
-              <option value="">{activeTab === 'admins' ? 'No aplicable' : 'Todas las opciones'}</option>
-              {activeTab === 'students' && careerOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-              {activeTab === 'teachers' && teacherTitleOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+              onChange={(value) => setExtraFilter(value)}
+              style={activeTab === 'admins' ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+              options={
+                activeTab === 'admins'
+                  ? [{ value: '', label: 'No aplicable' }]
+                  : [
+                      { value: '', label: 'Todas las opciones' },
+                      ...(activeTab === 'students'
+                        ? careerOptions.map((option) => ({ value: option, label: option }))
+                        : teacherTitleOptions.map((option) => ({ value: option, label: option })))
+                    ]
+              }
+            />
           </label>
         </div>
       </SectionCard>
@@ -795,11 +800,11 @@ export default function UserManagement() {
           </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Tipo de documento</span>
-            <select className="form-input" value={form.documentType} onChange={(event) => handleFieldChange('documentType', event.target.value)}>
-              {documentTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={form.documentType}
+              onChange={(value) => handleFieldChange('documentType', value)}
+              options={documentTypeOptions}
+            />
           </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Número de documento / cédula</span>
@@ -842,32 +847,38 @@ export default function UserManagement() {
           {userType === 'student' && (
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Carrera</span>
-              <select className="form-input" value={form.career} onChange={(event) => handleFieldChange('career', event.target.value)}>
-                <option value="">Seleccionar</option>
-                {careerOptions.map((option) => (
-                  <option key={option}>{option}</option>
-                ))}
-              </select>
+              <CustomSelect
+                value={form.career}
+                onChange={(value) => handleFieldChange('career', value)}
+                options={[
+                  { value: '', label: 'Seleccionar' },
+                  ...careerOptions.map((option) => ({ value: option, label: option }))
+                ]}
+              />
             </label>
           )}
           {userType === 'teacher' && (
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Título académico</span>
-              <select className="form-input" value={form.academicTitle} onChange={(event) => handleFieldChange('academicTitle', event.target.value)}>
-                {teacherTitleOptions.map((option) => (
-                  <option key={option}>{option}</option>
-                ))}
-              </select>
+              <CustomSelect
+                value={form.academicTitle}
+                onChange={(value) => handleFieldChange('academicTitle', value)}
+                options={teacherTitleOptions.map((option) => ({ value: option, label: option }))}
+              />
             </label>
           )}
 
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Estado</span>
-            <select className="form-input" value={form.status || 'Activo'} onChange={(event) => handleFieldChange('status', event.target.value)}>
-              <option value="Activo">Activo</option>
-              <option value="Inactivo">Inactivo</option>
-              <option value="Bloqueado">Bloqueado</option>
-            </select>
+            <CustomSelect
+              value={form.status || 'Activo'}
+              onChange={(value) => handleFieldChange('status', value)}
+              options={[
+                { value: 'Activo', label: 'Activo' },
+                { value: 'Inactivo', label: 'Inactivo' },
+                { value: 'Bloqueado', label: 'Bloqueado' }
+              ]}
+            />
           </label>
 
           <label className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>

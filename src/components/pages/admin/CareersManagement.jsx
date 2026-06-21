@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, School, BookOpenCheck, Plus } from 'lucide-react';
-import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, ProgressBar } from './AdminPageShell';
+import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, ProgressBar, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
 const decorateCareer = (c) => {
@@ -264,10 +264,14 @@ export default function CareersManagement() {
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Estado</span>
-            <select className="form-input" value={form.is_active ? 'true' : 'false'} onChange={e => setForm({...form, is_active: e.target.value === 'true'})}>
-              <option value="true">Activa</option>
-              <option value="false">Inactiva</option>
-            </select>
+            <CustomSelect
+              value={form.is_active ? 'true' : 'false'}
+              onChange={value => setForm({...form, is_active: value === 'true'})}
+              options={[
+                { value: 'true', label: 'Activa' },
+                { value: 'false', label: 'Inactiva' }
+              ]}
+            />
           </label>
         </div>
       </Modal>

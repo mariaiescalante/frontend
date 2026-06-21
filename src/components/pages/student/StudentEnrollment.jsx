@@ -11,7 +11,7 @@ import {
   Info,
   Trash2
 } from 'lucide-react';
-import { AdminPageShell, SectionCard, ActionButton, StatusBadge } from '../admin/AdminPageShell';
+import { AdminPageShell, SectionCard, ActionButton, StatusBadge, CustomSelect } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
 
@@ -79,7 +79,6 @@ function hasOverlap(sch1, sch2) {
   const commonDays = p1.days.filter(d => p2.days.includes(d));
   if (commonDays.length === 0) return false;
   
-  return p1.start < p2.end && p2.start < p1.end;
 }
 
 export default function StudentEnrollment() {
@@ -460,35 +459,32 @@ export default function StudentEnrollment() {
       title="Selección de Unidades Curriculares"
       subtitle={`Período Académico Activo: ${activePeriodName}. Selecciona las asignaturas que deseas inscribir, respetando el límite de unidades de crédito y las prelaciones.`}
     >
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
+      <div className="enrollment-grid">
         {/* Available Subjects column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', minWidth: 0, width: '100%' }}>
           
           {/* Semester selection dropdown */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+          <div style={{ display: 'block', width: '100%', marginBottom: '14px' }}>
+            <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>
               Seleccionar Semestre
             </span>
-            <select
-              className="form-input"
+            <CustomSelect
               value={activeSemester}
-              onChange={(e) => setActiveSemester(Number(e.target.value))}
-              style={{ minHeight: '44px', padding: '10px 14px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px' }}
-            >
-              {pensumSystems.map((group) => (
-                <option key={group.semester} value={group.semester}>
-                  Semestre {group.semester}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setActiveSemester(Number(val))}
+              options={pensumSystems.map((group) => ({
+                value: group.semester,
+                label: `Semestre ${group.semester}`
+              }))}
+            />
           </div>
 
           {activeGroup && (
             <SectionCard
               title={`Asignaturas - Semestre ${activeGroup.semester}`}
               description={`Unidades curriculares ofertadas correspondientes al semestre ${activeGroup.semester}.`}
+              style={{ overflow: 'visible' }}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0, width: '100%' }}>
                 {activeGroup.subjects.map((subject) => {
                   const isPassed = approvedCodes.has(subject.code);
                   const isPrereqMet = subject.prereq === 'Ninguno' || subject.prereq.split(', ').every(pr => approvedCodes.has(pr));
@@ -509,11 +505,13 @@ export default function StudentEnrollment() {
                         flexDirection: 'column',
                         gap: '12px',
                         opacity: isBlocked ? 0.6 : 1,
-                        transition: 'all 0.2s ease'
+                        transition: 'all 0.2s ease',
+                        minWidth: 0,
+                        width: '100%'
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', minWidth: 0, width: '100%' }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', minWidth: 0 }}>
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -527,11 +525,11 @@ export default function StudentEnrollment() {
                               marginTop: '4px'
                             }}
                           />
-                          <div>
-                            <strong style={{ display: 'block', fontSize: '0.98rem', color: '#0f172a' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <strong style={{ display: 'block', fontSize: '0.98rem', color: '#0f172a', wordBreak: 'break-word' }}>
                               {subject.name}
                             </strong>
-                            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                            <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'block', wordBreak: 'break-word' }}>
                               Cód: <strong>{subject.code}</strong> · {subject.credits} UC · Prelación: <em>{subject.prereq}</em>
                             </span>
                           </div>
@@ -577,26 +575,24 @@ export default function StudentEnrollment() {
                             marginTop: '4px',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '10px'
+                            gap: '10px',
+                            minWidth: 0,
+                            width: '100%'
                           }}
                         >
-                          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                          <div style={{ display: 'block', width: '100%' }}>
+                            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '6px' }}>
                               Seleccionar Sección Disponible:
                             </span>
-                            <select
-                              className="form-input"
+                            <CustomSelect
                               value={selectedSubjects[subject.code]}
-                              onChange={(e) => handleSectionChange(subject.code, e.target.value)}
-                              style={{ minHeight: '38px', padding: '6px 12px', background: '#ffffff' }}
-                            >
-                              {sections.map((sec, idx) => (
-                                <option key={sec.code} value={idx}>
-                                  {sec.code} - {sec.schedule} ({sec.classroom}) - {sec.teacher} [Cupos: {sec.capacity - sec.enrolled}]
-                                </option>
-                              ))}
-                            </select>
-                          </label>
+                              onChange={(val) => handleSectionChange(subject.code, val)}
+                              options={sections.map((sec, idx) => ({
+                                value: idx,
+                                label: `${sec.code} - ${sec.schedule} (${sec.classroom}) - ${sec.teacher} [Cupos: ${sec.capacity - sec.enrolled}]`
+                              }))}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -606,9 +602,9 @@ export default function StudentEnrollment() {
             </SectionCard>
           )}
         </div>
-
+ 
         {/* Enrollment summary column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'sticky', top: '24px' }}>
+        <div className="enrollment-grid-summary" style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'sticky', top: '24px', minWidth: 0, width: '100%' }}>
           <SectionCard
             title="Resumen de Matrícula"
             description={`Inscripción de unidades curriculares para el período actual.`}

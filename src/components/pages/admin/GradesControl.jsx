@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Award, FilePenLine, ShieldCheck, Save } from 'lucide-react';
-import { AdminPageShell, ActionButton, SectionCard, StatusBadge } from './AdminPageShell';
+import { AdminPageShell, ActionButton, SectionCard, StatusBadge, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function GradesControl() {
@@ -177,13 +177,14 @@ export default function GradesControl() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px', maxWidth: '700px' }}>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Sección</span>
-            <select className="form-input" value={sectionId} onChange={(e) => setSectionId(e.target.value)}>
-              {allSections.map((sec) => (
-                <option key={sec.id_section} value={sec.id_section}>
-                  {sec.section_code} - {sec.Subject?.name_subject}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              value={sectionId}
+              onChange={(val) => setSectionId(String(val))}
+              options={allSections.map((sec) => ({
+                value: String(sec.id_section),
+                label: `${sec.section_code} - ${sec.Subject?.name_subject}`
+              }))}
+            />
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '24px' }}>
              <StatusBadge tone={isClosed ? 'neutral' : 'success'}>
@@ -207,7 +208,7 @@ export default function GradesControl() {
                   </div>
                   <StatusBadge tone={student.final >= 9.5 ? 'success' : student.final >= 6.5 ? 'warning' : 'danger'}>{student.final >= 9.5 ? 'Aprobado' : 'En riesgo'}</StatusBadge>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '12px' }}>
+                <div className="grades-input-grid">
                   <label className="form-group" style={{ marginBottom: 0 }}>
                     <span className="form-label">Corte 1</span>
                     <input className="form-input" disabled={isClosed} value={student.c1} onChange={(e) => updateGrade(student.id, 0, e.target.value)} />

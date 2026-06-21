@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { CalendarDays, CirclePlus, Clock3, Trash2, Edit2 } from 'lucide-react';
-import { AdminPageShell, ActionButton, SectionCard, StatusBadge } from './AdminPageShell';
+import { AdminPageShell, ActionButton, SectionCard, StatusBadge, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function AcademicPeriods() {
@@ -183,7 +183,7 @@ export default function AcademicPeriods() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, paddingRight: '60px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>{period.name_period}</h4>
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div className="period-badges-container">
                           <StatusBadge tone={badgeTone}>Periodo: {period.period_status}</StatusBadge>
                           <StatusBadge tone={isEnrollmentOpen ? 'warning' : 'neutral'}>Inscripción: {period.enrollment_status}</StatusBadge>
                         </div>
@@ -273,28 +273,28 @@ export default function AcademicPeriods() {
             </label>
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Estado de inscripción</span>
-              <select
-                className="form-input"
+              <CustomSelect
                 value={form.enrollment_status}
-                onChange={(e) => setForm({ ...form, enrollment_status: e.target.value })}
-              >
-                <option value="Planificacion">Planificación</option>
-                <option value="Abierta">Abierta</option>
-                <option value="Cerrada">Cerrada</option>
-                <option value="Modificaciones">Modificaciones</option>
-              </select>
+                onChange={(val) => setForm({ ...form, enrollment_status: String(val) })}
+                options={[
+                  { value: 'Planificacion', label: 'Planificación' },
+                  { value: 'Abierta', label: 'Abierta' },
+                  { value: 'Cerrada', label: 'Cerrada' },
+                  { value: 'Modificaciones', label: 'Modificaciones' }
+                ]}
+              />
             </label>
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Estado del período</span>
-              <select
-                className="form-input"
+              <CustomSelect
                 value={form.period_status}
-                onChange={(e) => setForm({ ...form, period_status: e.target.value })}
-              >
-                <option value="Planificacion">Planificación</option>
-                <option value="Activo">Activo</option>
-                <option value="Culminado">Culminado</option>
-              </select>
+                onChange={(val) => setForm({ ...form, period_status: String(val) })}
+                options={[
+                  { value: 'Planificacion', label: 'Planificación' },
+                  { value: 'Activo', label: 'Activo' },
+                  { value: 'Culminado', label: 'Culminado' }
+                ]}
+              />
             </label>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
               <ActionButton

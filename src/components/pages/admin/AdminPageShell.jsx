@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
 const tonePalette = {
@@ -52,7 +52,7 @@ export const sectionCardStyle = {
   border: '1px solid #dbe4f0',
   borderRadius: '18px',
   boxShadow: '0 8px 24px rgba(15, 23, 42, 0.05)',
-  overflow: 'hidden'
+  overflow: 'visible'
 };
 
 export function StatusBadge({ children, tone = 'neutral', style }) {
@@ -314,7 +314,7 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
       onClick={onClose}
     >
       <div
-        className="glass-panel"
+        className="glass-panel custom-modal-scrollbar"
         style={{
           width: 'min(920px, 100%)',
           maxHeight: '90vh',
@@ -371,3 +371,114 @@ export function ProgressBar({ value, tone = 'primary' }) {
     </div>
   );
 }
+
+export function CustomSelect({ value, onChange, options, placeholder = 'Seleccionar...', style }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find(opt => opt.value === value || String(opt.value) === String(value));
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClose = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClose);
+    return () => document.removeEventListener('mousedown', handleClose);
+  }, [isOpen]);
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', width: '100%', ...style }}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+        style={{
+          width: '100%',
+          minHeight: '42px',
+          padding: '10px 14px',
+          background: '#ffffff',
+          border: '1px solid #cbd5e1',
+          borderRadius: '12px',
+          textAlign: 'left',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer',
+          color: '#0f172a',
+          fontFamily: 'var(--font-body)',
+          fontSize: '0.95rem',
+          userSelect: 'none',
+          boxSizing: 'border-box'
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>▼</span>
+      </div>
+
+      {isOpen && (
+        <ul
+          className="custom-select-list"
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            marginTop: '4px',
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            maxHeight: '220px',
+            overflowY: 'auto',
+            zIndex: 100,
+            listStyle: 'none',
+            padding: '6px 0',
+            margin: 0
+          }}
+        >
+          {options.map((opt) => (
+            <li
+              key={opt.value}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsOpen(false);
+                onChange(opt.value);
+              }}
+              style={{
+                padding: '10px 14px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                color: '#0f172a',
+                background: (opt.value === value || String(opt.value) === String(value)) ? '#ffd100' : 'transparent',
+                fontWeight: (opt.value === value || String(opt.value) === String(value)) ? '700' : 'normal',
+                transition: 'background 0.15s ease',
+                wordBreak: 'break-word',
+                lineHeight: '1.4'
+              }}
+              onMouseEnter={(e) => {
+                if (opt.value !== value && String(opt.value) !== String(value)) e.currentTarget.style.background = '#f1f5f9';
+              }}
+              onMouseLeave={(e) => {
+                if (opt.value !== value && String(opt.value) !== String(value)) e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              {opt.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+

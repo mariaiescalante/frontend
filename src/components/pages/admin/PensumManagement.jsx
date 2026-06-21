@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BookMarked, Layers3, PlusCircle, Trash2, CheckCircle2 } from 'lucide-react';
-import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle } from './AdminPageShell';
+import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function PensumManagement() {
@@ -303,36 +303,26 @@ export default function PensumManagement() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px', maxWidth: '760px' }}>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Carrera</span>
-            <select
-              className="form-input"
+            <CustomSelect
               value={careerCode}
-              onChange={(event) => {
-                setCareerCode(event.target.value);
+              onChange={(value) => {
+                setCareerCode(value);
                 setSemesterFilter('Todos');
               }}
-            >
-              {careers.map((career) => (
-                <option key={career.code_career} value={career.code_career}>
-                  {career.name_career}
-                </option>
-              ))}
-            </select>
+              options={careers.map((career) => ({ value: career.code_career, label: career.name_career }))}
+            />
           </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Semestre</span>
-            <select
-              className="form-input"
+            <CustomSelect
               value={semesterFilter}
-              onChange={(event) => setSemesterFilter(event.target.value)}
-              disabled={semestersWithSubjects.length === 0}
-            >
-              <option>Todos</option>
-              {semestersWithSubjects.map((semester) => (
-                <option key={semester.term} value={semester.term}>
-                  {semester.term}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setSemesterFilter(value)}
+              style={semestersWithSubjects.length === 0 ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+              options={[
+                { value: 'Todos', label: 'Todos' },
+                ...semestersWithSubjects.map((semester) => ({ value: semester.term, label: semester.term }))
+              ]}
+            />
           </label>
         </div>
       </SectionCard>
@@ -474,34 +464,26 @@ export default function PensumManagement() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Pensum / Carrera</span>
-            <select
-              className="form-input"
+            <CustomSelect
               value={form.id_pensum}
-              onChange={(e) => setForm({ ...form, id_pensum: e.target.value })}
-            >
-              <option value="">Seleccione un pensum</option>
-              {pensums.map((p) => (
-                <option key={p.id_pensum} value={p.id_pensum}>
-                  {p.Career?.name_career} ({p.name_pensum})
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setForm({ ...form, id_pensum: value })}
+              options={[
+                { value: '', label: 'Seleccione un pensum' },
+                ...pensums.map((p) => ({ value: p.id_pensum, label: `${p.Career?.name_career} (${p.name_pensum})` }))
+              ]}
+            />
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Semestre</span>
-            <select
-              className="form-input"
+            <CustomSelect
               value={form.id_semester}
-              onChange={(e) => setForm({ ...form, id_semester: e.target.value })}
-            >
-              <option value="">Seleccione un semestre</option>
-              {semesters.map((s) => (
-                <option key={s.id_semester} value={s.id_semester}>
-                  {s.name_semester}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setForm({ ...form, id_semester: value })}
+              options={[
+                { value: '', label: 'Seleccione un semestre' },
+                ...semesters.map((s) => ({ value: s.id_semester, label: s.name_semester }))
+              ]}
+            />
           </label>
 
           {/* Segmented control to choose between selecting an existing subject or creating a new one */}
@@ -567,11 +549,10 @@ export default function PensumManagement() {
           {!isCreatingNewSubject ? (
             <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Buscar Materia Registrada</span>
-              <select
-                className="form-input"
+              <CustomSelect
                 value={selectedGlobalSubjectId}
-                onChange={(e) => {
-                  const id = e.target.value;
+                onChange={(value) => {
+                  const id = value;
                   setSelectedGlobalSubjectId(id);
                   if (id) {
                     const sub = globalSubjects.find(s => String(s.id_subject) === String(id));
@@ -592,14 +573,11 @@ export default function PensumManagement() {
                     }));
                   }
                 }}
-              >
-                <option value="">Seleccione una materia registrada...</option>
-                {globalSubjects.map((sub) => (
-                  <option key={sub.id_subject} value={sub.id_subject}>
-                    {sub.name_subject} ({sub.code_subject})
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Seleccione una materia registrada...' },
+                  ...globalSubjects.map((sub) => ({ value: sub.id_subject, label: `${sub.name_subject} (${sub.code_subject})` }))
+                ]}
+              />
             </label>
           ) : (
             <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #e2e8f0', fontSize: '0.78rem', color: '#475569' }}>
@@ -657,50 +635,38 @@ export default function PensumManagement() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Prerrequisito 1</span>
-                <select
-                  className="form-input"
+                <CustomSelect
                   value={form.id_prerequisite_1}
-                  onChange={(e) => setForm({ ...form, id_prerequisite_1: e.target.value })}
-                >
-                  <option value="">Ninguno</option>
-                  {eligiblePrerequisites.map((ps) => (
-                    <option key={ps.id_pensum_subject} value={ps.id_pensum_subject}>
-                      {ps.Subject?.name_subject || ps.Subject?.name} ({ps.code_subject})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setForm({ ...form, id_prerequisite_1: value })}
+                  options={[
+                    { value: '', label: 'Ninguno' },
+                    ...eligiblePrerequisites.map((ps) => ({ value: ps.id_pensum_subject, label: `${ps.Subject?.name_subject || ps.Subject?.name} (${ps.code_subject})` }))
+                  ]}
+                />
               </label>
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Prerrequisito 2</span>
-                <select
-                  className="form-input"
+                <CustomSelect
                   value={form.id_prerequisite_2}
-                  onChange={(e) => setForm({ ...form, id_prerequisite_2: e.target.value })}
-                >
-                  <option value="">Ninguno</option>
-                  {eligiblePrerequisites.map((ps) => (
-                    <option key={ps.id_pensum_subject} value={ps.id_pensum_subject}>
-                      {ps.Subject?.name_subject || ps.Subject?.name} ({ps.code_subject})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setForm({ ...form, id_prerequisite_2: value })}
+                  options={[
+                    { value: '', label: 'Ninguno' },
+                    ...eligiblePrerequisites.map((ps) => ({ value: ps.id_pensum_subject, label: `${ps.Subject?.name_subject || ps.Subject?.name} (${ps.code_subject})` }))
+                  ]}
+                />
               </label>
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Prerrequisito 3</span>
-                <select
-                  className="form-input"
+                <CustomSelect
                   value={form.id_prerequisite_3}
-                  onChange={(e) => setForm({ ...form, id_prerequisite_3: e.target.value })}
-                >
-                  <option value="">Ninguno</option>
-                  {eligiblePrerequisites.map((ps) => (
-                    <option key={ps.id_pensum_subject} value={ps.id_pensum_subject}>
-                      {ps.Subject?.name_subject || ps.Subject?.name} ({ps.code_subject})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setForm({ ...form, id_prerequisite_3: value })}
+                  options={[
+                    { value: '', label: 'Ninguno' },
+                    ...eligiblePrerequisites.map((ps) => ({ value: ps.id_pensum_subject, label: `${ps.Subject?.name_subject || ps.Subject?.name} (${ps.code_subject})` }))
+                  ]}
+                />
               </label>
             </div>
           </div>
@@ -727,18 +693,14 @@ export default function PensumManagement() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Carrera Asociada</span>
-            <select
-              className="form-input"
+            <CustomSelect
               value={pensumForm.id_career}
-              onChange={(e) => setPensumForm({ ...pensumForm, id_career: e.target.value })}
-            >
-              <option value="">Seleccione una carrera</option>
-              {careers.map((c) => (
-                <option key={c.id_career} value={c.id_career}>
-                  {c.name_career} ({c.code_career})
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setPensumForm({ ...pensumForm, id_career: value })}
+              options={[
+                { value: '', label: 'Seleccione una carrera' },
+                ...careers.map((c) => ({ value: c.id_career, label: `${c.name_career} (${c.code_career})` }))
+              ]}
+            />
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -763,14 +725,14 @@ export default function PensumManagement() {
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Estado</span>
-            <select
-              className="form-input"
+            <CustomSelect
               value={pensumForm.is_active ? 'true' : 'false'}
-              onChange={(e) => setPensumForm({ ...pensumForm, is_active: e.target.value === 'true' })}
-            >
-              <option value="true">Activo</option>
-              <option value="false">Inactivo</option>
-            </select>
+              onChange={(value) => setPensumForm({ ...pensumForm, is_active: value === 'true' })}
+              options={[
+                { value: 'true', label: 'Activo' },
+                { value: 'false', label: 'Inactivo' }
+              ]}
+            />
           </label>
         </div>
       </Modal>

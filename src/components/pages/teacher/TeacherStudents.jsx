@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Download, Search, Users, Save, FileSpreadsheet, Printer } from 'lucide-react';
-import { ActionButton, AdminPageShell, SectionCard, StatusBadge } from '../admin/AdminPageShell';
+import { ActionButton, AdminPageShell, SectionCard, StatusBadge, CustomSelect } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
 import { logoBase64 } from '../../../assets/logoConstant';
@@ -553,29 +553,38 @@ export default function TeacherStudents() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Carrera</span>
-            <select className="form-input" value={career} onChange={(e) => setCareer(e.target.value)}>
-              {careerOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={career}
+              onChange={(val) => setCareer(String(val))}
+              options={careerOptions.map((option) => ({
+                value: option,
+                label: option
+              }))}
+            />
           </label>
 
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Asignatura</span>
-            <select className="form-input" value={subject} onChange={(e) => setSubject(e.target.value)}>
-              {subjectOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={subject}
+              onChange={(val) => setSubject(String(val))}
+              options={subjectOptions.map((option) => ({
+                value: option,
+                label: option
+              }))}
+            />
           </label>
 
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Seccion</span>
-            <select className="form-input" value={selectedSectionId} onChange={(e) => setSelectedSectionId(e.target.value)}>
-              {sectionOptions.map((option) => (
-                <option key={option.id_section} value={option.id_section}>{option.section_code}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={selectedSectionId}
+              onChange={(val) => setSelectedSectionId(String(val))}
+              options={sectionOptions.map((option) => ({
+                value: String(option.id_section),
+                label: option.section_code
+              }))}
+            />
           </label>
         </div>
 

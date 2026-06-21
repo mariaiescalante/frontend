@@ -146,9 +146,11 @@ export default function StudentDashboard() {
                 Proceso de Inscripción Pendiente - Periodo {profile.currentPeriod}
               </h3>
               <p style={{ margin: 0, color: '#475569', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                Tu inscripción formal aún no ha sido realizada. Recuerda que al poseer un estado de{' '}
-                <strong>{profile.academicStatus}</strong> debido a materias pendientes (como <em>RED-201 Redes de Computadoras I</em>),
-                debes saldar la prelación inscribiendo la materia de arrastre para poder liberar asignaturas superiores.
+                {creditsPassed === 0 ? (
+                  `¡Te damos la bienvenida a tu carrera! Tu inscripción formal para el periodo académico actual aún no ha sido realizada. Por favor, procede a realizar la inscripción de tus asignaturas para iniciar tu trayectoria de estudios.`
+                ) : (
+                  `Tu inscripción formal aún no ha sido realizada. Recuerda que al poseer un estado de ${profile.academicStatus} debido a materias pendientes (como RED-201 Redes de Computadoras I), debes saldar la prelación inscribiendo la materia de arrastre para poder liberar asignaturas superiores.`
+                )}
               </p>
             </div>
           </div>

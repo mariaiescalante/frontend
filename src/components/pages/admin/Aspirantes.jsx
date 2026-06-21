@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Search, Users, UserCheck, CheckCircle2, XCircle, AlertCircle, Trash2, Calendar, FileText, MapPin, Eye, Info } from 'lucide-react';
-import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle } from './AdminPageShell';
+import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function Aspirantes() {
@@ -172,17 +172,17 @@ export default function Aspirantes() {
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Estado de preinscripción</span>
-            <select 
+            <CustomSelect 
               value={statusFilter} 
-              onChange={(event) => setStatusFilter(event.target.value)} 
-              style={fieldStyle}
-            >
-              <option value="Todos">Todos los estados</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="En Revisión">En Revisión</option>
-              <option value="Aprobado">Aprobado</option>
-              <option value="Rechazado">Rechazado</option>
-            </select>
+              onChange={(value) => setStatusFilter(value)} 
+              options={[
+                { value: 'Todos', label: 'Todos los estados' },
+                { value: 'Pendiente', label: 'Pendiente' },
+                { value: 'En Revisión', label: 'En Revisión' },
+                { value: 'Aprobado', label: 'Aprobado' },
+                { value: 'Rechazado', label: 'Rechazado' }
+              ]}
+            />
           </label>
         </div>
       </SectionCard>

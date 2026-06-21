@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { BookOpenCheck, Filter } from 'lucide-react';
-import { AdminPageShell, DataTable, SectionCard, StatusBadge } from '../admin/AdminPageShell';
+import { AdminPageShell, DataTable, SectionCard, StatusBadge, CustomSelect } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
 
@@ -122,20 +122,26 @@ export default function TeacherSubjects() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Carrera</span>
-            <select className="form-input" value={careerFilter} onChange={(event) => setCareerFilter(event.target.value)}>
-              {careerOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={careerFilter}
+              onChange={(val) => setCareerFilter(String(val))}
+              options={careerOptions.map((option) => ({
+                value: option,
+                label: option
+              }))}
+            />
           </label>
 
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Periodo</span>
-            <select className="form-input" value={periodFilter} onChange={(event) => setPeriodFilter(event.target.value)}>
-              {periodOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+            <CustomSelect
+              value={periodFilter}
+              onChange={(val) => setPeriodFilter(String(val))}
+              options={periodOptions.map((option) => ({
+                value: option,
+                label: option
+              }))}
+            />
           </label>
         </div>
       </SectionCard>
