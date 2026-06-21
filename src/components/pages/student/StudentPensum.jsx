@@ -246,6 +246,11 @@ export default function StudentPensum() {
                     statusBg = 'rgba(220, 38, 38, 0.06)';
                     statusBorder = 'rgba(220, 38, 38, 0.2)';
                     StatusIcon = XCircle;
+                  } else if (info.status === 'Cursando') {
+                    statusColor = '#0284c7'; // blue
+                    statusBg = 'rgba(2, 132, 199, 0.06)';
+                    statusBorder = 'rgba(2, 132, 199, 0.2)';
+                    StatusIcon = BookOpen;
                   }
 
                   return (
@@ -285,6 +290,11 @@ export default function StudentPensum() {
                         {info.status === 'Reprobada' && (
                           <StatusBadge tone="danger" style={{ fontSize: '0.72rem', padding: '3px 8px' }}>
                             Reprobado ({info.grade})
+                          </StatusBadge>
+                        )}
+                        {info.status === 'Cursando' && (
+                          <StatusBadge tone="info" style={{ fontSize: '0.72rem', padding: '3px 8px' }}>
+                            Cursando
                           </StatusBadge>
                         )}
                         {info.status === 'Pendiente' && (

@@ -3,6 +3,7 @@ import { Award, BookOpen, CheckCircle2, FileText, Printer, ShieldAlert } from 'l
 import { AdminPageShell, ActionButton, SectionCard, DataTable, StatusBadge } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
+import { logoBase64 } from '../../../assets/logoConstant';
 
 export default function StudentRecord() {
   const { user } = useAuth();
@@ -135,17 +136,23 @@ export default function StudentRecord() {
       <html>
         <head>
           <title>Récord Académico de Calificaciones - ${profile.cedula}</title>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
           <style>
             body {
               font-family: 'Inter', Arial, sans-serif;
-              margin: 40px;
+              margin: 20px;
               color: #0f172a;
               background-color: #ffffff;
+            }
+            #element-to-print {
+              width: 720px;
+              padding-right: 25px;
+              box-sizing: border-box;
             }
             .header-table {
               width: 100%;
               border-collapse: collapse;
-              margin-bottom: 30px;
+              margin-bottom: 25px;
             }
             .header-logo-cell {
               width: 80px;
@@ -175,7 +182,7 @@ export default function StudentRecord() {
               font-size: 1.35rem;
               font-weight: 800;
               color: #051124;
-              margin: 20px 0 35px 0;
+              margin: 15px 0 25px 0;
               text-transform: uppercase;
               letter-spacing: 0.05em;
               border-bottom: 2px solid #051124;
@@ -185,7 +192,7 @@ export default function StudentRecord() {
               display: grid;
               grid-template-columns: repeat(2, 1fr);
               gap: 12px;
-              margin-bottom: 30px;
+              margin-bottom: 25px;
               background: #f8fafc;
               border: 1px solid #e2e8f0;
               border-radius: 12px;
@@ -228,7 +235,7 @@ export default function StudentRecord() {
               font-size: 0.82rem;
             }
             .summary-box {
-              margin-top: 30px;
+              margin-top: 25px;
               background: #f8fafc;
               border: 1px solid #cbd5e1;
               border-radius: 12px;
@@ -250,7 +257,7 @@ export default function StudentRecord() {
               margin-bottom: 4px;
             }
             .signatures-container {
-              margin-top: 70px;
+              margin-top: 50px;
               display: grid;
               grid-template-columns: repeat(2, 1fr);
               gap: 100px;
@@ -263,7 +270,7 @@ export default function StudentRecord() {
               color: #475569;
             }
             .footer {
-              margin-top: 70px;
+              margin-top: 50px;
               text-align: center;
               font-size: 0.72rem;
               color: #94a3b8;
@@ -273,82 +280,101 @@ export default function StudentRecord() {
           </style>
         </head>
         <body>
-          <table class="header-table">
-            <tr>
-              <td class="header-logo-cell">
-                <div style="background-color: #051124; padding: 8px; border-radius: 10px; display: inline-block;">
-                  <span style="color: #ffffff; font-weight: 900; font-family: sans-serif; font-size: 20px; letter-spacing: 1px;">SGUMS</span>
-                </div>
-              </td>
-              <td class="header-text-cell">
-                <h2>Universidad Politécnica Territorial del Norte del Táchira</h2>
-                <p>Secretaría General · Departamento de Registro y Control Académico</p>
-              </td>
-            </tr>
-          </table>
-
-          <div class="doc-title">Récord Histórico de Notas y Trayecto Académico</div>
-
-          <div class="student-info-grid">
-            <div class="info-item">
-              <strong>Estudiante</strong>
-              <span>${profile.name} ${profile.lastname}</span>
-            </div>
-            <div class="info-item">
-              <strong>Cédula de Identidad</strong>
-              <span>${profile.cedula}</span>
-            </div>
-            <div class="info-item">
-              <strong>Carrera / Programa</strong>
-              <span>${profile.career}</span>
-            </div>
-            <div class="info-item">
-              <strong>Facultad</strong>
-              <span>Facultad de ${profile.faculty}</span>
-            </div>
-          </div>
-
-          <table class="record-table">
-            <thead>
+          <div id="element-to-print">
+            <table class="header-table">
               <tr>
-                <th style="width: 15%;">Código</th>
-                <th style="width: 50%;">Asignatura</th>
-                <th style="text-align: center; width: 12%;">Créditos</th>
-                <th style="text-align: center; width: 10%;">Calificación</th>
-                <th style="text-align: center; width: 13%;">Estatus</th>
+                <td class="header-logo-cell">
+                  <img src="${logoBase64}" alt="Logo UPTNT" style="width: 70px; height: auto; display: block;" />
+                </td>
+                <td class="header-text-cell">
+                  <h2>Universidad Politécnica Territorial del Norte del Táchira</h2>
+                  <p>Secretaría General · Departamento de Registro y Control Académico</p>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              ${tableHtml}
-            </tbody>
-          </table>
+            </table>
 
-          <div class="summary-box">
-            <div class="summary-stat">
-              <small>Índice de Rendimiento Acumulado (CUM)</small>
-              <span>${Number(averageGrade || 0).toFixed(2)} / 20</span>
+            <div class="doc-title">Récord Histórico de Notas y Trayecto Académico</div>
+
+            <div class="student-info-grid">
+              <div class="info-item">
+                <strong>Estudiante</strong>
+                <span>${profile.name} ${profile.lastname}</span>
+              </div>
+              <div class="info-item">
+                <strong>Cédula de Identidad</strong>
+                <span>${profile.cedula}</span>
+              </div>
+              <div class="info-item">
+                <strong>Carrera / Programa</strong>
+                <span>${profile.career}</span>
+              </div>
+              <div class="info-item">
+                <strong>Facultad</strong>
+                <span>Facultad de ${profile.faculty}</span>
+              </div>
             </div>
-            <div class="summary-stat">
-              <small>Créditos Aprobados Acumulados</small>
-              <span>${totalPassedCredits} / ${profile.creditsRequired} UC</span>
+
+            <table class="record-table">
+              <thead>
+                <tr>
+                  <th style="width: 15%;">Código</th>
+                  <th style="width: 50%;">Asignatura</th>
+                  <th style="text-align: center; width: 12%;">Créditos</th>
+                  <th style="text-align: center; width: 10%;">Calificación</th>
+                  <th style="text-align: center; width: 13%;">Estatus</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableHtml}
+              </tbody>
+            </table>
+
+            <div class="summary-box">
+              <div class="summary-stat">
+                <small>Índice de Rendimiento Acumulado (CUM)</small>
+                <span>${Number(averageGrade || 0).toFixed(2)} / 20</span>
+              </div>
+              <div class="summary-stat">
+                <small>Créditos Aprobados Acumulados</small>
+                <span>${totalPassedCredits} / ${profile.creditsRequired} UC</span>
+              </div>
+            </div>
+
+            <div class="signatures-container">
+              <div class="signature-box">
+                <strong>Coordinador(a) de Registro Académico</strong><br>
+                UPTNT Manuela Sáenz
+              </div>
+              <div class="signature-box">
+                <strong>Secretaría General</strong><br>
+                Firma y Sello Oficial
+              </div>
+            </div>
+
+            <div class="footer">
+              Este récord representa el historial académico verificado del estudiante.<br>
+              Emitido el ${new Date().toLocaleString()} · Sistema de Gestión Universitaria (SGUMS)
             </div>
           </div>
 
-          <div class="signatures-container">
-            <div class="signature-box">
-              <strong>Coordinador(a) de Registro Académico</strong><br>
-              UPTNT Manuela Sáenz
-            </div>
-            <div class="signature-box">
-              <strong>Secretaría General</strong><br>
-              Firma y Sello Oficial
-            </div>
-          </div>
-
-          <div class="footer">
-            Este récord representa el historial académico verificado del estudiante.<br>
-            Emitido el ${new Date().toLocaleString()} · Sistema de Gestión Universitaria (SGUMS)
-          </div>
+          <script>
+            window.onload = function() {
+              const element = document.getElementById('element-to-print');
+              const opt = {
+                margin:       15,
+                filename:     'Record_Academico_${profile.cedula}.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
+              };
+              html2pdf().from(element).set(opt).save().then(() => {
+                setTimeout(() => window.close(), 800);
+              }).catch(err => {
+                console.error('Error generating PDF with html2pdf, falling back to window.print', err);
+                window.print();
+              });
+            };
+          </script>
         </body>
       </html>
     `;
@@ -358,10 +384,6 @@ export default function StudentRecord() {
     popup.document.open();
     popup.document.write(printableHtml);
     popup.document.close();
-    popup.focus();
-    setTimeout(() => {
-      popup.print();
-    }, 250);
   };
 
   const metrics = [

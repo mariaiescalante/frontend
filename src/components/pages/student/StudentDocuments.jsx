@@ -3,6 +3,7 @@ import { FileText, Printer, CheckCircle, AlertCircle, FileCheck, Layers } from '
 import { AdminPageShell, ActionButton, SectionCard } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
+import { logoBase64 } from '../../../assets/logoConstant';
 
 export default function StudentDocuments() {
   const { user } = useAuth();
@@ -71,13 +72,19 @@ export default function StudentDocuments() {
       <html>
         <head>
           <title>Constancia de Estudios - ${profile.cedula}</title>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
           <style>
             body {
               font-family: 'Inter', Arial, sans-serif;
-              margin: 50px;
+              margin: 30px;
               color: #0f172a;
               background-color: #ffffff;
               line-height: 1.8;
+            }
+            #element-to-print {
+              width: 720px;
+              padding-right: 25px;
+              box-sizing: border-box;
             }
             .header-table {
               width: 100%;
@@ -162,49 +169,68 @@ export default function StudentDocuments() {
           </style>
         </head>
         <body>
-          <div class="seal-watermark">UPTNT</div>
+          <div id="element-to-print">
+            <div class="seal-watermark">UPTNT</div>
 
-          <table class="header-table">
-            <tr>
-              <td class="header-logo-cell">
-                <div style="background-color: #051124; padding: 8px; border-radius: 10px; display: inline-block;">
-                  <span style="color: #ffffff; font-weight: 900; font-family: sans-serif; font-size: 20px; letter-spacing: 1px;">SGUMS</span>
-                </div>
-              </td>
-              <td class="header-text-cell">
-                <h2>Universidad Politécnica Territorial del Norte del Táchira</h2>
-                <p>Secretaría de Control de Estudios y Registro Académico</p>
-              </td>
-            </tr>
-          </table>
+            <table class="header-table">
+              <tr>
+                <td class="header-logo-cell">
+                  <img src="${logoBase64}" alt="Logo UPTNT" style="width: 70px; height: auto; display: block;" />
+                </td>
+                <td class="header-text-cell">
+                  <h2>Universidad Politécnica Territorial del Norte del Táchira</h2>
+                  <p>Secretaría de Control de Estudios · Registro Académico</p>
+                </td>
+              </tr>
+            </table>
 
-          <div class="doc-title">Constancia de Estudios</div>
+            <div class="doc-title">Constancia de Estudios</div>
 
-          <div class="body-text">
-            Quien suscribe, Coordinador de Registro Académico y Admisión de la <strong>Universidad Politécnica Territorial del Norte del Táchira Manuela Sáenz</strong>, hace constar por medio de la presente que el ciudadano(a) <strong>${profile.name.toUpperCase()} ${profile.lastname.toUpperCase()}</strong>, titular de la Cédula de Identidad número <strong>${profile.cedula}</strong>, es estudiante regular y activo de esta casa de estudios en la carrera de <strong>${profile.career.toUpperCase()}</strong>.
-          </div>
+            <div class="body-text">
+              Quien suscribe, Coordinador de Registro Académico y Admisión de la <strong>Universidad Politécnica Territorial del Norte del Táchira Manuela Sáenz</strong>, hace constar por medio de la presente que el ciudadano(a) <strong>${profile.name.toUpperCase()} ${profile.lastname.toUpperCase()}</strong>, titular de la Cédula de Identidad número <strong>${profile.cedula}</strong>, es estudiante regular y activo de esta casa de estudios en la carrera de <strong>${profile.career.toUpperCase()}</strong>.
+            </div>
 
-          <div class="body-text">
-            El mencionado estudiante se encuentra formalmente matriculado y cursando actividades académicas correspondientes al Período Lectivo <strong>${profile.currentPeriod}</strong>, gozando de todos los derechos y deberes consagrados en el reglamento interno de la institución.
-          </div>
+            <div class="body-text">
+              El mencionado estudiante se encuentra formalmente matriculado y cursando actividades académicas correspondientes al Período Lectivo <strong>${profile.currentPeriod}</strong>, gozando de todos los derechos y deberes consagrados en el reglamento interno de la institución.
+            </div>
 
-          <div class="body-text">
-            Constancia que se expide a petición de la parte interesada, en la ciudad de San Cristóbal, Estado Táchira, a los ${new Date().getDate()} días del mes de junio del año 2026.
-          </div>
+            <div class="body-text">
+              Constancia que se expide a petición de la parte interesada, en la ciudad de San Cristóbal, Estado Táchira, a los ${new Date().getDate()} días del mes de junio del año 2026.
+            </div>
 
-          <div class="signatures-container">
-            <div class="signature-line"></div>
-            <div class="signature-box">
-              <strong>MSc. Laura Méndez</strong><br>
-              Directora de Control de Estudios y Registro Académico<br>
-              UPTNT Manuela Sáenz
+            <div class="signatures-container">
+              <div class="signature-line"></div>
+              <div class="signature-box">
+                <strong>MSc. Laura Méndez</strong><br>
+                Directora de Control de Estudios y Registro Académico<br>
+                UPTNT Manuela Sáenz
+              </div>
+            </div>
+
+            <div class="footer">
+              Este documento cuenta con firma y sello electrónico respaldado digitalmente.<br>
+              Código de Verificación Único: SEC-REG-${Math.floor(100000 + Math.random() * 900000)}
             </div>
           </div>
 
-          <div class="footer">
-            Este documento cuenta con firma y sello electrónico respaldado digitalmente.<br>
-            Código de Verificación Único: SEC-REG-${Math.floor(100000 + Math.random() * 900000)}
-          </div>
+          <script>
+            window.onload = function() {
+              const element = document.getElementById('element-to-print');
+              const opt = {
+                margin:       15,
+                filename:     'Constancia_Estudios_${profile.cedula}.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
+              };
+              html2pdf().from(element).set(opt).save().then(() => {
+                setTimeout(() => window.close(), 800);
+              }).catch(err => {
+                console.error('Error generating PDF with html2pdf, falling back to window.print', err);
+                window.print();
+              });
+            };
+          </script>
         </body>
       </html>
     `;
@@ -214,10 +240,6 @@ export default function StudentDocuments() {
     popup.document.open();
     popup.document.write(printableHtml);
     popup.document.close();
-    popup.focus();
-    setTimeout(() => {
-      popup.print();
-    }, 250);
   };
 
   const handlePrintEnrollmentReceipt = () => {
@@ -245,17 +267,23 @@ export default function StudentDocuments() {
       <html>
         <head>
           <title>Comprobante de Inscripción - ${profile.cedula}</title>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
           <style>
             body {
               font-family: 'Inter', Arial, sans-serif;
-              margin: 40px;
+              margin: 20px;
               color: #0f172a;
               background-color: #ffffff;
+            }
+            #element-to-print {
+              width: 720px;
+              padding-right: 25px;
+              box-sizing: border-box;
             }
             .header-table {
               width: 100%;
               border-collapse: collapse;
-              margin-bottom: 30px;
+              margin-bottom: 25px;
             }
             .header-logo-cell {
               width: 80px;
@@ -285,7 +313,7 @@ export default function StudentDocuments() {
               font-size: 1.35rem;
               font-weight: 800;
               color: #051124;
-              margin: 20px 0 30px 0;
+              margin: 15px 0 25px 0;
               text-transform: uppercase;
               letter-spacing: 0.05em;
               border-bottom: 2px solid #051124;
@@ -295,7 +323,7 @@ export default function StudentDocuments() {
               display: grid;
               grid-template-columns: repeat(2, 1fr);
               gap: 12px;
-              margin-bottom: 30px;
+              margin-bottom: 25px;
               background: #f8fafc;
               border: 1px solid #e2e8f0;
               border-radius: 12px;
@@ -344,7 +372,7 @@ export default function StudentDocuments() {
               padding-right: 12px;
             }
             .signatures-container {
-              margin-top: 80px;
+              margin-top: 50px;
               display: grid;
               grid-template-columns: repeat(2, 1fr);
               gap: 100px;
@@ -357,7 +385,7 @@ export default function StudentDocuments() {
               color: #475569;
             }
             .footer {
-              margin-top: 80px;
+              margin-top: 50px;
               text-align: center;
               font-size: 0.72rem;
               color: #94a3b8;
@@ -367,77 +395,96 @@ export default function StudentDocuments() {
           </style>
         </head>
         <body>
-          <table class="header-table">
-            <tr>
-              <td class="header-logo-cell">
-                <div style="background-color: #051124; padding: 8px; border-radius: 10px; display: inline-block;">
-                  <span style="color: #ffffff; font-weight: 900; font-family: sans-serif; font-size: 20px; letter-spacing: 1px;">SGUMS</span>
-                </div>
-              </td>
-              <td class="header-text-cell">
-                <h2>Universidad Politécnica Territorial del Norte del Táchira</h2>
-                <p>Dirección de Control de Estudios · Coordinación Académica</p>
-              </td>
-            </tr>
-          </table>
-
-          <div class="doc-title">Comprobante Oficial de Inscripción</div>
-
-          <div class="student-info-grid">
-            <div class="info-item">
-              <strong>Estudiante</strong>
-              <span>${profile.name} ${profile.lastname}</span>
-            </div>
-            <div class="info-item">
-              <strong>Cédula de Identidad</strong>
-              <span>${profile.cedula}</span>
-            </div>
-            <div class="info-item">
-              <strong>Carrera / Programa</strong>
-              <span>${profile.career}</span>
-            </div>
-            <div class="info-item">
-              <strong>Período Académico</strong>
-              <span>Período ${profile.currentPeriod}</span>
-            </div>
-          </div>
-
-          <table class="data-table">
-            <thead>
+          <div id="element-to-print">
+            <table class="header-table">
               <tr>
-                <th>Código</th>
-                <th>Asignatura</th>
-                <th>Sección</th>
-                <th style="text-align: center;">Créditos</th>
-                <th>Horario</th>
-                <th>Aula</th>
-                <th>Docente</th>
+                <td class="header-logo-cell">
+                  <img src="${logoBase64}" alt="Logo UPTNT" style="width: 70px; height: auto; display: block;" />
+                </td>
+                <td class="header-text-cell">
+                  <h2>Universidad Politécnica Territorial del Norte del Táchira</h2>
+                  <p>Dirección de Control de Estudios · Coordinación Académica</p>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-            </tbody>
-          </table>
+            </table>
 
-          <div class="totals-row">
-            Total de Unidades de Crédito Inscritas: ${totalCredits} UC
-          </div>
+            <div class="doc-title">Comprobante Oficial de Inscripción</div>
 
-          <div class="signatures-container">
-            <div class="signature-box">
-              <strong>Firma del Estudiante</strong><br>
-              ${profile.name} ${profile.lastname}
+            <div class="student-info-grid">
+              <div class="info-item">
+                <strong>Estudiante</strong>
+                <span>${profile.name} ${profile.lastname}</span>
+              </div>
+              <div class="info-item">
+                <strong>Cédula de Identidad</strong>
+                <span>${profile.cedula}</span>
+              </div>
+              <div class="info-item">
+                <strong>Carrera / Programa</strong>
+                <span>${profile.career}</span>
+              </div>
+              <div class="info-item">
+                <strong>Período Académico</strong>
+                <span>Período ${profile.currentPeriod}</span>
+              </div>
             </div>
-            <div class="signature-box">
-              <strong>Coordinación de Control de Estudios</strong><br>
-              UPTNT Manuela Sáenz
+
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Asignatura</th>
+                  <th>Sección</th>
+                  <th style="text-align: center;">Créditos</th>
+                  <th>Horario</th>
+                  <th>Aula</th>
+                  <th>Docente</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRows}
+              </tbody>
+            </table>
+
+            <div class="totals-row">
+              Total de Unidades de Crédito Inscritas: ${totalCredits} UC
+            </div>
+
+            <div class="signatures-container">
+              <div class="signature-box">
+                <strong>Firma del Estudiante</strong><br>
+                ${profile.name} ${profile.lastname}
+              </div>
+              <div class="signature-box">
+                <strong>Coordinación de Control de Estudios</strong><br>
+                UPTNT Manuela Sáenz
+              </div>
+            </div>
+
+            <div class="footer">
+              Este documento representa una constancia formal digitalizada de inscripción.<br>
+              Emitido el ${new Date().toLocaleString()} · Sistema de Gestión Universitaria (SGUMS)
             </div>
           </div>
 
-          <div class="footer">
-            Este documento representa una constancia formal digitalizada de inscripción.<br>
-            Emitido el ${new Date().toLocaleString()} · Sistema de Gestión Universitaria (SGUMS)
-          </div>
+          <script>
+            window.onload = function() {
+              const element = document.getElementById('element-to-print');
+              const opt = {
+                margin:       15,
+                filename:     'Comprobante_Inscripcion_${profile.cedula}.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
+              };
+              html2pdf().from(element).set(opt).save().then(() => {
+                setTimeout(() => window.close(), 800);
+              }).catch(err => {
+                console.error('Error generating PDF with html2pdf, falling back to window.print', err);
+                window.print();
+              });
+            };
+          </script>
         </body>
       </html>
     `;
@@ -447,10 +494,6 @@ export default function StudentDocuments() {
     popup.document.open();
     popup.document.write(printableHtml);
     popup.document.close();
-    popup.focus();
-    setTimeout(() => {
-      popup.print();
-    }, 250);
   };
 
   return (

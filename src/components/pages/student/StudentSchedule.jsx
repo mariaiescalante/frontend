@@ -4,6 +4,8 @@ import { Calendar, Download, Printer, Clock, MapPin, User, FileText } from 'luci
 import { AdminPageShell, ActionButton, SectionCard, DataTable } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
+import { logoBase64 } from '../../../assets/logoConstant';
+
 
 export default function StudentSchedule() {
   const { user } = useAuth();
@@ -77,6 +79,20 @@ export default function StudentSchedule() {
     currentPeriod: activePeriodName || 'Actual'
   };
 
+  // Helper to normalize day names (abbreviations and accents)
+  const normalizeDay = (dayStr) => {
+    if (!dayStr) return '';
+    const clean = dayStr.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (clean.startsWith('lun')) return 'Lunes';
+    if (clean.startsWith('mar')) return 'Martes';
+    if (clean.startsWith('mie')) return 'Miércoles';
+    if (clean.startsWith('jue')) return 'Jueves';
+    if (clean.startsWith('vie')) return 'Viernes';
+    if (clean.startsWith('sab')) return 'Sábado';
+    if (clean.startsWith('dom')) return 'Domingo';
+    return '';
+  };
+
   // Group classes by day for the visual weekly planner
   const weeklyPlanner = useMemo(() => {
     const days = {
@@ -96,8 +112,9 @@ export default function StudentSchedule() {
 
       const scheduleDays = daysPart.split('/');
       scheduleDays.forEach((d) => {
-        if (days[d]) {
-          days[d].push({
+        const normDay = normalizeDay(d);
+        if (days[normDay]) {
+          days[normDay].push({
             code: course.code,
             name: course.name,
             section: course.sectionCode,
@@ -146,6 +163,9 @@ export default function StudentSchedule() {
               margin: 40px;
               color: #0f172a;
               background-color: #ffffff;
+              width: 720px;
+              padding-right: 25px;
+              box-sizing: border-box;
             }
             .header-table {
               width: 100%;
@@ -265,9 +285,7 @@ export default function StudentSchedule() {
           <table class="header-table">
             <tr>
               <td class="header-logo-cell">
-                <div style="background-color: #051124; padding: 8px; border-radius: 10px; display: inline-block;">
-                  <span style="color: #ffffff; font-weight: 900; font-family: sans-serif; font-size: 20px; letter-spacing: 1px;">SGUMS</span>
-                </div>
+                <img src="${logoBase64}" alt="Logo UPTNT" style="width: 70px; height: auto; display: block;" />
               </td>
               <td class="header-text-cell">
                 <h2>Universidad Politécnica Territorial del Norte del Táchira</h2>

@@ -3,6 +3,7 @@ import { Download, Search, Users, Save, FileSpreadsheet, Printer } from 'lucide-
 import { ActionButton, AdminPageShell, SectionCard, StatusBadge } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
+import { logoBase64 } from '../../../assets/logoConstant';
 
 const cuts = ['c1', 'c2', 'c3', 'c4'];
 
@@ -238,17 +239,23 @@ export default function TeacherStudents() {
       <html>
         <head>
           <title>Acta de Notas - ${sectionObj.Subject?.name_subject}</title>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
           <style>
             body {
               font-family: 'Inter', Arial, sans-serif;
-              margin: 40px;
+              margin: 20px;
               color: #0f172a;
               background-color: #ffffff;
+            }
+            #element-to-print {
+              width: 720px;
+              padding-right: 25px;
+              box-sizing: border-box;
             }
             .header-table {
               width: 100%;
               border-collapse: collapse;
-              margin-bottom: 30px;
+              margin-bottom: 25px;
             }
             .header-logo-cell {
               width: 80px;
@@ -278,7 +285,7 @@ export default function TeacherStudents() {
               font-size: 1.35rem;
               font-weight: 800;
               color: #051124;
-              margin: 20px 0 30px 0;
+              margin: 15px 0 25px 0;
               text-transform: uppercase;
               letter-spacing: 0.05em;
               border-bottom: 2px solid #051124;
@@ -288,7 +295,7 @@ export default function TeacherStudents() {
               display: grid;
               grid-template-columns: repeat(2, 1fr);
               gap: 12px;
-              margin-bottom: 30px;
+              margin-bottom: 25px;
               background: #f8fafc;
               border: 1px solid #e2e8f0;
               border-radius: 12px;
@@ -328,7 +335,7 @@ export default function TeacherStudents() {
             ul { margin: 0; padding-left: 16px; font-size: 0.78rem; }
             li { margin-bottom: 2px; }
             .signatures-container {
-              margin-top: 60px;
+              margin-top: 50px;
               display: grid;
               grid-template-columns: repeat(2, 1fr);
               gap: 100px;
@@ -341,7 +348,7 @@ export default function TeacherStudents() {
               color: #475569;
             }
             .footer {
-              margin-top: 60px;
+              margin-top: 50px;
               text-align: center;
               font-size: 0.72rem;
               color: #94a3b8;
@@ -351,70 +358,89 @@ export default function TeacherStudents() {
           </style>
         </head>
         <body>
-          <table class="header-table">
-            <tr>
-              <td class="header-logo-cell">
-                <div style="background-color: #051124; padding: 8px; border-radius: 10px; display: inline-block;">
-                  <span style="color: #ffffff; font-weight: 900; font-family: sans-serif; font-size: 20px; letter-spacing: 1px;">SGUMS</span>
-                </div>
-              </td>
-              <td class="header-text-cell">
-                <h2>Universidad Politécnica Territorial del Norte del Táchira</h2>
-                <p>Dirección de Control de Estudios · Registro de Calificaciones</p>
-              </td>
-            </tr>
-          </table>
-
-          <div class="doc-title">Constancia de Carga de Notas y Listado de Estudiantes</div>
-
-          <div class="meta-grid">
-            <div class="meta-item">
-              <strong>Asignatura / Sección</strong>
-              <span>${sectionObj.Subject?.name_subject || 'Desconocido'} - Sección ${sectionObj.section_code || ''}</span>
-            </div>
-            <div class="meta-item">
-              <strong>Carrera</strong>
-              <span>${sectionObj.Career?.name_career || 'N/A'}</span>
-            </div>
-            <div class="meta-item">
-              <strong>Período Académico</strong>
-              <span>${sectionObj.AcademicPeriod?.name_period || 'N/A'}</span>
-            </div>
-            <div class="meta-item">
-              <strong>Fecha de Emisión</strong>
-              <span>${new Date().toLocaleString()}</span>
-            </div>
-          </div>
-
-          <table class="data-table">
-            <thead>
+          <div id="element-to-print">
+            <table class="header-table">
               <tr>
-                <th style="width: 15%;">Cédula</th>
-                <th style="width: 35%;">Estudiante</th>
-                <th style="width: 10%; text-align: center;">Promedio</th>
-                <th style="width: 40%;">Detalle de Cortes y Contenido</th>
+                <td class="header-logo-cell">
+                  <img src="${logoBase64}" alt="Logo UPTNT" style="width: 70px; height: auto; display: block;" />
+                </td>
+                <td class="header-text-cell">
+                  <h2>Universidad Politécnica Territorial del Norte del Táchira</h2>
+                  <p>Dirección de Control de Estudios · Registro de Calificaciones</p>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              ${reportRows}
-            </tbody>
-          </table>
+            </table>
 
-          <div class="signatures-container">
-            <div class="signature-box">
-              <strong>Firma del Docente</strong><br>
-              ${user?.first_name || ''} ${user?.first_lastname || ''}
+            <div class="doc-title">Constancia de Carga de Notas y Listado de Estudiantes</div>
+
+            <div class="meta-grid">
+              <div class="meta-item">
+                <strong>Asignatura / Sección</strong>
+                <span>${sectionObj.Subject?.name_subject || 'Desconocido'} - Sección ${sectionObj.section_code || ''}</span>
+              </div>
+              <div class="meta-item">
+                <strong>Carrera</strong>
+                <span>${sectionObj.Career?.name_career || 'N/A'}</span>
+              </div>
+              <div class="meta-item">
+                <strong>Período Académico</strong>
+                <span>${sectionObj.AcademicPeriod?.name_period || 'N/A'}</span>
+              </div>
+              <div class="meta-item">
+                <strong>Fecha de Emisión</strong>
+                <span>${new Date().toLocaleString()}</span>
+              </div>
             </div>
-            <div class="signature-box">
-              <strong>Coordinación Académica</strong><br>
-              UPTNT Manuela Sáenz
+
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 15%;">Cédula</th>
+                  <th style="width: 35%;">Estudiante</th>
+                  <th style="width: 10%; text-align: center;">Promedio</th>
+                  <th style="width: 40%;">Detalle de Cortes y Contenido</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${reportRows}
+              </tbody>
+            </table>
+
+            <div class="signatures-container">
+              <div class="signature-box">
+                <strong>Firma del Docente</strong><br>
+                ${user?.first_name || ''} ${user?.first_lastname || ''}
+              </div>
+              <div class="signature-box">
+                <strong>Coordinación Académica</strong><br>
+                UPTNT Manuela Sáenz
+              </div>
+            </div>
+
+            <div class="footer">
+              Este documento representa el listado oficial de carga de notas emitido por el docente.<br>
+              Sistema de Gestión Universitaria (SGUMS)
             </div>
           </div>
 
-          <div class="footer">
-            Este documento representa el listado oficial de carga de notas emitido por el docente.<br>
-            Sistema de Gestión Universitaria (SGUMS)
-          </div>
+          <script>
+            window.onload = function() {
+              const element = document.getElementById('element-to-print');
+              const opt = {
+                margin:       15,
+                filename:     'Listado_${(sectionObj.Subject?.name_subject || 'Estudiantes').replace(/[^a-zA-Z0-9]/g, '_')}_Seccion_${sectionObj.section_code || ''}.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
+              };
+              html2pdf().from(element).set(opt).save().then(() => {
+                setTimeout(() => window.close(), 800);
+              }).catch(err => {
+                console.error('Error generating PDF with html2pdf, falling back to window.print', err);
+                window.print();
+              });
+            };
+          </script>
         </body>
       </html>
     `;
@@ -424,10 +450,6 @@ export default function TeacherStudents() {
     popup.document.open();
     popup.document.write(printable);
     popup.document.close();
-    popup.focus();
-    setTimeout(() => {
-      popup.print();
-    }, 250);
   };
 
   const handleDownloadExcel = () => {
