@@ -19,22 +19,35 @@ export default function TeacherSubjects() {
       }
       try {
         setLoading(true);
-        const secRes = await api.get('/sections');
+        const [secRes, detRes] = await Promise.all([
+          api.get('/sections'),
+          api.get('/registration-details')
+        ]);
+        
         const allSections = Array.isArray(secRes) ? secRes : (secRes?.data || []);
+        const allDetails = Array.isArray(detRes) ? detRes : (detRes?.data || []);
         
         // Filtrar las secciones que corresponden a este profesor
         const teacherSections = allSections.filter(s => s.id_teacher === user.id_teacher);
         
-        const mapped = teacherSections.map(s => ({
-          id: s.id_section,
-          code: s.Subject?.code_subject || '',
-          subject: s.Subject?.name_subject || 'Desconocido',
-          section: s.section_code || '',
-          career: s.Career?.name_career || 'No definida',
-          semester: 'N/A', // Semester is derived from PensumSubject usually, showing N/A
-          period: s.AcademicPeriod?.name_period || '',
-          actStatus: 'abierta' // Por defecto abierta
-        }));
+        const mapped = teacherSections.map(s => {
+          const sectionDetails = allDetails.filter(d => d.id_section === s.id_section);
+          let status = 'abierta';
+          if (sectionDetails.length > 0 && sectionDetails.every(d => d.grade_status === 'Confirmada')) {
+            status = 'cerrada';
+          }
+          
+          return {
+            id: s.id_section,
+            code: s.Subject?.code_subject || '',
+            subject: s.Subject?.name_subject || 'Desconocido',
+            section: s.section_code || '',
+            career: s.Career?.name_career || 'No definida',
+            semester: 'N/A', // Semester is derived from PensumSubject usually, showing N/A
+            period: s.AcademicPeriod?.name_period || '',
+            actStatus: status
+          };
+        });
         
         setAssignments(mapped);
       } catch (err) {

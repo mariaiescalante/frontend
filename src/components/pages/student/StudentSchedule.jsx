@@ -93,6 +93,67 @@ export default function StudentSchedule() {
     return '';
   };
 
+  // Helper to parse time string (e.g. "8:00 - 10:00") into minutes from midnight for sorting
+  const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const match = timeStr.match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return 0;
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+
+    const isPM = /pm/i.test(timeStr);
+    const isAM = /am/i.test(timeStr);
+
+    if (isPM && hours < 12) {
+      hours += 12;
+    } else if (isAM && hours === 12) {
+      hours = 0;
+    } else if (!isPM && !isAM) {
+      if (hours >= 1 && hours < 8) {
+        hours += 12;
+      }
+    }
+    return hours * 60 + minutes;
+  };
+
+  // Helper to format 24h/12h range into clean 12h AM/PM string for display
+  const formatTimeTo12H = (timeRangeStr) => {
+    if (!timeRangeStr) return '';
+    const parts = timeRangeStr.split('-');
+    if (parts.length < 2) return timeRangeStr;
+
+    const formatSingleTime = (tStr) => {
+      const clean = tStr.trim();
+      const match = clean.match(/^(\d{1,2}):(\d{2})/);
+      if (!match) return clean;
+      let hours = parseInt(match[1], 10);
+      const minutes = match[2];
+
+      const isPM_explicit = /pm/i.test(clean);
+      const isAM_explicit = /am/i.test(clean);
+      let suffix = 'AM';
+
+      if (isPM_explicit) {
+        suffix = 'PM';
+      } else if (isAM_explicit) {
+        suffix = 'AM';
+      } else {
+        if (hours >= 12) {
+          suffix = 'PM';
+          if (hours > 12) hours -= 12;
+        } else if (hours >= 1 && hours < 8) {
+          suffix = 'PM';
+        } else {
+          suffix = 'AM';
+        }
+      }
+      const paddedHours = String(hours).padStart(2, '0');
+      return `${paddedHours}:${minutes} ${suffix}`;
+    };
+
+    return `${formatSingleTime(parts[0])} - ${formatSingleTime(parts[1])}`;
+  };
+
   // Group classes by day for the visual weekly planner
   const weeklyPlanner = useMemo(() => {
     const days = {
@@ -126,7 +187,7 @@ export default function StudentSchedule() {
     });
 
     Object.keys(days).forEach((d) => {
-      days[d].sort((a, b) => a.time.localeCompare(b.time));
+      days[d].sort((a, b) => parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time));
     });
 
     return days;
@@ -476,7 +537,7 @@ export default function StudentSchedule() {
                             {cls.name}
                           </strong>
                           <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <Clock size={10} /> {cls.time}
+                            <Clock size={10} /> {formatTimeTo12H(cls.time)}
                           </span>
                           <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '3px' }}>
                             <MapPin size={10} /> {cls.classroom}

@@ -16,6 +16,19 @@ import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
 
 // Schedule parsing helper to detect collisions
+function normalizeDay(dayStr) {
+  if (!dayStr) return '';
+  const clean = dayStr.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (clean.startsWith('lun')) return 'Lunes';
+  if (clean.startsWith('mar')) return 'Martes';
+  if (clean.startsWith('mie')) return 'Miércoles';
+  if (clean.startsWith('jue')) return 'Jueves';
+  if (clean.startsWith('vie')) return 'Viernes';
+  if (clean.startsWith('sab')) return 'Sábado';
+  if (clean.startsWith('dom')) return 'Domingo';
+  return dayStr;
+}
+
 function parseSchedule(scheduleStr) {
   try {
     const parts = scheduleStr.split(' ');
@@ -23,11 +36,28 @@ function parseSchedule(scheduleStr) {
     const daysPart = parts[0]; 
     const hoursPart = parts.slice(1).join(''); 
     
-    const days = daysPart.split('/');
+    const days = daysPart.split('/').map(normalizeDay);
     const [startStr, endStr] = hoursPart.split('-');
     
     const parseTime = (tStr) => {
-      const [h, m] = tStr.trim().split(':').map(Number);
+      const clean = tStr.trim().toLowerCase();
+      const match = clean.match(/^(\d{1,2}):(\d{2})/);
+      if (!match) return 0;
+      let h = parseInt(match[1], 10);
+      const m = parseInt(match[2], 10);
+      
+      const isPM = /pm/i.test(clean);
+      const isAM = /am/i.test(clean);
+      
+      if (isPM && h < 12) {
+        h += 12;
+      } else if (isAM && h === 12) {
+        h = 0;
+      } else if (!isPM && !isAM) {
+        if (h >= 1 && h < 8) {
+          h += 12;
+        }
+      }
       return h + m / 60;
     };
     
@@ -220,6 +250,16 @@ export default function StudentEnrollment() {
       if (next[subjectCode] !== undefined) {
         delete next[subjectCode];
       } else {
+        // Check if the default section conflicts with already selected subjects
+        const sections = availableSections[subjectCode] || [];
+        const sectionObj = sections[0] || null;
+        if (sectionObj) {
+          const conflict = selectedList.find(item => item.code !== subjectCode && hasOverlap(item.schedule, sectionObj.schedule));
+          if (conflict) {
+            alert(`Conflicto de Horario:\nNo es posible inscribir "${subjectCode}". Su horario (${sectionObj.schedule}) choca con la asignatura "${conflict.name}" (${conflict.schedule}) que ya has seleccionado.`);
+            return prev;
+          }
+        }
         next[subjectCode] = 0; // Default to first section
       }
       return next;
@@ -228,6 +268,16 @@ export default function StudentEnrollment() {
 
   // Handle section dropdown change
   const handleSectionChange = (subjectCode, sectionIndex) => {
+    const sections = availableSections[subjectCode] || [];
+    const sectionObj = sections[Number(sectionIndex)] || null;
+    if (sectionObj) {
+      const conflict = selectedList.find(item => item.code !== subjectCode && hasOverlap(item.schedule, sectionObj.schedule));
+      if (conflict) {
+        alert(`Conflicto de Horario:\nNo se puede seleccionar la sección ${sectionObj.code}. Su horario (${sectionObj.schedule}) choca con la asignatura "${conflict.name}" (${conflict.schedule}) que ya has seleccionado.`);
+        return;
+      }
+    }
+
     setSelectedSubjects((prev) => ({
       ...prev,
       [subjectCode]: Number(sectionIndex)
