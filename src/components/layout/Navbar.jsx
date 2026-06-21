@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Bell, Menu } from 'lucide-react';
 import api from '../../services/api';
+import universityLogo from '../../assets/logo-uptnt.png';
 
 export default function Navbar({ onMenuClick }) {
   const location = useLocation();
@@ -85,9 +86,16 @@ export default function Navbar({ onMenuClick }) {
 
   return (
     <header className="sgums-navbar">
-      <button type="button" className="sgums-navbar-menu-btn" onClick={onMenuClick} aria-label="Abrir menú">
-        <Menu size={20} />
-      </button>
+      {/* Mobile top row: hamburger + brand logo + app name */}
+      <div className="sgums-navbar-mobile-top">
+        <button type="button" className="sgums-navbar-menu-btn" onClick={onMenuClick} aria-label="Abrir menú">
+          <Menu size={20} />
+        </button>
+        <div className="sgums-navbar-mobile-brand">
+          <img src={universityLogo} alt="Logo UPTNT" className="sgums-navbar-mobile-logo" />
+          <span className="sgums-navbar-mobile-appname">SGUMS</span>
+        </div>
+      </div>
 
       {/* Left side: Page Title, Divider, Cycle Badge */}
       <div className="sgums-navbar-left">

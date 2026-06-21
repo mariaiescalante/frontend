@@ -533,17 +533,17 @@ export default function TeacherStudents() {
       subtitle="Selecciona carrera, asignatura y seccion para cargar notas por estudiante en la base de datos."
       metrics={metrics}
       actions={(
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <ActionButton variant="primary" onClick={handleSaveGrades} disabled={!sectionObj || !isEditWindowOpen || isSaving}>
+        <>
+          <ActionButton variant="primary" onClick={handleSaveGrades} disabled={!sectionObj || !isEditWindowOpen || isSaving} style={{ flexGrow: 1 }}>
             <Save size={16} /> {isSaving ? 'Guardando...' : 'Guardar Notas'}
           </ActionButton>
-          <ActionButton variant="accent" onClick={handleDownloadRecord} disabled={!sectionObj || !editableRecords.length}>
+          <ActionButton variant="accent" onClick={handleDownloadRecord} disabled={!sectionObj || !editableRecords.length} style={{ flexGrow: 1 }}>
             <Printer size={16} /> Descargar PDF / Imprimir Listado
           </ActionButton>
-          <ActionButton variant="secondary" onClick={handleDownloadExcel} disabled={!sectionObj || !editableRecords.length}>
-            <FileSpreadsheet size={16} /> Descargar Excel (.csv)
+          <ActionButton variant="secondary" onClick={handleDownloadExcel} disabled={!sectionObj || !editableRecords.length} style={{ flexGrow: 1 }}>
+            <FileSpreadsheet size={16} /> Descargar Excel
           </ActionButton>
-        </div>
+        </>
       )}
     >
       <SectionCard

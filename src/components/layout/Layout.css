@@ -281,6 +281,31 @@
   cursor: pointer;
 }
 
+/* Mobile top bar: hamburger + branding — hidden on desktop */
+.sgums-navbar-mobile-top {
+  display: none;
+}
+
+.sgums-navbar-mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sgums-navbar-mobile-logo {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.sgums-navbar-mobile-appname {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: 0.04em;
+}
+
 .sgums-navbar-left {
   display: flex;
   align-items: center;
@@ -594,12 +619,22 @@
     display: inline-flex;
   }
 
+  /* Show the mobile brand row */
+  .sgums-navbar-mobile-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 12px;
+  }
+
   .sgums-navbar {
     min-height: auto;
     height: auto;
-    padding: 14px 16px;
+    padding: 12px 16px;
     flex-direction: column;
     align-items: flex-start;
+    gap: 10px;
   }
 
   .sgums-navbar-left,
@@ -708,6 +743,8 @@
   .admin-page-shell-actions {
     width: 100% !important;
     justify-content: flex-start !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
   }
 
   .admin-page-shell-metrics {
@@ -833,4 +870,20 @@
   background: #94a3b8 !important;
 }
 
+/* Mobile-safe Modal Overlay */
+.sgums-modal-overlay {
+  -webkit-overflow-scrolling: touch;
+}
 
+/* On small screens, ensure modal panels have comfortable padding */
+@media (max-width: 640px) {
+  .sgums-modal-overlay {
+    padding: 12px !important;
+    padding-top: 12px !important;
+    align-items: flex-start !important;
+  }
+
+  .sgums-modal-overlay .glass-panel {
+    border-radius: 16px !important;
+  }
+}

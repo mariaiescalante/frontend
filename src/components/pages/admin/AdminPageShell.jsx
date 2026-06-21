@@ -300,16 +300,19 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
 
   return (
     <div
+      className="sgums-modal-overlay"
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(15, 23, 42, 0.54)',
+        background: 'rgba(15, 23, 42, 0.6)',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
-        padding: '24px',
+        padding: '16px',
+        paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
         zIndex: 60,
-        backdropFilter: 'blur(6px)'
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
       }}
       onClick={onClose}
     >
@@ -317,12 +320,13 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
         className="glass-panel custom-modal-scrollbar"
         style={{
           width: 'min(920px, 100%)',
-          maxHeight: '90vh',
-          overflow: 'auto',
+          maxHeight: 'none',
           background: '#ffffff',
           border: '1px solid #dbe4f0',
           borderRadius: '22px',
-          boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)'
+          boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+          marginBottom: '16px',
+          flexShrink: 0,
         }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -336,6 +340,7 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
             onClick={onClose}
             aria-label="Cerrar modal"
             style={{
+              flexShrink: 0,
               width: '40px',
               height: '40px',
               borderRadius: '12px',
