@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom';
 import { X } from 'lucide-react';
 
 const tonePalette = {
@@ -297,41 +296,28 @@ export function DataTable({ columns, children }) {
 }
 
 export function Modal({ open, title, subtitle, onClose, children, footer }) {
-  // Lock body scroll while modal is open (prevents Android background bleed)
-  useEffect(() => {
-    if (open) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = prev; };
-    }
-  }, [open]);
-
   if (!open) return null;
 
-  // Mount the modal directly on body via portal — no stacking context issues
-  return ReactDOM.createPortal(
+  return (
     <div
       className="sgums-modal-overlay"
       style={{
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        inset: 0,
         background: 'rgba(15, 23, 42, 0.6)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
         padding: '16px',
-        paddingTop: '16px',
-        zIndex: 9999,
+        paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
+        zIndex: 60,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
       }}
       onClick={onClose}
     >
       <div
-        className="custom-modal-scrollbar"
+        className="glass-panel custom-modal-scrollbar"
         style={{
           width: 'min(920px, 100%)',
           maxHeight: 'none',
@@ -341,7 +327,6 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
           boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
           marginBottom: '16px',
           flexShrink: 0,
-          position: 'relative',
         }}
         onClick={(event) => event.stopPropagation()}
       >
@@ -378,8 +363,7 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
           </footer>
         ) : null}
       </div>
-    </div>,
-    document.body
+    </div>
   );
 }
 
