@@ -482,7 +482,7 @@ export default function StudentDocuments() {
             </div>
 
             <ActionButton variant="accent" onClick={handlePrintStudyCertificate} style={{ width: '100%' }}>
-              <Printer size={16} /> Imprimir Constancia de Estudios
+              <Printer size={16} /> Descargar PDF / Imprimir Constancia
             </ActionButton>
           </div>
         </SectionCard>
@@ -531,7 +531,7 @@ export default function StudentDocuments() {
               onClick={handlePrintEnrollmentReceipt}
               style={{ width: '100%' }}
             >
-              <Printer size={16} /> Imprimir Comprobante de Inscripción
+              <Printer size={16} /> Descargar PDF / Imprimir Comprobante
             </ActionButton>
           </div>
         </SectionCard>

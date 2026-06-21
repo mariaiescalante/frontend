@@ -411,7 +411,7 @@ export default function StudentRecord() {
       actions={
         fullHistory.length > 0 && (
           <ActionButton variant="accent" onClick={handlePrintRecord}>
-            <Printer size={16} /> Descargar Récord Académico
+            <Printer size={16} /> Descargar PDF / Imprimir Récord
           </ActionButton>
         )
       }

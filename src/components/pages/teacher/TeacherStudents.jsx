@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Download, Search, Users, Save } from 'lucide-react';
+import { Download, Search, Users, Save, FileSpreadsheet, Printer } from 'lucide-react';
 import { ActionButton, AdminPageShell, SectionCard, StatusBadge } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
@@ -225,10 +225,10 @@ export default function TeacherStudents() {
 
         return `
           <tr>
-            <td>${student.cedula}</td>
-            <td>${student.name}</td>
-            <td>${computeAverage(student.grades)}</td>
-            <td><ul>${row}</ul></td>
+            <td style="border: 1px solid #cbd5e1; padding: 8px;"><strong>${student.cedula}</strong></td>
+            <td style="border: 1px solid #cbd5e1; padding: 8px;">${student.name}</td>
+            <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-weight: 700;">${computeAverage(student.grades)}</td>
+            <td style="border: 1px solid #cbd5e1; padding: 8px;"><ul>${row}</ul></td>
           </tr>
         `;
       })
@@ -239,39 +239,182 @@ export default function TeacherStudents() {
         <head>
           <title>Acta de Notas - ${sectionObj.Subject?.name_subject}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
-            h1 { margin-bottom: 8px; }
-            .meta { margin-bottom: 18px; color: #334155; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #cbd5e1; padding: 10px; vertical-align: top; text-align: left; }
-            th { background: #f8fafc; }
-            ul { margin: 0; padding-left: 16px; }
-            li { margin-bottom: 4px; }
+            body {
+              font-family: 'Inter', Arial, sans-serif;
+              margin: 40px;
+              color: #0f172a;
+              background-color: #ffffff;
+            }
+            .header-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 30px;
+            }
+            .header-logo-cell {
+              width: 80px;
+              vertical-align: middle;
+            }
+            .header-text-cell {
+              text-align: left;
+              vertical-align: middle;
+              padding-left: 15px;
+            }
+            .header-text-cell h2 {
+              margin: 0;
+              font-size: 1.15rem;
+              color: #051124;
+              font-weight: 800;
+              letter-spacing: 0.02em;
+            }
+            .header-text-cell p {
+              margin: 4px 0 0 0;
+              font-size: 0.75rem;
+              color: #475569;
+              text-transform: uppercase;
+              font-weight: 600;
+            }
+            .doc-title {
+              text-align: center;
+              font-size: 1.35rem;
+              font-weight: 800;
+              color: #051124;
+              margin: 20px 0 30px 0;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              border-bottom: 2px solid #051124;
+              padding-bottom: 8px;
+            }
+            .meta-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 12px;
+              margin-bottom: 30px;
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 12px;
+              padding: 18px;
+            }
+            .meta-item {
+              font-size: 0.88rem;
+              line-height: 1.5;
+            }
+            .meta-item strong {
+              color: #475569;
+              font-size: 0.78rem;
+              text-transform: uppercase;
+              display: block;
+              margin-bottom: 2px;
+            }
+            .meta-item span {
+              color: #0f172a;
+              font-weight: 700;
+            }
+            table.data-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 15px;
+            }
+            table.data-table th {
+              border: 1px solid #cbd5e1;
+              padding: 10px 12px;
+              font-size: 0.75rem;
+              text-align: left;
+              background-color: #f1f5f9;
+              color: #051124;
+              font-weight: 800;
+              text-transform: uppercase;
+              letter-spacing: 0.04em;
+            }
+            ul { margin: 0; padding-left: 16px; font-size: 0.78rem; }
+            li { margin-bottom: 2px; }
+            .signatures-container {
+              margin-top: 60px;
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 100px;
+              text-align: center;
+            }
+            .signature-box {
+              border-top: 1px solid #64748b;
+              padding-top: 8px;
+              font-size: 0.8rem;
+              color: #475569;
+            }
+            .footer {
+              margin-top: 60px;
+              text-align: center;
+              font-size: 0.72rem;
+              color: #94a3b8;
+              border-top: 1px solid #e2e8f0;
+              padding-top: 10px;
+            }
           </style>
         </head>
         <body>
-          <h1>Constancia de Carga de Notas</h1>
-          <div class="meta">
-            <div><strong>Asignatura:</strong> ${sectionObj.Subject?.name_subject}</div>
-            <div><strong>Seccion:</strong> ${sectionObj.section_code}</div>
-            <div><strong>Carrera:</strong> ${sectionObj.Career?.name_career}</div>
-            <div><strong>Periodo:</strong> ${sectionObj.AcademicPeriod?.name_period}</div>
-            <div><strong>Fecha de emision:</strong> ${new Date().toLocaleString()}</div>
+          <table class="header-table">
+            <tr>
+              <td class="header-logo-cell">
+                <div style="background-color: #051124; padding: 8px; border-radius: 10px; display: inline-block;">
+                  <span style="color: #ffffff; font-weight: 900; font-family: sans-serif; font-size: 20px; letter-spacing: 1px;">SGUMS</span>
+                </div>
+              </td>
+              <td class="header-text-cell">
+                <h2>Universidad Politécnica Territorial del Norte del Táchira</h2>
+                <p>Dirección de Control de Estudios · Registro de Calificaciones</p>
+              </td>
+            </tr>
+          </table>
+
+          <div class="doc-title">Constancia de Carga de Notas y Listado de Estudiantes</div>
+
+          <div class="meta-grid">
+            <div class="meta-item">
+              <strong>Asignatura / Sección</strong>
+              <span>${sectionObj.Subject?.name_subject || 'Desconocido'} - Sección ${sectionObj.section_code || ''}</span>
+            </div>
+            <div class="meta-item">
+              <strong>Carrera</strong>
+              <span>${sectionObj.Career?.name_career || 'N/A'}</span>
+            </div>
+            <div class="meta-item">
+              <strong>Período Académico</strong>
+              <span>${sectionObj.AcademicPeriod?.name_period || 'N/A'}</span>
+            </div>
+            <div class="meta-item">
+              <strong>Fecha de Emisión</strong>
+              <span>${new Date().toLocaleString()}</span>
+            </div>
           </div>
 
-          <table>
+          <table class="data-table">
             <thead>
               <tr>
-                <th>Cedula</th>
-                <th>Estudiante</th>
-                <th>Promedio</th>
-                <th>Detalle de cortes y contenido evaluado</th>
+                <th style="width: 15%;">Cédula</th>
+                <th style="width: 35%;">Estudiante</th>
+                <th style="width: 10%; text-align: center;">Promedio</th>
+                <th style="width: 40%;">Detalle de Cortes y Contenido</th>
               </tr>
             </thead>
             <tbody>
               ${reportRows}
             </tbody>
           </table>
+
+          <div class="signatures-container">
+            <div class="signature-box">
+              <strong>Firma del Docente</strong><br>
+              ${user?.first_name || ''} ${user?.first_lastname || ''}
+            </div>
+            <div class="signature-box">
+              <strong>Coordinación Académica</strong><br>
+              UPTNT Manuela Sáenz
+            </div>
+          </div>
+
+          <div class="footer">
+            Este documento representa el listado oficial de carga de notas emitido por el docente.<br>
+            Sistema de Gestión Universitaria (SGUMS)
+          </div>
         </body>
       </html>
     `;
@@ -282,7 +425,59 @@ export default function TeacherStudents() {
     popup.document.write(printable);
     popup.document.close();
     popup.focus();
-    popup.print();
+    setTimeout(() => {
+      popup.print();
+    }, 250);
+  };
+
+  const handleDownloadExcel = () => {
+    if (!sectionObj || !filteredRecords.length) return;
+
+    const headers = [
+      'Cédula',
+      'Estudiante',
+      'Corte 1',
+      'Contenido 1',
+      'Corte 2',
+      'Contenido 2',
+      'Corte 3',
+      'Contenido 3',
+      'Corte 4',
+      'Contenido 4',
+      'Promedio'
+    ];
+
+    const rows = filteredRecords.map(student => [
+      student.cedula,
+      student.name,
+      student.grades.c1 || '',
+      student.contents.c1 || '',
+      student.grades.c2 || '',
+      student.contents.c2 || '',
+      student.grades.c3 || '',
+      student.contents.c3 || '',
+      student.grades.c4 || '',
+      student.contents.c4 || '',
+      computeAverage(student.grades)
+    ]);
+
+    const csvContent = '\uFEFF' + [headers, ...rows]
+      .map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(';'))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    const filename = `Listado_${sectionObj.Subject?.name_subject || 'Estudiantes'}_${sectionObj.section_code || ''}`
+      .replace(/[^a-zA-Z0-9_]/g, '_');
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const metrics = [
@@ -321,7 +516,10 @@ export default function TeacherStudents() {
             <Save size={16} /> {isSaving ? 'Guardando...' : 'Guardar Notas'}
           </ActionButton>
           <ActionButton variant="accent" onClick={handleDownloadRecord} disabled={!sectionObj || !editableRecords.length}>
-            <Download size={16} /> Descargar acta/listado
+            <Printer size={16} /> Descargar PDF / Imprimir Listado
+          </ActionButton>
+          <ActionButton variant="secondary" onClick={handleDownloadExcel} disabled={!sectionObj || !editableRecords.length}>
+            <FileSpreadsheet size={16} /> Descargar Excel (.csv)
           </ActionButton>
         </div>
       )}
