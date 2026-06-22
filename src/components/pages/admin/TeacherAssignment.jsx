@@ -278,9 +278,9 @@ export default function TeacherAssignment() {
         { label: 'Conflictos', value: scheduleConflict ? '1' : '0', hint: 'Validación de choque de horario', icon: Slash, tone: scheduleConflict ? 'danger' : 'info' }
       ]}
     >
-      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: '18px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '18px', alignItems: 'start' }}>
         <SectionCard title="Flujo de asignación" description="La secuencia de selección limita errores y mantiene la navegación intuitiva.">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '14px' }}>
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Carrera</span>
               <CustomSelect

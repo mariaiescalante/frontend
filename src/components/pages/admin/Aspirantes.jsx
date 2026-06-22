@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Search, Users, UserCheck, CheckCircle2, XCircle, AlertCircle, Trash2, Calendar, FileText, MapPin, Eye, Info } from 'lucide-react';
-import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect } from './AdminPageShell';
+import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect, Pagination } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function Aspirantes() {
@@ -16,57 +16,54 @@ export default function Aspirantes() {
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
 
-  const fetchApplicants = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  const fetchApplicants = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const response = await api.get('/pre-registrations');
-      const items = Array.isArray(response) ? response : (response?.data ?? response?.items ?? []);
-      setApplicants(items);
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: 10,
+        status_pre: statusFilter !== 'Todos' ? statusFilter : '',
+        search: query || ''
+      });
+      const response = await api.get(`/pre-registrations?${params.toString()}`);
+      if (response?.data && response?.meta) {
+        setApplicants(response.data);
+        setTotalPages(response.meta.totalPages);
+        setTotalItems(response.meta.totalItems);
+      } else {
+        const items = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : (response?.items ?? []));
+        setApplicants(items);
+        setTotalPages(1);
+        setTotalItems(items.length);
+      }
     } catch (err) {
       console.error(err);
       setError('No fue posible cargar la lista de aspirantes de la base de datos.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, statusFilter, query]);
 
   useEffect(() => {
-    fetchApplicants();
-  }, []);
+    const timerId = setTimeout(() => {
+      fetchApplicants();
+    }, 300);
+    return () => clearTimeout(timerId);
+  }, [fetchApplicants]);
 
-  const filteredApplicants = useMemo(() => {
-    return applicants.filter((app) => {
-      const fullName = `${app.first_name || ''} ${app.second_name || ''} ${app.first_lastname || ''} ${app.second_lastname || ''}`.toLowerCase();
-      const docId = `${app.document_type || ''}-${app.document_id || ''}`.toLowerCase();
-      const email = (app.email || '').toLowerCase();
-      const careerName = (app.Career?.name_career || '').toLowerCase();
-      const matchesQuery = fullName.includes(query.toLowerCase()) || 
-                           docId.includes(query.toLowerCase()) || 
-                           email.includes(query.toLowerCase()) ||
-                           careerName.includes(query.toLowerCase());
-      
-      const statusValue = app.status_pre || 'Pendiente';
-      const matchesStatus = statusFilter === 'Todos' || statusValue.toLowerCase() === statusFilter.toLowerCase();
-      
-      return matchesQuery && matchesStatus;
-    });
-  }, [applicants, query, statusFilter]);
+  const filteredApplicants = applicants;
 
-  // Metric computations
+  // Metric computations (just using totalItems since backend does pagination)
   const metrics = useMemo(() => {
-    const total = applicants.length;
-    const pending = applicants.filter(a => (a.status_pre || 'Pendiente') === 'Pendiente').length;
-    const inRevision = applicants.filter(a => a.status_pre === 'En Revisión').length;
-    const approved = applicants.filter(a => a.status_pre === 'Aprobado').length;
-
     return [
-      { label: 'Total Aspirantes', value: String(total), hint: 'Preinscritos en la plataforma', icon: Users, tone: 'primary' },
-      { label: 'Pendientes', value: String(pending), hint: 'Esperando primera revisión', icon: AlertCircle, tone: 'warning' },
-      { label: 'En Revisión', value: String(inRevision), hint: 'Documentos bajo análisis', icon: Info, tone: 'info' },
-      { label: 'Aprobados', value: String(approved), hint: 'Listos para registro definitivo', icon: UserCheck, tone: 'success' }
+      { label: 'Total Aspirantes', value: String(totalItems), hint: 'Resultados encontrados', icon: Users, tone: 'primary' }
     ];
-  }, [applicants]);
+  }, [totalItems]);
 
   const handleViewDetails = (applicant) => {
     setSelectedApplicant(applicant);
@@ -164,7 +161,7 @@ export default function Aspirantes() {
               <Search size={16} style={{ position: 'absolute', left: '14px', top: '14px', color: '#94a3b8', pointerEvents: 'none' }} />
               <input 
                 value={query} 
-                onChange={(event) => setQuery(event.target.value)} 
+                onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} 
                 placeholder="Nombre, cédula, correo o carrera..." 
                 style={{ ...fieldStyle, minHeight: '44px', paddingLeft: '42px' }} 
               />
@@ -174,7 +171,7 @@ export default function Aspirantes() {
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Estado de preinscripción</span>
             <CustomSelect 
               value={statusFilter} 
-              onChange={(value) => setStatusFilter(value)} 
+              onChange={(value) => { setStatusFilter(value); setCurrentPage(1); }} 
               options={[
                 { value: 'Todos', label: 'Todos los estados' },
                 { value: 'Pendiente', label: 'Pendiente' },
@@ -252,6 +249,7 @@ export default function Aspirantes() {
             })}
           </DataTable>
         )}
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </SectionCard>
 
       {/* Detail view Modal */}
@@ -286,7 +284,7 @@ export default function Aspirantes() {
                     variant="secondary"
                     onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'En Revisión', 'revision')}
                     disabled={isAnyLoading}
-                    style={{ opacity: isAnyLoading && actionLoading !== 'revision' ? 0.5 : 1, minWidth: '140px' }}
+                    style={{ opacity: isAnyLoading && actionLoading !== 'revision' ? 0.5 : 1, flex: '1 1 auto', textAlign: 'center', justifyContent: 'center' }}
                   >
                     {actionLoading === 'revision' ? (
                       <><Spinner size={14} /> Procesando...</>
@@ -305,7 +303,9 @@ export default function Aspirantes() {
                       border: '1px solid #fee2e2',
                       color: '#dc2626',
                       opacity: isAnyLoading && actionLoading !== 'reject' ? 0.5 : 1,
-                      minWidth: '100px'
+                      flex: '1 1 auto',
+                      textAlign: 'center',
+                      justifyContent: 'center'
                     }}
                   >
                     {actionLoading === 'reject' ? (
@@ -320,7 +320,7 @@ export default function Aspirantes() {
                     variant="accent"
                     onClick={() => handleUpdateStatus(selectedApplicant.id_pre, 'Aprobado', 'approve')}
                     disabled={isAnyLoading}
-                    style={{ opacity: isAnyLoading && actionLoading !== 'approve' ? 0.5 : 1, minWidth: '140px' }}
+                    style={{ opacity: isAnyLoading && actionLoading !== 'approve' ? 0.5 : 1, flex: '1 1 auto', textAlign: 'center', justifyContent: 'center' }}
                   >
                     {actionLoading === 'approve' ? (
                       <><Spinner size={14} color="#051124" /> Aprobando...</>
@@ -344,7 +344,7 @@ export default function Aspirantes() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '20px' }}>
             
             {/* COLUMN 1: Personal & Contact */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

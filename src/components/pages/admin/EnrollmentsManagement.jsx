@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { CheckCircle2, CircleX, Eye, ClipboardList } from 'lucide-react';
-import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, CustomSelect } from './AdminPageShell';
+import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, CustomSelect, Pagination } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function EnrollmentsManagement() {
@@ -9,27 +9,29 @@ export default function EnrollmentsManagement() {
   const [loading, setLoading] = useState(true);
   
   const [allRegistrations, setAllRegistrations] = useState([]);
-  const [allDetails, setAllDetails] = useState([]);
-  const [allSections, setAllSections] = useState([]);
-  const [allUsers, setAllUsers] = useState([]);
-  const [allPeriods, setAllPeriods] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        const [regRes, detRes, secRes, userRes, perRes] = await Promise.all([
-          api.get('/registrations'),
-          api.get('/registration-details'),
-          api.get('/sections'),
-          api.get('/users'),
-          api.get('/periods')
-        ]);
-        setAllRegistrations((Array.isArray(regRes) ? regRes : (regRes?.data || [])));
-        setAllDetails((Array.isArray(detRes) ? detRes : (detRes?.data || [])));
-        setAllSections((Array.isArray(secRes) ? secRes : (secRes?.data || [])));
-        setAllUsers((Array.isArray(userRes) ? userRes : (userRes?.data || [])));
-        setAllPeriods((Array.isArray(perRes) ? perRes : (perRes?.data || [])));
+        const params = new URLSearchParams({
+          page: currentPage,
+          limit: 10,
+        });
+        const regRes = await api.get(`/registrations?${params.toString()}`);
+        if (regRes?.data && regRes?.meta) {
+          setAllRegistrations(regRes.data);
+          setTotalPages(regRes.meta.totalPages);
+          setTotalItems(regRes.meta.totalItems);
+        } else {
+          const list = Array.isArray(regRes?.data) ? regRes.data : (Array.isArray(regRes) ? regRes : []);
+          setAllRegistrations(list);
+          setTotalPages(1);
+          setTotalItems(list.length);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -37,19 +39,20 @@ export default function EnrollmentsManagement() {
       }
     }
     loadData();
-  }, []);
+  }, [currentPage]);
 
   const requests = useMemo(() => {
     return allRegistrations.map(reg => {
-      const studentUser = allUsers.find(u => u.Student?.id_student === reg.id_student);
+      // Backend now includes Student -> User and Student -> Career
+      const studentUser = reg.Student?.User;
       const studentName = studentUser ? `${studentUser.document_id} - ${studentUser.first_name} ${studentUser.first_lastname}` : `ID Estudiante: ${reg.id_student}`;
-      const careerName = studentUser?.Student?.Career?.name_career || 'No definida';
-      const period = allPeriods.find(p => p.id_period === reg.id_period)?.name_period || 'Desconocido';
+      const careerName = reg.Student?.Career?.name_career || 'No definida';
+      const period = reg.AcademicPeriod?.name_period || 'Desconocido';
       
-      const detailsForReg = allDetails.filter(d => d.id_registration === reg.id_registration);
+      const detailsForReg = reg.RegistrationDetails || [];
       let totalCredits = 0;
       const detailsTexts = detailsForReg.map(d => {
-        const sec = allSections.find(s => s.id_section === d.id_section);
+        const sec = d.Section;
         if (sec && sec.Subject) {
           totalCredits += sec.Subject.credit_units || 0;
           return `${sec.section_code} - ${sec.Subject.name_subject}`;
@@ -67,7 +70,7 @@ export default function EnrollmentsManagement() {
         details: detailsTexts
       };
     });
-  }, [allRegistrations, allDetails, allSections, allUsers, allPeriods]);
+  }, [allRegistrations]);
 
   const careers = useMemo(() => {
     const list = new Set(requests.map(r => r.career));
@@ -109,7 +112,7 @@ export default function EnrollmentsManagement() {
         actions={
           <CustomSelect
             value={filter}
-            onChange={(val) => setFilter(String(val))}
+            onChange={(val) => { setFilter(String(val)); setCurrentPage(1); }}
             options={careers.map(career => ({
               value: career,
               label: career
@@ -139,6 +142,7 @@ export default function EnrollmentsManagement() {
             </tr>
           )}
         </DataTable>
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </SectionCard>
 
       <Modal

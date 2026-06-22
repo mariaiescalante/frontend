@@ -379,11 +379,25 @@ export function ProgressBar({ value, tone = 'primary' }) {
 
 export function CustomSelect({ value, onChange, options, placeholder = 'Seleccionar...', style }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const selectedOption = options.find(opt => opt.value === value || String(opt.value) === String(value));
   const wrapperRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) return;
+    
+    // Check space below for dropup
+    if (wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      // If less than 250px below and more space above, drop up
+      if (spaceBelow < 250 && rect.top > 250) {
+        setDropUp(true);
+      } else {
+        setDropUp(false);
+      }
+    }
+
     const handleClose = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
         setIsOpen(false);
@@ -435,10 +449,14 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
           className="custom-select-list"
           style={{
             position: 'absolute',
-            top: '100%',
+            bottom: dropUp ? '100%' : 'auto',
+            top: dropUp ? 'auto' : '100%',
+            marginTop: dropUp ? 0 : '4px',
+            marginBottom: dropUp ? '4px' : 0,
+            marginLeft: 0,
+            marginRight: 0,
             left: 0,
             right: 0,
-            marginTop: '4px',
             background: '#ffffff',
             border: '1px solid #cbd5e1',
             borderRadius: '12px',
@@ -447,8 +465,7 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
             overflowY: 'auto',
             zIndex: 100,
             listStyle: 'none',
-            padding: '6px 0',
-            margin: 0
+            padding: '6px 0'
           }}
         >
           {options.map((opt) => (
@@ -483,6 +500,37 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+export function Pagination({ currentPage, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '24px', padding: '16px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '16px', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.03)' }}>
+      <ActionButton
+        variant="ghost"
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage <= 1}
+        style={{ padding: '8px 14px', opacity: currentPage <= 1 ? 0.5 : 1, pointerEvents: currentPage <= 1 ? 'none' : 'auto' }}
+      >
+        Anterior
+      </ActionButton>
+      
+      <div style={{ display: 'flex', gap: '6px' }}>
+        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>Página {currentPage}</span>
+        <span style={{ fontSize: '0.9rem', color: '#64748b' }}>de {totalPages}</span>
+      </div>
+
+      <ActionButton
+        variant="ghost"
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        style={{ padding: '8px 14px', opacity: currentPage >= totalPages ? 0.5 : 1, pointerEvents: currentPage >= totalPages ? 'none' : 'auto' }}
+      >
+        Siguiente
+      </ActionButton>
     </div>
   );
 }

@@ -59,8 +59,8 @@ export default function SectionsManagement() {
 
   const visibleSections = useMemo(() => {
     return sections.filter((section) => {
-      const matchesSubject = subjectFilter === 'Todas' || String(section.id_subject) === subjectFilter;
-      const matchesCareer = careerFilter === 'Todas' || String(section.id_career) === careerFilter;
+      const matchesSubject = subjectFilter === 'Todas' || String(section.id_subject) === String(subjectFilter);
+      const matchesCareer = careerFilter === 'Todas' || String(section.id_career) === String(careerFilter);
       const sectionName = section.Subject?.name_subject || '';
       const matchesQuery = `${section.section_code} ${sectionName} ${section.classroom || ''}`.toLowerCase().includes(query.toLowerCase());
       return matchesSubject && matchesCareer && matchesQuery;
@@ -190,7 +190,7 @@ export default function SectionsManagement() {
       ]}
     >
       <SectionCard title="Filtros de secciones" description="Refina por materia, carrera o texto libre para ubicar el grupo correcto.">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '14px' }}>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Buscar</span>
             <div style={{ position: 'relative' }}>
@@ -223,7 +223,7 @@ export default function SectionsManagement() {
         </div>
       </SectionCard>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
+      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '18px' }}>
         {visibleSections.map((section) => {
           const teacherUser = section.Teacher?.User;
           const teacherName = teacherUser ? `${teacherUser.first_name || ''} ${teacherUser.first_lastname || ''}`.trim() : 'Sin asignar';
@@ -277,7 +277,7 @@ export default function SectionsManagement() {
           </>
         }
       >
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '14px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Código de Sección</span>
             <CustomSelect

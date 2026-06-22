@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, Users, UserPlus, Edit3, Trash2, Eye, EyeOff } from 'lucide-react';
-import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect } from './AdminPageShell';
+import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect, Pagination } from './AdminPageShell';
 import { careerCatalog } from './adminSeedData';
 import { registerUser } from '../../../services/auth';
 import api from '../../../services/api';
@@ -273,14 +273,18 @@ export default function UserManagement() {
   const [studentForm, setStudentForm] = useState(createInitialForm('student'));
   const [teacherForm, setTeacherForm] = useState(createInitialForm('teacher'));
   const [adminForm, setAdminForm] = useState(createInitialForm('admin'));
-  const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [admins, setAdmins] = useState([]);
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [careerList, setCareerList] = useState([]);
   const [extraFilter, setExtraFilter] = useState('');
+
+  // Pagination state
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
     setExtraFilter('');
@@ -307,90 +311,58 @@ export default function UserManagement() {
 
   useEffect(() => {
     let isMounted = true;
-
-    const hydrateUsers = async () => {
-      const endpoints = ['/admin/users', '/users'];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await api.get(endpoint);
-          const users = unwrapArrayPayload(response?.data ?? response);
-
-          if (!users.length) {
-            continue;
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: currentPage,
+          limit: 10,
+          role: activeTab,
+          status: statusFilter !== 'Todos' ? statusFilter : '',
+          search: query || ''
+        });
+        
+        const response = await api.get(`/users?${params.toString()}`);
+        if (isMounted) {
+          if (response?.data && response?.meta) {
+            setRecords(response.data.map(normalizeBackendUser));
+            setTotalPages(response.meta.totalPages);
+            setTotalItems(response.meta.totalItems);
+          } else if (Array.isArray(response?.data)) {
+            setRecords(response.data.map(normalizeBackendUser));
+            setTotalPages(1);
+            setTotalItems(response.data.length);
+          } else if (Array.isArray(response)) {
+            // Fallback just in case backend hasn't restarted
+            setRecords(response.map(normalizeBackendUser));
+            setTotalPages(1);
+            setTotalItems(response.length);
           }
-
-          const { nextStudents, nextTeachers, nextAdmins } = splitUsersByRole(users);
-
-          if (!isMounted) {
-            return;
-          }
-
-          if (nextStudents.length) {
-            setStudents(nextStudents);
-          }
-
-          if (nextTeachers.length) {
-            setTeachers(nextTeachers);
-          }
-
-          if (nextAdmins.length) {
-            setAdmins(nextAdmins);
-          }
-
-          return;
-        } catch {
-          // Try the next candidate endpoint.
         }
+      } catch (err) {
+        console.error('Failed to fetch users:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
-
-    hydrateUsers();
-
+    
+    // Add small delay for search debouncing
+    const timerId = setTimeout(() => {
+      fetchUsers();
+    }, 300);
+    
     return () => {
       isMounted = false;
+      clearTimeout(timerId);
     };
-  }, []);
+  }, [activeTab, currentPage, statusFilter, query, extraFilter]);
 
-  const records = activeTab === 'students' ? students : (activeTab === 'teachers' ? teachers : admins);
   const form = userType === 'student' ? studentForm : (userType === 'teacher' ? teacherForm : adminForm);
-
-  const filteredRecords = useMemo(() => {
-    return records.filter((record) => {
-      // 1. Matches Query
-      let matchesQuery = false;
-      if (activeTab === 'admins') {
-        // Search by name only
-        matchesQuery = (record.name || '').toLowerCase().includes(query.toLowerCase());
-      } else {
-        // Search by name, email, phone, or id (cedula)
-        const searchFields = [record.id, record.name, record.email, record.phone, record.username].filter(Boolean).join(' ').toLowerCase();
-        matchesQuery = searchFields.includes(query.toLowerCase());
-      }
-
-      // 2. Matches Status
-      const statusValue = record.status || 'Activo';
-      const matchesStatus = statusFilter === 'Todos' || statusValue.toLowerCase() === statusFilter.toLowerCase();
-
-      // 3. Matches Extra Filter (Career or Title)
-      let matchesExtra = true;
-      if (activeTab === 'students') {
-        matchesExtra = !extraFilter || record.career === extraFilter;
-      } else if (activeTab === 'teachers') {
-        matchesExtra = !extraFilter || record.department === extraFilter;
-      }
-
-      return matchesQuery && matchesStatus && matchesExtra;
-    });
-  }, [records, query, statusFilter, extraFilter, activeTab]);
-
-  const activeStudentsCount = useMemo(() => students.filter((s) => (s.status || '').toLowerCase() === 'activo').length, [students]);
-  const activeTeachersCount = useMemo(() => teachers.filter((t) => {
-    const st = (t.status || '').toLowerCase();
-    return st === 'disponible' || st === 'activo';
-  }).length, [teachers]);
-  const activeAdminsCount = useMemo(() => admins.filter((a) => (a.status || '').toLowerCase() === 'activo').length, [admins]);
-  const totalActiveUsers = activeStudentsCount + activeTeachersCount + activeAdminsCount;
+  const filteredRecords = records; // Server-side filtering applied
+  const activeStudentsCount = activeTab === 'students' ? totalItems : 0;
+  const activeTeachersCount = activeTab === 'teachers' ? totalItems : 0;
+  const activeAdminsCount = activeTab === 'admins' ? totalItems : 0;
+  const totalActiveUsers = totalItems; // Just showing total for current tab
 
   const careerOptions = careerList.length > 0
     ? careerList.map((c) => c.name_career)
@@ -617,13 +589,13 @@ export default function UserManagement() {
       subtitle="Administra altas, búsquedas y estados con una vista limpia que conserva la misma estética del panel principal."
       actions={
         <>
-          <ActionButton variant={activeTab === 'students' ? 'primary' : 'secondary'} onClick={() => setActiveTab('students')}>
+          <ActionButton variant={activeTab === 'students' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('students'); setCurrentPage(1); }}>
             Estudiantes
           </ActionButton>
-          <ActionButton variant={activeTab === 'teachers' ? 'primary' : 'secondary'} onClick={() => setActiveTab('teachers')}>
+          <ActionButton variant={activeTab === 'teachers' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('teachers'); setCurrentPage(1); }}>
             Docentes
           </ActionButton>
-          <ActionButton variant={activeTab === 'admins' ? 'primary' : 'secondary'} onClick={() => setActiveTab('admins')}>
+          <ActionButton variant={activeTab === 'admins' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('admins'); setCurrentPage(1); }}>
             Administradores
           </ActionButton>
           <ActionButton variant="accent" onClick={() => openUserModal()}>
@@ -632,10 +604,7 @@ export default function UserManagement() {
         </>
       }
       metrics={[
-        { label: 'Usuarios activos', value: String(totalActiveUsers), hint: 'Todos los registros con sesión habilitada', icon: Users, tone: 'primary' },
-        { label: 'Estudiantes', value: String(students.length), hint: `${activeStudentsCount} estudiantes activos actualmente`, icon: Users, tone: 'info' },
-        { label: 'Docentes', value: String(teachers.length), hint: `${activeTeachersCount} docentes disponibles/activos`, icon: Users, tone: 'success' },
-        { label: 'Administradores', value: String(admins.length), hint: `${activeAdminsCount} administradores activos actualmente`, icon: Users, tone: 'warning' }
+        { label: 'Total de Resultados', value: String(totalItems), hint: `Resultados encontrados para ${activeTab}`, icon: Users, tone: 'primary' }
       ]}
     >
       <SectionCard title="Búsqueda y filtros" description="Filtra por cédula, nombre o estado sin perder la navegación entre estudiantes y docentes.">
@@ -644,14 +613,14 @@ export default function UserManagement() {
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Buscar</span>
             <div style={{ position: 'relative' }}>
               <Search size={16} style={{ position: 'absolute', left: '14px', top: '14px', color: '#94a3b8', pointerEvents: 'none' }} />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cédula, nombre o correo" style={{ ...fieldStyle, minHeight: '44px', lineHeight: 1.2, paddingLeft: '42px' }} />
+              <input value={query} onChange={(event) => { setQuery(event.target.value); setCurrentPage(1); }} placeholder="Cédula, nombre o correo" style={{ ...fieldStyle, minHeight: '44px', lineHeight: 1.2, paddingLeft: '42px' }} />
             </div>
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Estado</span>
             <CustomSelect
               value={statusFilter}
-              onChange={(value) => setStatusFilter(value)}
+              onChange={(value) => { setStatusFilter(value); setCurrentPage(1); }}
               options={[
                 { value: 'Todos', label: 'Todos' },
                 { value: 'Activo', label: 'Activo' },
@@ -668,7 +637,7 @@ export default function UserManagement() {
             </span>
             <CustomSelect
               value={extraFilter}
-              onChange={(value) => setExtraFilter(value)}
+              onChange={(value) => { setExtraFilter(value); setCurrentPage(1); }}
               style={activeTab === 'admins' ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
               options={
                 activeTab === 'admins'
@@ -730,6 +699,7 @@ export default function UserManagement() {
             </tr>
           ))}
         </DataTable>
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </SectionCard>
 
       <Modal
