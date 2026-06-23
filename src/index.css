@@ -171,6 +171,7 @@ a:hover {
   flex-direction: column;
   gap: 8px;
   text-align: left;
+  min-width: 0;
 }
 
 .form-label {

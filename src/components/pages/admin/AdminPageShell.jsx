@@ -330,7 +330,7 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
         }}
         onClick={(event) => event.stopPropagation()}
       >
-        <header style={{ padding: '22px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px' }}>
+        <header style={{ padding: '22px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', wordBreak: 'break-word' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>{title}</h3>
             {subtitle ? <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', lineHeight: 1.55 }}>{subtitle}</p> : null}
@@ -438,10 +438,10 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
           boxSizing: 'border-box'
         }}
       >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>
+        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <span style={{ fontSize: '0.8rem', color: '#64748b' }}>▼</span>
+        <span style={{ fontSize: '0.8rem', color: '#64748b', flexShrink: 0 }}>▼</span>
       </div>
 
       {isOpen && (
@@ -508,7 +508,7 @@ export function Pagination({ currentPage, totalPages, onPageChange }) {
   if (totalPages <= 1) return null;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '24px', padding: '16px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '16px', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.03)' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '24px', padding: '16px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '16px', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.03)' }}>
       <ActionButton
         variant="ghost"
         onClick={() => onPageChange(currentPage - 1)}

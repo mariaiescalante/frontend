@@ -214,23 +214,25 @@ export default function AcademicPeriods() {
                       >
                         <Edit2 size={16} />
                       </button>
-                      <button
-                        onClick={() => handleDelete(period.id_period, period.name_period)}
-                        style={{
-                          border: 'none',
-                          background: 'transparent',
-                          color: '#ef4444',
-                          cursor: 'pointer',
-                          padding: '4px',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        title="Eliminar período"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      {(!isPeriodActive && !isPeriodEnded) && (
+                        <button
+                          onClick={() => handleDelete(period.id_period, period.name_period)}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            color: '#ef4444',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          title="Eliminar período"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </article>
                 );

@@ -20,6 +20,29 @@ export default function Aspirantes() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
+  const [stats, setStats] = useState({ approved: 0, pending: 0, rejected: 0 });
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const [resApproved, resPending, resRejected] = await Promise.all([
+        api.get('/pre-registrations?limit=1&status_pre=Aprobado'),
+        api.get('/pre-registrations?limit=1&status_pre=Pendiente'),
+        api.get('/pre-registrations?limit=1&status_pre=Rechazado')
+      ]);
+      setStats({
+        approved: resApproved?.meta?.totalItems || resApproved?.data?.meta?.totalItems || 0,
+        pending: resPending?.meta?.totalItems || resPending?.data?.meta?.totalItems || 0,
+        rejected: resRejected?.meta?.totalItems || resRejected?.data?.meta?.totalItems || 0
+      });
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
   const fetchApplicants = useCallback(async () => {
     try {
       setLoading(true);
@@ -61,9 +84,12 @@ export default function Aspirantes() {
   // Metric computations (just using totalItems since backend does pagination)
   const metrics = useMemo(() => {
     return [
-      { label: 'Total Aspirantes', value: String(totalItems), hint: 'Resultados encontrados', icon: Users, tone: 'primary' }
+      { label: 'Total Aspirantes', value: String(totalItems), hint: 'Resultados encontrados', icon: Users, tone: 'primary' },
+      { label: 'Aprobados', value: String(stats.approved), hint: 'Admitidos', icon: CheckCircle2, tone: 'success' },
+      { label: 'Pendientes', value: String(stats.pending), hint: 'Por revisar', icon: AlertCircle, tone: 'warning' },
+      { label: 'Rechazados', value: String(stats.rejected), hint: 'No admitidos', icon: XCircle, tone: 'danger' }
     ];
-  }, [totalItems]);
+  }, [totalItems, stats]);
 
   const handleViewDetails = (applicant) => {
     setSelectedApplicant(applicant);
@@ -89,6 +115,8 @@ export default function Aspirantes() {
       if (selectedApplicant && selectedApplicant.id_pre === id) {
         setSelectedApplicant(prev => ({ ...prev, ...updatedItem }));
       }
+
+      fetchStats();
 
       setActionSuccess(`El estado ha sido cambiado a "${newStatus}" correctamente.`);
 
@@ -116,6 +144,7 @@ export default function Aspirantes() {
         setModalOpen(false);
         setSelectedApplicant(null);
       }
+      fetchStats();
     } catch (err) {
       console.error(err);
       setActionError(err.message || 'Error al eliminar el aspirante.');
@@ -347,8 +376,8 @@ export default function Aspirantes() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '20px' }}>
             
             {/* COLUMN 1: Personal & Contact */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', wordBreak: 'break-word' }}>
                 <h4 style={{ margin: '0 0 14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
                   <Users size={18} style={{ color: '#0b5ed7' }} /> Datos Personales
                 </h4>
@@ -388,7 +417,7 @@ export default function Aspirantes() {
                 </div>
               </div>
 
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px' }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', wordBreak: 'break-word' }}>
                 <h4 style={{ margin: '0 0 14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
                   <MapPin size={18} style={{ color: '#0b5ed7' }} /> Dirección y Residencia
                 </h4>
@@ -416,8 +445,8 @@ export default function Aspirantes() {
             </div>
 
             {/* COLUMN 2: Academic Profile & Obs */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', wordBreak: 'break-word' }}>
                 <h4 style={{ margin: '0 0 14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
                   <Calendar size={18} style={{ color: '#0b5ed7' }} /> Perfil Académico Solicitado
                 </h4>
@@ -459,7 +488,7 @@ export default function Aspirantes() {
                 </div>
               </div>
 
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px' }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', wordBreak: 'break-word' }}>
                 <h4 style={{ margin: '0 0 14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
                   <FileText size={18} style={{ color: '#0b5ed7' }} /> Observaciones y Declaraciones
                 </h4>

@@ -176,7 +176,7 @@ export default function Navbar({ onMenuClick }) {
               overflow: 'hidden'
             }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>Notificaciones</h3>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#0f172a' }}>Notificaciones</h3>
                 {unreadCount > 0 && (
                   <button 
                     onClick={markAllAsRead}

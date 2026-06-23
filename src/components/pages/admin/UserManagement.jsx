@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Search, Users, UserPlus, Edit3, Trash2, Eye, EyeOff } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { Search, Users, UserPlus, Edit3, Trash2, Eye, EyeOff, GraduationCap, Briefcase, Shield } from 'lucide-react';
 import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect, Pagination } from './AdminPageShell';
 import { careerCatalog } from './adminSeedData';
 import { registerUser } from '../../../services/auth';
@@ -285,6 +285,30 @@ export default function UserManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [stats, setStats] = useState({ students: 0, teachers: 0, admins: 0 });
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const [resStudents, resTeachers, resAdmins] = await Promise.all([
+        api.get('/users?limit=1&role=students'),
+        api.get('/users?limit=1&role=teachers'),
+        api.get('/users?limit=1&role=admins')
+      ]);
+      setStats({
+        students: resStudents?.meta?.totalItems || resStudents?.data?.meta?.totalItems || 0,
+        teachers: resTeachers?.meta?.totalItems || resTeachers?.data?.meta?.totalItems || 0,
+        admins: resAdmins?.meta?.totalItems || resAdmins?.data?.meta?.totalItems || 0
+      });
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   useEffect(() => {
     setExtraFilter('');
@@ -355,7 +379,7 @@ export default function UserManagement() {
       isMounted = false;
       clearTimeout(timerId);
     };
-  }, [activeTab, currentPage, statusFilter, query, extraFilter]);
+  }, [activeTab, currentPage, statusFilter, query, extraFilter, refreshKey]);
 
   const form = userType === 'student' ? studentForm : (userType === 'teacher' ? teacherForm : adminForm);
   const filteredRecords = records; // Server-side filtering applied
@@ -492,9 +516,8 @@ export default function UserManagement() {
       if (!id) return;
       await api.delete(`/users/${id}`);
 
-      setStudents((current) => current.filter((s) => s.id !== record.id));
-      setTeachers((current) => current.filter((t) => t.id !== record.id));
-      setAdmins((current) => current.filter((a) => a.id !== record.id));
+      setRefreshKey(k => k + 1);
+      fetchStats();
     } catch (err) {
       console.error('Error deleting user:', err);
     }
@@ -552,24 +575,24 @@ export default function UserManagement() {
 
       if (editingUser) {
         if (form.userType === 'student') {
-          setStudents((current) => current.map((s) => s.id === editingUser.id ? localRecord : s));
+          setStudentForm(createInitialForm('student'));
         } else if (form.userType === 'teacher') {
-          setTeachers((current) => current.map((t) => t.id === editingUser.id ? localRecord : t));
+          setTeacherForm(createInitialForm('teacher'));
         } else if (form.userType === 'admin') {
-          setAdmins((current) => current.map((a) => a.id === editingUser.id ? localRecord : a));
+          setAdminForm(createInitialForm('admin'));
         }
       } else {
         if (form.userType === 'student') {
-          setStudents((currentStudents) => [localRecord, ...currentStudents]);
           setStudentForm(createInitialForm('student'));
         } else if (form.userType === 'teacher') {
-          setTeachers((currentTeachers) => [localRecord, ...currentTeachers]);
           setTeacherForm(createInitialForm('teacher'));
         } else if (form.userType === 'admin') {
-          setAdmins((currentAdmins) => [localRecord, ...currentAdmins]);
           setAdminForm(createInitialForm('admin'));
         }
       }
+
+      setRefreshKey(k => k + 1);
+      fetchStats();
 
       setModalOpen(false);
       setEditingUser(null);
@@ -604,7 +627,10 @@ export default function UserManagement() {
         </>
       }
       metrics={[
-        { label: 'Total de Resultados', value: String(totalItems), hint: `Resultados encontrados para ${activeTab}`, icon: Users, tone: 'primary' }
+        { label: 'Total Usuarios', value: String(stats.students + stats.teachers + stats.admins), hint: 'Registrados en el sistema', icon: Users, tone: 'primary' },
+        { label: 'Estudiantes', value: String(stats.students), hint: 'Inscritos', icon: GraduationCap, tone: 'success' },
+        { label: 'Docentes', value: String(stats.teachers), hint: 'Registrados', icon: Briefcase, tone: 'info' },
+        { label: 'Administradores', value: String(stats.admins), hint: 'Con acceso', icon: Shield, tone: 'warning' }
       ]}
     >
       <SectionCard title="Búsqueda y filtros" description="Filtra por cédula, nombre o estado sin perder la navegación entre estudiantes y docentes.">
