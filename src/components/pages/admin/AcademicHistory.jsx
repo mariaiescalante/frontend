@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { History, Search, GraduationCap } from 'lucide-react';
 import { AdminPageShell, ActionButton, SectionCard, StatusBadge, fieldStyle, Pagination } from './AdminPageShell';
 import api from '../../../services/api';
+import { logoBase64 } from '../../../assets/logoConstant';
+
 
 export default function AcademicHistory() {
   const [query, setQuery] = useState('');
@@ -108,6 +110,142 @@ export default function AcademicHistory() {
     timeline: []
   };
 
+  const loadHtml2Pdf = () => {
+    return new Promise((resolve, reject) => {
+      if (window.html2pdf) {
+        resolve(window.html2pdf);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.onload = () => {
+        if (window.html2pdf) {
+          resolve(window.html2pdf);
+        } else {
+          reject(new Error('La librería PDF no se cargó correctamente.'));
+        }
+      };
+      script.onerror = () => reject(new Error('Fallo al descargar la librería de PDF desde el servidor.'));
+      document.head.appendChild(script);
+    });
+  };
+
+  const handleExportHistory = async () => {
+    if (!displayData) return;
+
+    try {
+      const html2pdf = await loadHtml2Pdf();
+
+      let tableHtml = '';
+      displayData.timeline.forEach((course) => {
+        let statusColor = '#475569';
+        if (course.status === 'Aprobada' || course.status === 'Aprobado') statusColor = '#16a34a';
+        else if (course.status === 'Reprobada' || course.status === 'Reprobado') statusColor = '#dc2626';
+        else if (course.status === 'Cursando' || course.status === 'En curso') statusColor = '#0284c7';
+
+        tableHtml += `
+          <tr>
+            <td style="border: 1px solid #cbd5e1; padding: 10px; font-size: 0.85rem;"><strong>${course.period}</strong></td>
+            <td style="border: 1px solid #cbd5e1; padding: 10px; font-size: 0.85rem;">${course.subject}</td>
+            <td style="border: 1px solid #cbd5e1; padding: 10px; text-align: center; font-weight: 700; font-size: 0.85rem;">${Number(course.grade || 0).toFixed(1)}</td>
+            <td style="border: 1px solid #cbd5e1; padding: 10px; text-align: center; color: ${statusColor}; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">
+              ${course.status}
+            </td>
+          </tr>
+        `;
+      });
+
+      const reportHtml = `
+        <div style="font-family: 'Inter', Arial, sans-serif; color: #0f172a; padding: 30px; background-color: #ffffff; max-width: 760px; margin: 0 auto; box-sizing: border-box;">
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+            <tr>
+              <td style="width: 80px; vertical-align: middle;">
+                <img src="${logoBase64}" alt="Logo UPTNT" style="width: 70px; height: auto; display: block;" />
+              </td>
+              <td style="text-align: left; vertical-align: middle; padding-left: 15px;">
+                <h2 style="margin: 0; font-size: 1.15rem; color: #051124; font-weight: 800; letter-spacing: 0.02em;">
+                  Universidad Politécnica Territorial del Norte del Táchira
+                </h2>
+                <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #475569; text-transform: uppercase; font-weight: 600;">
+                  Secretaría General · Departamento de Registro y Control Académico
+                </p>
+              </td>
+            </tr>
+          </table>
+
+          <div style="text-align: center; font-size: 1.35rem; font-weight: 800; color: #051124; margin: 15px 0 25px 0; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #051124; padding-bottom: 8px;">
+            Reporte de Historial Académico
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 25px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
+            <div style="font-size: 0.88rem; line-height: 1.5;">
+              <strong style="color: #475569; font-size: 0.78rem; text-transform: uppercase; display: block; margin-bottom: 2px;">Estudiante</strong>
+              <span style="color: #0f172a; font-weight: 700;">${displayData.name}</span>
+            </div>
+            <div style="font-size: 0.88rem; line-height: 1.5;">
+              <strong style="color: #475569; font-size: 0.78rem; text-transform: uppercase; display: block; margin-bottom: 2px;">Cédula de Identidad</strong>
+              <span style="color: #0f172a; font-weight: 700;">${selectedId}</span>
+            </div>
+            <div style="font-size: 0.88rem; line-height: 1.5;">
+              <strong style="color: #475569; font-size: 0.78rem; text-transform: uppercase; display: block; margin-bottom: 2px;">Carrera / Programa</strong>
+              <span style="color: #0f172a; font-weight: 700;">${displayData.career}</span>
+            </div>
+            <div style="font-size: 0.88rem; line-height: 1.5;">
+              <strong style="color: #475569; font-size: 0.78rem; text-transform: uppercase; display: block; margin-bottom: 2px;">Fecha de Emisión</strong>
+              <span style="color: #0f172a; font-weight: 700;">${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+            </div>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <thead>
+              <tr>
+                <th style="border: 1px solid #cbd5e1; padding: 10px 12px; font-size: 0.75rem; text-align: left; background-color: #f1f5f9; color: #051124; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; width: 20%;">Periodo</th>
+                <th style="border: 1px solid #cbd5e1; padding: 10px 12px; font-size: 0.75rem; text-align: left; background-color: #f1f5f9; color: #051124; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; width: 50%;">Asignatura</th>
+                <th style="border: 1px solid #cbd5e1; padding: 10px 12px; font-size: 0.75rem; text-align: center; background-color: #f1f5f9; color: #051124; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; width: 15%;">Calificación</th>
+                <th style="border: 1px solid #cbd5e1; padding: 10px 12px; font-size: 0.75rem; text-align: center; background-color: #f1f5f9; color: #051124; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; width: 15%;">Estatus</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableHtml}
+            </tbody>
+          </table>
+
+          <div style="margin-top: 25px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+            <div style="font-size: 0.95rem; font-weight: 800; color: #051124;">
+              <small style="display: block; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin-bottom: 4px;">Índice Acumulado (CUM)</small>
+              <span style="font-size: 1.25rem; font-weight: 800;">${Number(displayData.cum || 0).toFixed(1)}</span>
+            </div>
+            <div style="font-size: 0.95rem; font-weight: 800; color: #051124;">
+              <small style="display: block; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin-bottom: 4px;">Créditos Aprobados</small>
+              <span style="font-size: 1.25rem; font-weight: 800;">${displayData.credits} UC</span>
+            </div>
+            <div style="font-size: 0.95rem; font-weight: 800; color: #051124;">
+              <small style="display: block; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin-bottom: 4px;">Materias Registradas</small>
+              <span style="font-size: 1.25rem; font-weight: 800;">${displayData.courses}</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 50px; text-align: center; font-size: 0.72rem; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+            Este reporte representa el récord académico digitalizado del estudiante en el sistema administrativo.<br>
+            Generado el ${new Date().toLocaleString()} · Sistema de Gestión Universitaria (SGUMS)
+          </div>
+        </div>
+      `;
+      const opt = {
+        margin:       15,
+        filename:     `Historial_Academico_${selectedId}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
+      };
+
+      await html2pdf().from(reportHtml).set(opt).save();
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      alert(`No se pudo descargar el PDF: ${err.message || err}. Verifique su conexión a internet.`);
+    }
+  };
+
   return (
     <AdminPageShell
       eyebrow="Historial académico"
@@ -134,8 +272,8 @@ export default function AcademicHistory() {
         </div>
       </SectionCard>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 1.1fr', gap: '18px', alignItems: 'start' }}>
-        <SectionCard title="Estudiantes encontrados" description="Selecciona una ficha para cargar su resumen histórico.">
+      <div className="history-main-grid" style={{ display: 'grid', gridTemplateColumns: '0.9fr 1.1fr', gap: '18px', alignItems: 'start' }}>
+        <SectionCard className="history-list-card" title="Estudiantes encontrados" description="Selecciona una ficha para cargar su resumen histórico.">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {loadingList && students.length === 0 ? (
               <span style={{ color: '#64748b' }}>Cargando estudiantes...</span>
@@ -175,7 +313,7 @@ export default function AcademicHistory() {
           )}
         </SectionCard>
 
-        <SectionCard title={displayData.name || 'Seleccione un estudiante'} description={displayData.career || '---'}>
+        <SectionCard className="history-details-card" title={displayData.name || 'Seleccione un estudiante'} description={displayData.career || '---'}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px', marginBottom: '18px' }}>
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px', opacity: loadingHistory ? 0.5 : 1 }}>
               <span className="form-label">CUM</span>
@@ -213,12 +351,12 @@ export default function AcademicHistory() {
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
-            <ActionButton variant="secondary" disabled={loadingHistory || !historyData}>Exportar historial</ActionButton>
-            <ActionButton variant="accent" disabled={loadingHistory || !historyData}>Generar constancia</ActionButton>
+          <div className="history-footer-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
+            <ActionButton variant="primary" disabled={loadingHistory || !historyData} onClick={handleExportHistory}>Exportar historial</ActionButton>
           </div>
         </SectionCard>
       </div>
+
     </AdminPageShell>
   );
 }

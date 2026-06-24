@@ -908,3 +908,83 @@
     border-radius: 16px !important;
   }
 }
+
+/* Print styles to hide UI elements on browser native print (Ctrl + P) */
+@media print {
+  body, html {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide sidebar and navbar */
+  .sgums-sidebar,
+  .sgums-navbar,
+  .sgums-sidebar-backdrop,
+  .sgums-navbar-menu-btn,
+  .sgums-navbar-mobile-top {
+    display: none !important;
+  }
+
+  /* Adjust main container layout for print */
+  .app-container {
+    display: block !important;
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    background-color: #ffffff !important;
+  }
+
+  .sgums-main-wrapper {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    background-color: #ffffff !important;
+  }
+
+  .sgums-content-container {
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Academic History custom prints */
+  .history-list-card,
+  .history-footer-actions,
+  section[class*="Buscador predictivo"],
+  section[class*="buscador"],
+  .history-footer-actions button,
+  input,
+  button {
+    display: none !important;
+  }
+
+  /* Make details card expand to full width and transparent background */
+  .history-main-grid {
+    display: block !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+
+  .history-details-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+  }
+
+  .history-details-card * {
+    box-shadow: none !important;
+  }
+
+  /* Keep table cards simple and clean without weird shadows */
+  article {
+    page-break-inside: avoid !important;
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+}
+
+
