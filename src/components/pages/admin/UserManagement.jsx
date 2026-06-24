@@ -5,8 +5,9 @@ import { careerCatalog } from './adminSeedData';
 import { registerUser } from '../../../services/auth';
 import api from '../../../services/api';
 
-const teacherTitleOptions = ['Licenciado', 'Ingeniero', 'MSc', 'PhD', 'Otro'];
+const defaultTeacherTitleOptions = ['Licenciado', 'Ingeniero', 'MSc', 'PhD', 'Otro'];
 const documentTypeOptions = [
+
   { value: 'V', label: 'V - Nacional' },
   { value: 'E', label: 'E - Extranjero' },
   { value: 'P', label: 'P - Pasaporte' }
@@ -110,9 +111,10 @@ const createInitialForm = (userType = 'student') => ({
   username: '',
   password: '',
   career: '',
-  academicTitle: teacherTitleOptions[0],
+  academicTitle: defaultTeacherTitleOptions[0],
   status: 'Activo'
 });
+
 
 const buildLocalRecord = (form) => {
   const fullName = [form.firstName, form.secondName, form.lastName, form.secondLastName]
@@ -278,6 +280,8 @@ export default function UserManagement() {
   const [showPassword, setShowPassword] = useState(false);
   const [careerList, setCareerList] = useState([]);
   const [extraFilter, setExtraFilter] = useState('');
+  const [academicTitles, setAcademicTitles] = useState(defaultTeacherTitleOptions);
+
 
   // Pagination state
   const [records, setRecords] = useState([]);
@@ -331,6 +335,27 @@ export default function UserManagement() {
     return () => { isMounted = false; };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    async function loadAcademicTitles() {
+      try {
+        const res = await api.get('/academic-titles');
+        const list = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+        if (isMounted && list.length > 0) {
+          const names = list.map(item => typeof item === 'string' ? item : item.name_title).filter(Boolean);
+          if (names.length > 0) {
+            setAcademicTitles(names);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load academic titles:', err);
+      }
+    }
+    loadAcademicTitles();
+    return () => { isMounted = false; };
+  }, []);
+
+
 
 
   useEffect(() => {
@@ -343,8 +368,11 @@ export default function UserManagement() {
           limit: 10,
           role: activeTab,
           status: statusFilter !== 'Todos' ? statusFilter : '',
-          search: query || ''
+          search: query || '',
+          ...(activeTab === 'students' && extraFilter ? { career: extraFilter } : {}),
+          ...(activeTab === 'teachers' && extraFilter ? { academic_title: extraFilter } : {})
         });
+
         
         const response = await api.get(`/users?${params.toString()}`);
         if (isMounted) {
@@ -493,8 +521,9 @@ export default function UserManagement() {
       username: record.username,
       password: '',
       career: record.career || '',
-      academicTitle: record.department || teacherTitleOptions[0],
+      academicTitle: record.department || academicTitles[0] || 'Licenciado',
       status: record.status || 'Activo'
+
     };
 
     if (tabToType === 'student') {
@@ -672,8 +701,9 @@ export default function UserManagement() {
                       { value: '', label: 'Todas las opciones' },
                       ...(activeTab === 'students'
                         ? careerOptions.map((option) => ({ value: option, label: option }))
-                        : teacherTitleOptions.map((option) => ({ value: option, label: option })))
+                        : academicTitles.map((option) => ({ value: option, label: option })))
                     ]
+
               }
             />
           </label>
@@ -687,8 +717,9 @@ export default function UserManagement() {
         <DataTable columns={activeTab === 'students'
           ? ['Cédula', 'Nombre', 'Correo', 'Carrera', 'Periodo', 'Estado', 'Acciones']
           : (activeTab === 'teachers'
-            ? ['Cédula', 'Nombre', 'Departamento', 'Especialidad', 'Estado', 'Carga', 'Acciones']
+            ? ['Cédula', 'Nombre', 'Título Académico', 'Estado', 'Carga', 'Acciones']
             : ['Cédula', 'Nombre', 'Correo', 'Teléfono', 'Estado', 'Acciones'])}>
+
           {filteredRecords.map((record) => (
             <tr key={record.id}>
               <td>{record.id}</td>
@@ -703,12 +734,12 @@ export default function UserManagement() {
               )}
               {activeTab === 'teachers' && (
                 <>
-                  <td>{record.department}</td>
-                  <td>{record.expertise}</td>
+                  <td>{record.department || 'Sin título'}</td>
                   <td><StatusBadge tone="info">{record.status}</StatusBadge></td>
                   <td>{record.load}%</td>
                 </>
               )}
+
               {activeTab === 'admins' && (
                 <>
                   <td>{record.email}</td>
@@ -859,8 +890,9 @@ export default function UserManagement() {
               <CustomSelect
                 value={form.academicTitle}
                 onChange={(value) => handleFieldChange('academicTitle', value)}
-                options={teacherTitleOptions.map((option) => ({ value: option, label: option }))}
+                options={academicTitles.map((option) => ({ value: option, label: option }))}
               />
+
             </label>
           )}
 
