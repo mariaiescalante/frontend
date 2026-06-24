@@ -875,6 +875,27 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Custom Scrollbar for Modal Overlay to make it visible and beautiful */
+.sgums-modal-overlay::-webkit-scrollbar {
+  width: 10px !important;
+}
+
+.sgums-modal-overlay::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+}
+
+.sgums-modal-overlay::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important; /* clearly visible grey */
+  border-radius: 99px !important;
+  border: 2px solid #f1f5f9 !important; /* padding spacing */
+  transition: all 0.2s ease !important;
+}
+
+.sgums-modal-overlay::-webkit-scrollbar-thumb:hover {
+  background: #475569 !important; /* darker grey on hover */
+}
+
+
 /* On small screens, ensure modal panels have comfortable padding */
 @media (max-width: 640px) {
   .sgums-modal-overlay {
