@@ -39,7 +39,7 @@ const normalizeBackendUser = (user) => {
 
   const firstName = user?.first_name ?? user?.name ?? '';
   const secondName = user?.second_name ?? '';
-  const lastName = user?.last_name ?? user?.lastname ?? '';
+  const lastName = user?.first_lastname ?? user?.last_name ?? user?.lastname ?? '';
   const secondLastName = user?.second_lastname ?? '';
   const fullName = [firstName, secondName, lastName, secondLastName].filter(Boolean).join(' ').trim();
 
