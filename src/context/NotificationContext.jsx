@@ -36,7 +36,7 @@ export const NotificationProvider = ({ children }) => {
       fetchNotifications();
 
       // 2. Conectar WebSocket
-      const url = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const url = import.meta.env.VITE_API_URL || 'https://backend-sgums.onrender.com/api';
       const baseUrl = url.replace('/api', ''); // remove /api if present
 
       const newSocket = io(baseUrl, {
