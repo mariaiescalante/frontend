@@ -3,10 +3,19 @@ import { Navigate, Outlet } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+import ChatbotUniversitario from '../ChatbotUniversitario';
 import './Layout.css';
 
+const ROLE_MAP = {
+  Admin: 1,
+  Administrador: 1,
+  Docente: 2,
+  Estudiante: 3,
+};
+
 export default function AppLayout() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
+  const roleId = ROLE_MAP[user?.role] || 3;
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Show a gorgeous cosmic loader while authenticating/restoring session
@@ -71,6 +80,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <ChatbotUniversitario roleId={roleId} userName={user?.name} />
     </div>
   );
 }
