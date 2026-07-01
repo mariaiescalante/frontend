@@ -20,6 +20,7 @@ export default function AcademicHistory() {
   // Career filter
   const [careerFilter, setCareerFilter] = useState('');
   const [careers, setCareers] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('');
 
   const [withdrawTarget, setWithdrawTarget] = useState(null);
 
@@ -58,7 +59,8 @@ export default function AcademicHistory() {
           limit: 10,
           role: 'students',
           search: query || '',
-          career: careerFilter || ''
+          career: careerFilter || '',
+          status: statusFilter || ''
         });
         
         const response = await api.get(`/users?${params.toString()}`);
@@ -109,7 +111,7 @@ export default function AcademicHistory() {
       isMounted = false;
       clearTimeout(timerId);
     };
-  }, [currentPage, query, careerFilter]);
+  }, [currentPage, query, careerFilter, statusFilter]);
 
   useEffect(() => {
     let isMounted = true;
@@ -290,8 +292,8 @@ export default function AcademicHistory() {
       ]}
     >
       <SectionCard title="Buscador predictivo" description="Filtra el listado y selecciona un estudiante para ver su recorrido completo.">
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', maxWidth: '600px' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', maxWidth: '800px' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
             <Search size={16} style={{ position: 'absolute', left: '14px', top: '14px', color: '#94a3b8', pointerEvents: 'none' }} />
             <input 
               value={query} 
@@ -301,12 +303,25 @@ export default function AcademicHistory() {
               disabled={loadingList && !students.length} 
             />
           </div>
-          <div style={{ minWidth: '200px', flex: 1 }}>
+          <div style={{ minWidth: '180px', flex: 1 }}>
             <CustomSelect
               value={careerFilter}
               onChange={(v) => { setCareerFilter(v); setCurrentPage(1); }}
               options={[{ value: '', label: 'Todas las carreras' }, ...careers]}
               placeholder="Todas las carreras"
+            />
+          </div>
+          <div style={{ minWidth: '150px' }}>
+            <CustomSelect
+              value={statusFilter}
+              onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
+              options={[
+                { value: '', label: 'Todos los estados' },
+                { value: 'Activo', label: 'Activo' },
+                { value: 'Inactivo', label: 'Inactivo' },
+                { value: 'Bloqueado', label: 'Bloqueado' }
+              ]}
+              placeholder="Todos los estados"
             />
           </div>
         </div>
