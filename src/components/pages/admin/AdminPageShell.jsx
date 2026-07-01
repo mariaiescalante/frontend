@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import { X, AlertTriangle } from 'lucide-react';
 
 const tonePalette = {
   primary: {
@@ -531,6 +531,83 @@ export function Pagination({ currentPage, totalPages, onPageChange }) {
       >
         Siguiente
       </ActionButton>
+    </div>
+  );
+}
+
+export function ConfirmDialog({ open, title, message, confirmText = 'Confirmar', cancelText = 'Cancelar', variant = 'danger', onConfirm, onCancel, hideCancel }) {
+  if (!open) return null;
+
+  const confirmVariant = variant === 'danger'
+    ? { background: '#b91c1c', color: '#ffffff', border: '1px solid #b91c1c' }
+    : variant === 'accent'
+      ? { background: 'linear-gradient(135deg, #ffd100 0%, #f5c400 100%)', color: '#051124', border: '1px solid #f5c400' }
+      : { background: '#051124', color: '#ffffff', border: '1px solid #051124' };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+        zIndex: 70,
+      }}
+      onClick={onCancel}
+    >
+      <div
+        style={{
+          width: 'min(440px, 100%)',
+          background: '#ffffff',
+          border: '1px solid #dbe4f0',
+          borderRadius: '22px',
+          boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+          padding: '32px',
+          textAlign: 'center',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{
+          width: '64px',
+          height: '64px',
+          borderRadius: '50%',
+          background: variant === 'danger' ? '#fff1f2' : '#fefce8',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 20px',
+        }}>
+          <AlertTriangle size={28} color={variant === 'danger' ? '#b91c1c' : '#7c5a00'} />
+        </div>
+        <h3 style={{ margin: '0 0 12px', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>{title}</h3>
+        <p style={{ margin: '0 0 28px', color: '#64748b', fontSize: '0.95rem', lineHeight: 1.6 }}>{message}</p>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+          {!hideCancel && <ActionButton variant="ghost" onClick={onCancel}>{cancelText}</ActionButton>}
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              borderRadius: '12px',
+              padding: '11px 20px',
+              fontFamily: 'var(--font-heading)',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              ...confirmVariant,
+            }}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { History, Search, GraduationCap } from 'lucide-react';
-import { AdminPageShell, ActionButton, SectionCard, StatusBadge, fieldStyle, Pagination } from './AdminPageShell';
+import { History, Search, GraduationCap, XCircle } from 'lucide-react';
+import { AdminPageShell, ActionButton, SectionCard, StatusBadge, fieldStyle, Pagination, CustomSelect, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
 import { logoBase64 } from '../../../assets/logoConstant';
 
@@ -17,6 +17,37 @@ export default function AcademicHistory() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Career filter
+  const [careerFilter, setCareerFilter] = useState('');
+  const [careers, setCareers] = useState([]);
+
+  const [withdrawTarget, setWithdrawTarget] = useState(null);
+
+  const handleWithdrawSubject = async () => {
+    if (!withdrawTarget) return;
+    try {
+      await api.put(`/registration-details/${withdrawTarget.id_detail}`, {
+        subject_status: 'Retirado'
+      });
+      setWithdrawTarget(null);
+      // Refresh history
+      const response = await api.get(`/academic-history/${selectedId}`);
+      setHistoryData(response.data || response);
+    } catch (err) {
+      console.error('Error withdrawing subject:', err);
+      alert('No se pudo retirar la materia. Intente de nuevo.');
+      setWithdrawTarget(null);
+    }
+  };
+
+  useEffect(() => {
+    api.get('/careers').then(res => {
+      const raw = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+      const list = raw.map(c => ({ value: c.name_career, label: c.name_career }));
+      setCareers(list);
+    }).catch(err => console.error('Error fetching careers:', err));
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     async function fetchStudents() {
@@ -26,7 +57,8 @@ export default function AcademicHistory() {
           page: currentPage,
           limit: 10,
           role: 'students',
-          search: query || ''
+          search: query || '',
+          career: careerFilter || ''
         });
         
         const response = await api.get(`/users?${params.toString()}`);
@@ -77,7 +109,7 @@ export default function AcademicHistory() {
       isMounted = false;
       clearTimeout(timerId);
     };
-  }, [currentPage, query]);
+  }, [currentPage, query, careerFilter]);
 
   useEffect(() => {
     let isMounted = true;
@@ -258,8 +290,8 @@ export default function AcademicHistory() {
       ]}
     >
       <SectionCard title="Buscador predictivo" description="Filtra el listado y selecciona un estudiante para ver su recorrido completo.">
-        <div style={{ maxWidth: '420px' }}>
-          <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', maxWidth: '600px' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
             <Search size={16} style={{ position: 'absolute', left: '14px', top: '14px', color: '#94a3b8', pointerEvents: 'none' }} />
             <input 
               value={query} 
@@ -267,6 +299,14 @@ export default function AcademicHistory() {
               placeholder="Cédula o nombre" 
               style={{ ...fieldStyle, minHeight: '44px', lineHeight: 1.2, paddingLeft: '42px' }} 
               disabled={loadingList && !students.length} 
+            />
+          </div>
+          <div style={{ minWidth: '200px', flex: 1 }}>
+            <CustomSelect
+              value={careerFilter}
+              onChange={(v) => { setCareerFilter(v); setCurrentPage(1); }}
+              options={[{ value: '', label: 'Todas las carreras' }, ...careers]}
+              placeholder="Todas las carreras"
             />
           </div>
         </div>
@@ -336,7 +376,7 @@ export default function AcademicHistory() {
               <span style={{ color: '#64748b' }}>No hay registros académicos</span>
             ) : (
               displayData.timeline.map((entry, idx) => (
-                <article key={`${entry.period}-${entry.subject}-${idx}`} style={{ display: 'grid', gridTemplateColumns: '120px 1fr auto', gap: '12px', alignItems: 'center', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: '16px', background: '#f8fafc' }}>
+                <article key={`${entry.period}-${entry.subject}-${idx}`} style={{ display: 'grid', gridTemplateColumns: '120px 1fr auto auto', gap: '12px', alignItems: 'center', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: '16px', background: entry.status === 'Retirado' ? 'rgba(239, 68, 68, 0.04)' : '#f8fafc' }}>
                   <strong style={{ color: '#051124' }}>{entry.period}</strong>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <strong style={{ color: '#0f172a' }}>{entry.subject}</strong>
@@ -344,8 +384,35 @@ export default function AcademicHistory() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <StatusBadge tone={entry.grade >= 8 ? 'success' : entry.grade >= 6.5 ? 'warning' : 'danger'}>{Number(entry.grade || 0).toFixed(1)}</StatusBadge>
-                    <StatusBadge tone="info">{entry.status}</StatusBadge>
+                    <StatusBadge tone={entry.status === 'Retirado' ? 'danger' : 'info'}>{entry.status}</StatusBadge>
                   </div>
+                  {entry.status === 'Cursando' && (
+                    <button
+                      type="button"
+                      onClick={() => setWithdrawTarget(entry)}
+                      title="Retirar materia"
+                      style={{
+                        background: 'none',
+                        border: '1px solid #fecaca',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        color: '#dc2626',
+                        padding: '6px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        opacity: 0.75,
+                        transition: 'opacity 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                      onMouseLeave={e => e.currentTarget.style.opacity = '0.75'}
+                    >
+                      <XCircle size={16} />
+                      Retirar materia
+                    </button>
+                  )}
                 </article>
               ))
             )}
@@ -356,6 +423,17 @@ export default function AcademicHistory() {
           </div>
         </SectionCard>
       </div>
+
+      <ConfirmDialog
+        open={!!withdrawTarget}
+        title="Retirar materia"
+        message={`¿Está seguro de retirar la materia "${withdrawTarget?.subject}" del período ${withdrawTarget?.period}? Esta acción se verá reflejada en el récord del estudiante.`}
+        confirmText="Sí, retirar"
+        cancelText="Cancelar"
+        variant="danger"
+        onConfirm={handleWithdrawSubject}
+        onCancel={() => setWithdrawTarget(null)}
+      />
 
     </AdminPageShell>
   );

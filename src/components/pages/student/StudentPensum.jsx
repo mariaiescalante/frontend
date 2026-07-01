@@ -39,7 +39,7 @@ export default function StudentPensum() {
         // Build actual student record from backend database
         const studentRegistrations = rawReg.filter(r => r.id_student === user.id_student);
         const studentRegIds = studentRegistrations.map(r => r.id_registration);
-        const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration));
+        const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration) && d.subject_status !== 'Retirado');
 
         const fetchedRecord = studentDetails.map(d => {
           const sec = rawSections.find(s => s.id_section === d.id_section);

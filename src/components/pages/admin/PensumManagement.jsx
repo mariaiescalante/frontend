@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BookMarked, Layers3, PlusCircle, Trash2, CheckCircle2 } from 'lucide-react';
-import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect } from './AdminPageShell';
+import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function PensumManagement() {
@@ -16,6 +16,7 @@ export default function PensumManagement() {
   const [modalOpen, setModalOpen] = useState(false);
   const [pensumModalOpen, setPensumModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, name: '' });
 
   // Subject Form state with up to 3 optional prerequisites
   const [form, setForm] = useState({
@@ -218,17 +219,21 @@ export default function PensumManagement() {
     }
   };
 
-  const handleDeleteSubject = async (id_pensum_subject, name) => {
-    if (!window.confirm(`¿Está seguro que desea remover la materia "${name}" de este pensum?`)) {
-      return;
-    }
+  const handleDeleteSubject = (id_pensum_subject, name) => {
+    setConfirmDelete({ open: true, id: id_pensum_subject, name });
+  };
+
+  const executeDeleteSubject = async () => {
+    const { id, name } = confirmDelete;
+    if (!id) return;
+    setConfirmDelete({ open: false, id: null, name: '' });
 
     try {
-      await api.delete(`/pensum-subjects/${id_pensum_subject}`);
+      await api.delete(`/pensum-subjects/${id}`);
       await loadData();
     } catch (err) {
       console.error('Error removing subject from pensum:', err);
-      alert('Error al remover la materia del pensum');
+      if (name) alert(`Error al remover la materia "${name}" del pensum`);
     }
   };
 
@@ -736,6 +741,15 @@ export default function PensumManagement() {
           </label>
         </div>
       </Modal>
+      <ConfirmDialog
+        open={confirmDelete.open}
+        title="Remover materia"
+        message={`¿Está seguro que desea remover la materia "${confirmDelete.name}" de este pensum?`}
+        confirmText="Remover"
+        variant="danger"
+        onConfirm={executeDeleteSubject}
+        onCancel={() => setConfirmDelete({ open: false, id: null, name: '' })}
+      />
     </AdminPageShell>
   );
 }

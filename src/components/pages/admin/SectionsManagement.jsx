@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Layers3, PlusSquare, Search } from 'lucide-react';
-import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, ProgressBar, CustomSelect } from './AdminPageShell';
+import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, ProgressBar, CustomSelect, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function SectionsManagement() {
@@ -16,6 +16,7 @@ export default function SectionsManagement() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
   const [query, setQuery] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
 
   const [form, setForm] = useState({
     id_period: '',
@@ -145,8 +146,15 @@ export default function SectionsManagement() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Está seguro de que desea cerrar/eliminar esta sección?')) return;
+  const handleDelete = (id) => {
+    setConfirmDelete({ open: true, id });
+  };
+
+  const executeDelete = async () => {
+    const { id } = confirmDelete;
+    if (!id) return;
+    setConfirmDelete({ open: false, id: null });
+
     try {
       await api.delete(`/sections/${id}`);
       loadData();
@@ -367,6 +375,15 @@ export default function SectionsManagement() {
           </label>
         </div>
       </Modal>
+      <ConfirmDialog
+        open={confirmDelete.open}
+        title="Cerrar / Eliminar sección"
+        message="¿Está seguro de que desea cerrar/eliminar esta sección?"
+        confirmText="Eliminar"
+        variant="danger"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
     </AdminPageShell>
   );
 }

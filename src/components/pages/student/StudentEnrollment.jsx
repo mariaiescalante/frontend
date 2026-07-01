@@ -11,7 +11,7 @@ import {
   Info,
   Trash2
 } from 'lucide-react';
-import { AdminPageShell, SectionCard, ActionButton, StatusBadge, CustomSelect } from '../admin/AdminPageShell';
+import { AdminPageShell, SectionCard, ActionButton, StatusBadge, CustomSelect, ConfirmDialog } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
 
@@ -97,6 +97,7 @@ export default function StudentEnrollment() {
   const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(false);
   const [activePeriodName, setActivePeriodName] = useState('');
   const [activePeriodId, setActivePeriodId] = useState(null);
+  const [showWithdrawInfo, setShowWithdrawInfo] = useState(false);
 
   useEffect(() => {
     async function checkEnrollment() {
@@ -130,7 +131,7 @@ export default function StudentEnrollment() {
           // 1. Build record
           const studentRegistrations = rawRegistrations.filter(r => r.id_student === user.id_student);
           const studentRegIds = studentRegistrations.map(r => r.id_registration);
-          const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration));
+          const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration) && d.subject_status !== 'Retirado');
 
           const fetchedRecord = studentDetails.map(d => {
             const sec = rawSections.find(s => s.id_section === d.id_section);
@@ -148,7 +149,7 @@ export default function StudentEnrollment() {
           // Check if already enrolled in this period
           const currentPeriodReg = studentRegistrations.find(r => r.id_period === activePeriod.id_period);
           if (currentPeriodReg) {
-            const currentDetails = rawRegDetails.filter(d => d.id_registration === currentPeriodReg.id_registration);
+            const currentDetails = rawRegDetails.filter(d => d.id_registration === currentPeriodReg.id_registration && d.subject_status !== 'Retirado');
             const currentEnrolled = currentDetails.map(d => {
               const sec = rawSections.find(s => s.id_section === d.id_section);
               return {
@@ -370,9 +371,7 @@ export default function StudentEnrollment() {
   };
 
   const handleReset = async () => {
-    // In a real scenario we'd call a DELETE to remove the registration
-    // Since this is just replacing the simulator, we'll alert that cancellation needs to go through admin
-    alert('Para anular su inscripción, por favor contacte a Control de Estudios.');
+    setShowWithdrawInfo(true);
   };
 
   const activeGroup = useMemo(() => {
@@ -449,6 +448,17 @@ export default function StudentEnrollment() {
             </ActionButton>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={showWithdrawInfo}
+          title="Solicitar retiro de asignaturas"
+          message="Para retirar una o más asignaturas, debe comunicarse con el departamento de Control de Estudios. Un administrador procesará su solicitud y los cambios se verán reflejados en su horario y récord académico."
+          confirmText="Entendido"
+          variant="accent"
+          hideCancel
+          onConfirm={() => setShowWithdrawInfo(false)}
+          onCancel={() => setShowWithdrawInfo(false)}
+        />
       </AdminPageShell>
     );
   }
@@ -681,8 +691,8 @@ export default function StudentEnrollment() {
               </ActionButton>
             </div>
           </SectionCard>
+          </div>
         </div>
-      </div>
-    </AdminPageShell>
-  );
-}
+      </AdminPageShell>
+    );
+  }

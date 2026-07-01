@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { CalendarDays, CirclePlus, Clock3, Trash2, Edit2 } from 'lucide-react';
-import { AdminPageShell, ActionButton, SectionCard, StatusBadge, CustomSelect } from './AdminPageShell';
+import { AdminPageShell, ActionButton, SectionCard, StatusBadge, CustomSelect, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function AcademicPeriods() {
@@ -8,6 +8,8 @@ export default function AcademicPeriods() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, name: '' });
 
   const [form, setForm] = useState({
     name_period: '',
@@ -99,9 +101,13 @@ export default function AcademicPeriods() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`¿Está seguro que desea eliminar el período "${name}"?`)) {
-      return;
-    }
+    setConfirmDelete({ open: true, id, name });
+  };
+
+  const executeDelete = async () => {
+    const { id } = confirmDelete;
+    if (!id) return;
+    setConfirmDelete({ open: false, id: null, name: '' });
     try {
       await api.delete(`/periods/${id}`);
       if (editingId === id) {
@@ -319,6 +325,15 @@ export default function AcademicPeriods() {
           </div>
         </SectionCard>
       </div>
+      <ConfirmDialog
+        open={confirmDelete.open}
+        title="Eliminar período"
+        message={`¿Está seguro que desea eliminar el período "${confirmDelete.name}"?`}
+        confirmText="Eliminar"
+        variant="danger"
+        onConfirm={executeDelete}
+        onCancel={() => setConfirmDelete({ open: false, id: null, name: '' })}
+      />
     </AdminPageShell>
   );
 }

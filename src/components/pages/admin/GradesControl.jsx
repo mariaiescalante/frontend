@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Award, FilePenLine, ShieldCheck, Save } from 'lucide-react';
-import { AdminPageShell, ActionButton, SectionCard, StatusBadge, CustomSelect } from './AdminPageShell';
+import { AdminPageShell, ActionButton, SectionCard, StatusBadge, CustomSelect, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function GradesControl() {
@@ -10,6 +10,7 @@ export default function GradesControl() {
   const [allDetails, setAllDetails] = useState([]);
   const [allRegistrations, setAllRegistrations] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -127,9 +128,11 @@ export default function GradesControl() {
       alert('No hay estudiantes inscritos en esta sección.');
       return;
     }
-    const confirm = window.confirm('Al cerrar el acta se bloqueará la edición para docentes y administradores. ¿Deseas continuar?');
-    if (!confirm) return;
+    setConfirmClose(true);
+  };
 
+  const executeCloseActa = async () => {
+    setConfirmClose(false);
     try {
       setIsSaving(true);
       await Promise.all(grades.map(r => 
@@ -241,6 +244,15 @@ export default function GradesControl() {
           <ActionButton variant="accent" onClick={handleCloseActa} disabled={isClosed || isSaving || grades.length === 0}>Cerrar acta</ActionButton>
         </div>
       </SectionCard>
+      <ConfirmDialog
+        open={confirmClose}
+        title="Cerrar acta"
+        message="Al cerrar el acta se bloqueará la edición para docentes y administradores. ¿Deseas continuar?"
+        confirmText="Cerrar acta"
+        variant="accent"
+        onConfirm={executeCloseActa}
+        onCancel={() => setConfirmClose(false)}
+      />
     </AdminPageShell>
   );
 }

@@ -45,7 +45,7 @@ export default function StudentSchedule() {
         }
 
         const rawRegDet = Array.isArray(regDetRes) ? regDetRes : (regDetRes?.data || []);
-        const studentDetails = rawRegDet.filter(d => d.id_registration === studentReg.id_registration);
+        const studentDetails = rawRegDet.filter(d => d.id_registration === studentReg.id_registration && d.subject_status !== 'Retirado');
         
         const rawSec = Array.isArray(secRes) ? secRes : (secRes?.data || []);
         

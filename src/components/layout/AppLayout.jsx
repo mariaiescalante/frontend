@@ -51,7 +51,7 @@ export default function AppLayout() {
           `}
         </style>
         <p style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-secondary)' }}>
-          Restaurando sesión espacial...
+          Cargando...
         </p>
       </div>
     );

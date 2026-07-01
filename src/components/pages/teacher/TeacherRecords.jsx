@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { CheckCircle2, FileLock2 } from 'lucide-react';
-import { ActionButton, AdminPageShell, DataTable, SectionCard, StatusBadge } from '../admin/AdminPageShell';
+import { ActionButton, AdminPageShell, DataTable, SectionCard, StatusBadge, ConfirmDialog } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
 
@@ -8,6 +8,7 @@ export default function TeacherRecords() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
+  const [confirmClose, setConfirmClose] = useState({ open: false, record: null });
   
   const [assignments, setAssignments] = useState([]);
   const [allDetails, setAllDetails] = useState([]);
@@ -62,14 +63,18 @@ export default function TeacherRecords() {
 
   const openCount = records.filter((record) => record.status !== 'cerrada').length;
 
-  const closeRecord = async (record) => {
+  const closeRecord = (record) => {
     if (record.detailsCount === 0) {
       alert('Esta sección no tiene estudiantes inscritos.');
       return;
     }
+    setConfirmClose({ open: true, record });
+  };
 
-    const approved = window.confirm('Al cerrar el acta no podrás editar notas para esta sección. ¿Deseas continuar?');
-    if (!approved) return;
+  const executeCloseRecord = async () => {
+    const record = confirmClose.record;
+    if (!record) return;
+    setConfirmClose({ open: false, record: null });
 
     try {
       setIsClosing(true);
@@ -172,6 +177,15 @@ export default function TeacherRecords() {
           )}
         </DataTable>
       </SectionCard>
+      <ConfirmDialog
+        open={confirmClose.open}
+        title="Cerrar acta"
+        message="Al cerrar el acta no podrás editar notas para esta sección. ¿Deseas continuar?"
+        confirmText="Cerrar acta"
+        variant="accent"
+        onConfirm={executeCloseRecord}
+        onCancel={() => setConfirmClose({ open: false, record: null })}
+      />
     </AdminPageShell>
   );
 }

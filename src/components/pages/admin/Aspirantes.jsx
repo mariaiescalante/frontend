@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Search, Users, UserCheck, CheckCircle2, XCircle, AlertCircle, Trash2, Calendar, FileText, MapPin, Eye, Info } from 'lucide-react';
-import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect, Pagination } from './AdminPageShell';
+import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect, Pagination, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function Aspirantes() {
@@ -15,6 +15,7 @@ export default function Aspirantes() {
   const [actionLoading, setActionLoading] = useState(null);
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -131,10 +132,14 @@ export default function Aspirantes() {
     }
   }, [selectedApplicant]);
 
-  const handleDeleteApplicant = useCallback(async (id) => {
-    if (!window.confirm('¿Estás seguro de que deseas marcar este pre-registro como eliminado? Se ocultará del listado, pero se conservará en la base de datos.')) {
-      return;
-    }
+  const handleDeleteApplicant = useCallback((id) => {
+    setConfirmDelete({ open: true, id });
+  }, []);
+
+  const executeDeleteApplicant = useCallback(async () => {
+    const id = confirmDelete.id;
+    if (!id) return;
+    setConfirmDelete({ open: false, id: null });
 
     setActionLoading('delete');
     try {
@@ -144,14 +149,13 @@ export default function Aspirantes() {
         setModalOpen(false);
         setSelectedApplicant(null);
       }
-      fetchStats();
     } catch (err) {
       console.error(err);
-      setActionError(err.message || 'Error al eliminar el aspirante.');
+      setActionError(err.message || 'Error al actualizar el estado del aspirante.');
     } finally {
       setActionLoading(null);
     }
-  }, [selectedApplicant]);
+  }, [confirmDelete.id, selectedApplicant]);
 
   // Inline spinner SVG component
   const Spinner = ({ size = 14, color = 'currentColor' }) => (
@@ -526,6 +530,15 @@ export default function Aspirantes() {
           </div>
         </Modal>
       )}
+      <ConfirmDialog
+        open={confirmDelete.open}
+        title="Eliminar pre-registro"
+        message="¿Estás seguro de que deseas marcar este pre-registro como eliminado? Se ocultará del listado, pero se conservará en la base de datos."
+        confirmText="Eliminar"
+        variant="danger"
+        onConfirm={executeDeleteApplicant}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
     </AdminPageShell>
   );
 }

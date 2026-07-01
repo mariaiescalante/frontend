@@ -34,7 +34,7 @@ export default function StudentRecord() {
 
         const studentRegistrations = rawReg.filter(r => r.id_student === user.id_student);
         const studentRegIds = studentRegistrations.map(r => r.id_registration);
-        const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration));
+        const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration) && d.subject_status !== 'Retirado');
 
         const history = studentDetails.map(d => {
           const sec = rawSections.find(s => s.id_section === d.id_section);
