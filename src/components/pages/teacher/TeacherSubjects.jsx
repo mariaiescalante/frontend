@@ -19,13 +19,27 @@ export default function TeacherSubjects() {
       }
       try {
         setLoading(true);
-        const [secRes, detRes] = await Promise.all([
+        const [secRes, detRes, pensumsRes] = await Promise.all([
           api.get('/sections'),
-          api.get('/registration-details')
+          api.get('/registration-details'),
+          api.get('/pensums')
         ]);
         
         const allSections = Array.isArray(secRes) ? secRes : (secRes?.data || []);
         const allDetails = Array.isArray(detRes) ? detRes : (detRes?.data || []);
+        const allPensums = Array.isArray(pensumsRes) ? pensumsRes : (pensumsRes?.data || []);
+        
+        // Construir un mapa: id_career -> (id_subject -> nombre_semestre)
+        const semesterMap = {};
+        for (const pensum of allPensums) {
+          const careerId = pensum.id_career;
+          if (!semesterMap[careerId]) semesterMap[careerId] = {};
+          for (const ps of (pensum.PensumSubjects || [])) {
+            const subjId = ps.id_subject;
+            const semName = ps.Semester?.name_semester || ps.Semester?.number_semester?.toString() || '';
+            if (semName) semesterMap[careerId][subjId] = semName;
+          }
+        }
         
         // Filtrar las secciones que corresponden a este profesor
         const teacherSections = allSections.filter(s => s.id_teacher === user.id_teacher);
@@ -36,6 +50,22 @@ export default function TeacherSubjects() {
           if (sectionDetails.length > 0 && sectionDetails.every(d => d.grade_status === 'Confirmada')) {
             status = 'cerrada';
           }
+
+          // Buscar el semestre: primero por carrera+subject, luego solo por subject
+          let semester = 'N/A';
+          const subjId = s.id_subject;
+          const careerId = s.id_career;
+          if (semesterMap[careerId]?.[subjId]) {
+            semester = semesterMap[careerId][subjId];
+          } else {
+            // Fallback: buscar en cualquier pensum
+            for (const careerMap of Object.values(semesterMap)) {
+              if (careerMap[subjId]) {
+                semester = careerMap[subjId];
+                break;
+              }
+            }
+          }
           
           return {
             id: s.id_section,
@@ -43,7 +73,7 @@ export default function TeacherSubjects() {
             subject: s.Subject?.name_subject || 'Desconocido',
             section: s.section_code || '',
             career: s.Career?.name_career || 'No definida',
-            semester: 'N/A', // Semester is derived from PensumSubject usually, showing N/A
+            semester,
             period: s.AcademicPeriod?.name_period || '',
             actStatus: status
           };

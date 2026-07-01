@@ -680,9 +680,7 @@ export default function UserManagement() {
                 { value: 'Todos', label: 'Todos' },
                 { value: 'Activo', label: 'Activo' },
                 { value: 'Inactivo', label: 'Inactivo' },
-                { value: 'Disponible', label: 'Disponible' },
-                { value: 'Asignado', label: 'Asignado' },
-                { value: 'En supervisión', label: 'En supervisión' }
+                { value: 'Bloqueado', label: 'Bloqueado' }
               ]}
             />
           </label>
@@ -720,7 +718,15 @@ export default function UserManagement() {
             ? ['Cédula', 'Nombre', 'Título Académico', 'Estado', 'Carga', 'Acciones']
             : ['Cédula', 'Nombre', 'Correo', 'Teléfono', 'Estado', 'Acciones'])}>
 
-          {filteredRecords.map((record) => (
+          {filteredRecords.length === 0 ? (
+            <tr>
+              <td colSpan={activeTab === 'students' ? 7 : 6} style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                {statusFilter !== 'Todos'
+                  ? `No hay ${activeTab === 'students' ? 'estudiantes' : activeTab === 'teachers' ? 'docentes' : 'administradores'} con estado "${statusFilter}"`
+                  : `No hay ${activeTab === 'students' ? 'estudiantes' : activeTab === 'teachers' ? 'docentes' : 'administradores'} registrados`}
+              </td>
+            </tr>
+          ) : filteredRecords.map((record) => (
             <tr key={record.id}>
               <td>{record.id}</td>
               <td>{record.name}</td>
