@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Search, Users, UserPlus, Edit3, Trash2, Eye, EyeOff, GraduationCap, Briefcase, Shield } from 'lucide-react';
+import { Search, Users, UserPlus, Edit3, Trash2, GraduationCap, Briefcase, Shield } from 'lucide-react';
 import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect, Pagination } from './AdminPageShell';
 import { careerCatalog } from './adminSeedData';
 import { registerUser } from '../../../services/auth';
@@ -278,6 +278,7 @@ export default function UserManagement() {
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [createdPassword, setCreatedPassword] = useState(null);
   const [careerList, setCareerList] = useState([]);
   const [extraFilter, setExtraFilter] = useState('');
   const [academicTitles, setAcademicTitles] = useState(defaultTeacherTitleOptions);
@@ -460,16 +461,8 @@ export default function UserManagement() {
     if (!isValidEmail(form.email)) return 'El correo no tiene un formato válido.';
     if (normalizeDocumentNumber(form.documentNumber).length !== 8) return 'La cédula debe tener 8 dígitos.';
     if (normalizePhoneNumber(form.phone).length !== 11) return 'El teléfono debe tener 11 dígitos.';
-    if (!form.username.trim()) return 'El username es obligatorio.';
-
-    if (!editingUser) {
-      if (!form.password.trim() || form.password.trim().length < 6) {
-        return 'La contraseña debe tener al menos 6 caracteres.';
-      }
-    } else {
-      if (form.password.trim() && form.password.trim().length < 6) {
-        return 'La contraseña debe tener al menos 6 caracteres.';
-      }
+    if (form.password.trim() && form.password.trim().length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres.';
     }
 
     if (form.userType === 'student' && !form.career.trim()) return 'Selecciona una carrera para el estudiante.';
@@ -569,7 +562,7 @@ export default function UserManagement() {
       id_role: ROLE_IDS[form.userType] ?? ROLE_IDS.student,
       email: form.email.trim(),
       phone: formatPhone(form.phone),
-      username: form.username.trim(),
+      username: form.username.trim() || undefined,
       status: form.status || 'Activo'
     };
 
@@ -602,6 +595,8 @@ export default function UserManagement() {
       const backendUser = response?.user || response?.data?.user || response?.data || response;
       const localRecord = normalizeBackendUser(backendUser);
 
+      const tempPassword = response?.temporal_password || response?.data?.temporal_password;
+
       if (editingUser) {
         if (form.userType === 'student') {
           setStudentForm(createInitialForm('student'));
@@ -617,6 +612,9 @@ export default function UserManagement() {
           setTeacherForm(createInitialForm('teacher'));
         } else if (form.userType === 'admin') {
           setAdminForm(createInitialForm('admin'));
+        }
+        if (tempPassword) {
+          setCreatedPassword(tempPassword);
         }
       }
 
@@ -851,31 +849,12 @@ export default function UserManagement() {
             <span className="form-label">Username</span>
             <input className="form-input" value={form.username} onChange={(event) => handleFieldChange('username', event.target.value)} />
           </label>
-          <label className="form-group" style={{ marginBottom: 0, opacity: editingUser ? 0.6 : 1 }}>
-            <span className="form-label">Contraseña {editingUser ? '(Bloqueada en edición)' : ''}</span>
-            <div style={{ position: 'relative' }}>
-              <input
-                className="form-input"
-                type={showPassword ? 'text' : 'password'}
-                value={editingUser ? '••••••••' : form.password}
-                onChange={(event) => handleFieldChange('password', event.target.value)}
-                autoComplete="new-password"
-                style={{ paddingRight: '48px', cursor: editingUser ? 'not-allowed' : 'text' }}
-                placeholder={editingUser ? 'Bloqueada' : ''}
-                disabled={!!editingUser}
-              />
-              {!editingUser && (
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((current) => !current)}
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: '#64748b', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              )}
-            </div>
-          </label>
+          {editingUser && (
+            <label className="form-group" style={{ marginBottom: 0, opacity: 0.6 }}>
+              <span className="form-label">Contraseña (Bloqueada en edición)</span>
+              <input className="form-input" type="password" value="••••••••" disabled style={{ cursor: 'not-allowed' }} />
+            </label>
+          )}
 
           {userType === 'student' && (
             <label className="form-group" style={{ marginBottom: 0 }}>
@@ -921,6 +900,65 @@ export default function UserManagement() {
           </label>
         </div>
       </Modal>
+
+      {createdPassword && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(5, 17, 36, 0.6)',
+          backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', zIndex: 10000
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: '20px', maxWidth: '480px', width: '100%',
+            padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+            borderTop: '6px solid #ffd100'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '50%',
+                background: 'rgba(255, 209, 0, 0.12)', color: '#7c5a00',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px'
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>
+                Usuario creado exitosamente
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '6px', marginBottom: 0 }}>
+                Se ha enviado un correo con las credenciales al usuario.
+              </p>
+            </div>
+            <div style={{
+              background: '#f8fafc', border: '1px solid #dbeafe', borderRadius: '14px',
+              padding: '20px', marginBottom: '24px'
+            }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
+                Contraseña temporal
+              </div>
+              <div style={{
+                fontSize: '1.4rem', fontWeight: 800, color: '#2563eb',
+                fontFamily: 'monospace', letterSpacing: '0.1em', textAlign: 'center',
+                padding: '12px', background: '#fff', borderRadius: '10px',
+                border: '1px dashed #93c5fd'
+              }}>
+                {createdPassword}
+              </div>
+            </div>
+            <button
+              onClick={() => setCreatedPassword(null)}
+              style={{
+                width: '100%', padding: '14px', borderRadius: '12px',
+                border: 'none', background: '#ffd100', color: '#051124',
+                fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer'
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
     </AdminPageShell>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Eye, EyeOff, ShieldAlert, LifeBuoy } from 'lucide-react';
+import { ArrowLeft, Mail, Eye, EyeOff, ShieldAlert, LifeBuoy } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import universityLogo from '../../assets/logo-uptnt.png';
 
@@ -12,7 +12,7 @@ export default function Login() {
   const { login, loading, error, isAuthenticated } = useAuth();
 
   // states to bind field values
-  const [usuario, setUsuario] = useState('');
+  const [email, setEmail] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [recordarme, setRecordarme] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -26,15 +26,15 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const sanitizedUser = usuario.trim();
+    const sanitizedEmail = email.trim();
     const sanitizedPassword = contrasena.trim();
 
-    if (!sanitizedUser || !sanitizedPassword) {
+    if (!sanitizedEmail || !sanitizedPassword) {
       return;
     }
 
     try {
-      await login(sanitizedUser, sanitizedPassword);
+      await login(sanitizedEmail, sanitizedPassword);
       navigate('/dashboard', { replace: true });
     } catch {
       // El mensaje de error ya se expone desde AuthContext
@@ -195,10 +195,10 @@ export default function Login() {
           </div>
         )}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* User Input */}
+          {/* Email Input */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' }}>
             <label
-              htmlFor="usuario"
+              htmlFor="email"
               style={{
                 fontFamily: "'Inter', sans-serif",
                 fontSize: '12px',
@@ -206,16 +206,16 @@ export default function Login() {
                 color: '#2d3748'
               }}
             >
-              Usuario
+              Correo electrónico
             </label>
             <div style={{ position: 'relative', width: '100%' }}>
               <input
-                id="usuario"
-                type="text"
-                placeholder="Ingrese su usuario"
-                value={usuario}
-                onChange={(e) => setUsuario(e.target.value)}
-                autoComplete="username"
+                id="email"
+                type="email"
+                placeholder="Ingrese su correo"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 required
                 style={{
                   width: '100%',
@@ -233,7 +233,7 @@ export default function Login() {
                 onFocus={(e) => (e.target.style.borderColor = '#0b1c3f')}
                 onBlur={(e) => (e.target.style.borderColor = '#e2e8f0')}
               />
-              <User
+              <Mail
                 size={18}
                 color="#a0aec0"
                 style={{

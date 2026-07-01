@@ -238,7 +238,7 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '0.62rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Período</span>
-                    <span style={{ fontSize: '0.825rem', fontWeight: '800', color: '#0f172a' }}>{data?.periodInfo?.name || '2026-I'}</span>
+                    <span style={{ fontSize: '0.825rem', fontWeight: '800', color: '#0f172a' }}>{data?.periodInfo?.name || 'No definido'}</span>
                   </div>
                 </div>
 
@@ -250,7 +250,7 @@ export default function AdminDashboard() {
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '0.62rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Tiempo Restante</span>
                     <span style={{ fontSize: '0.825rem', fontWeight: '800', color: '#0f172a' }}>
-                      {data?.periodInfo?.daysRemaining || 0} días
+                        {data?.periodInfo?.daysRemaining ?? 0} días
                     </span>
                   </div>
                 </div>
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
                         }} />
                       )}
                       <span style={{ fontSize: '0.825rem', fontWeight: '800', color: data?.periodInfo?.status === 'Activo' ? '#22c55e' : '#64748b', textTransform: 'capitalize' }}>
-                        {data?.periodInfo?.status || 'Activo'}
+                        {data?.periodInfo?.status || 'Sin período activo'}
                       </span>
                     </div>
                   </div>
