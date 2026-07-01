@@ -6,40 +6,65 @@ import api from '../../../services/api';
 export default function GradesControl() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [periods, setPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('');
   const [allSections, setAllSections] = useState([]);
   const [allDetails, setAllDetails] = useState([]);
   const [allRegistrations, setAllRegistrations] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [confirmClose, setConfirmClose] = useState(false);
 
+  // Cargar períodos al montar y elegir el activo
   useEffect(() => {
-    async function loadData() {
+    async function init() {
       try {
-        setLoading(true);
-        const [secRes, detRes, regRes, userRes] = await Promise.all([
-          api.get('/sections'),
+        const [perRes, detRes, regRes, userRes] = await Promise.all([
+          api.get('/periods'),
           api.get('/registration-details'),
           api.get('/registrations'),
           api.get('/users')
         ]);
-        setAllSections((Array.isArray(secRes) ? secRes : (secRes?.data || [])));
+        const perList = Array.isArray(perRes.data) ? perRes.data : perRes;
+        setPeriods(perList);
         setAllDetails((Array.isArray(detRes) ? detRes : (detRes?.data || [])));
         setAllRegistrations((Array.isArray(regRes) ? regRes : (regRes?.data || [])));
         setAllUsers((Array.isArray(userRes) ? userRes : (userRes?.data || [])));
+        const active = perList.find(p => p.period_status === 'Activo') || perList[0];
+        setSelectedPeriod(String(active?.id_period || ''));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    init();
+  }, []);
+
+  // Cuando cambia el período, cargar secciones de ese período
+  useEffect(() => {
+    if (!selectedPeriod) return;
+    async function loadSections() {
+      setLoading(true);
+      try {
+        const secRes = await api.get(`/sections?id_period=${selectedPeriod}`);
+        setAllSections((Array.isArray(secRes) ? secRes : (secRes?.data || [])));
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     }
-    loadData();
-  }, []);
+    loadSections();
+  }, [selectedPeriod]);
 
   const [sectionId, setSectionId] = useState('');
   
   useEffect(() => {
-    if (allSections.length > 0 && !sectionId) {
-      setSectionId(String(allSections[0].id_section));
+    if (allSections.length > 0) {
+      const currentStillValid = allSections.some(s => s.id_section === Number(sectionId));
+      if (!currentStillValid) {
+        setSectionId(String(allSections[0].id_section));
+      }
+    } else {
+      setSectionId('');
     }
   }, [allSections, sectionId]);
 
@@ -76,9 +101,10 @@ export default function GradesControl() {
   }, [rawGrades]);
 
   const isClosed = grades.length > 0 && grades[0].grade_status === 'Confirmada';
+  const isCulminado = selectedSection?.AcademicPeriod?.period_status === 'Culminado';
 
   const updateGrade = (detailId, index, value) => {
-    if (isClosed) return;
+    if (isClosed || isCulminado) return;
     setGrades((currentGrades) => currentGrades.map((student) => {
       if (student.id !== detailId) return student;
       const val = Number(value) || 0;
@@ -177,7 +203,15 @@ export default function GradesControl() {
       ]}
     >
       <SectionCard title="Seleccionar sección y materia" description="El control combina datos de curso con una vista compacta del acta conectada a la base de datos real.">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px', maxWidth: '700px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '14px', maxWidth: '900px' }}>
+          <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Período Académico</span>
+            <CustomSelect
+              value={selectedPeriod}
+              onChange={(val) => { setSelectedPeriod(String(val)); setSectionId(''); }}
+              options={periods.map(p => ({ value: String(p.id_period), label: p.name_period }))}
+            />
+          </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Sección</span>
             <CustomSelect
@@ -189,15 +223,18 @@ export default function GradesControl() {
               }))}
             />
           </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '24px' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '24px', flexWrap: 'wrap' }}>
              <StatusBadge tone={isClosed ? 'neutral' : 'success'}>
                 {isClosed ? 'ACTA CERRADA (SOLO LECTURA)' : 'ACTA ABIERTA (EDICIÓN HABILITADA)'}
              </StatusBadge>
-          </div>
+             {isCulminado && (
+               <StatusBadge tone="danger">PERÍODO CULMINADO (SOLO LECTURA)</StatusBadge>
+             )}
+           </div>
         </div>
       </SectionCard>
 
-      <SectionCard title="Libro de calificaciones" description="Edición en línea de cortes parciales y nota final.">
+      <SectionCard title="Libro de calificaciones" description={isCulminado ? "Período culminado — solo lectura." : "Edición en línea de cortes parciales y nota final."}>
         {grades.length === 0 ? (
            <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No hay alumnos inscritos en esta sección.</div>
         ) : (
@@ -214,19 +251,19 @@ export default function GradesControl() {
                 <div className="grades-input-grid">
                   <label className="form-group" style={{ marginBottom: 0 }}>
                     <span className="form-label">Corte 1</span>
-                    <input className="form-input" disabled={isClosed} value={student.c1} onChange={(e) => updateGrade(student.id, 0, e.target.value)} />
+                    <input className="form-input" disabled={isClosed || isCulminado} value={student.c1} onChange={(e) => updateGrade(student.id, 0, e.target.value)} />
                   </label>
                   <label className="form-group" style={{ marginBottom: 0 }}>
                     <span className="form-label">Corte 2</span>
-                    <input className="form-input" disabled={isClosed} value={student.c2} onChange={(e) => updateGrade(student.id, 1, e.target.value)} />
+                    <input className="form-input" disabled={isClosed || isCulminado} value={student.c2} onChange={(e) => updateGrade(student.id, 1, e.target.value)} />
                   </label>
                   <label className="form-group" style={{ marginBottom: 0 }}>
                     <span className="form-label">Corte 3</span>
-                    <input className="form-input" disabled={isClosed} value={student.c3} onChange={(e) => updateGrade(student.id, 2, e.target.value)} />
+                    <input className="form-input" disabled={isClosed || isCulminado} value={student.c3} onChange={(e) => updateGrade(student.id, 2, e.target.value)} />
                   </label>
                   <label className="form-group" style={{ marginBottom: 0 }}>
                     <span className="form-label">Corte 4</span>
-                    <input className="form-input" disabled={isClosed} value={student.c4} onChange={(e) => updateGrade(student.id, 3, e.target.value)} />
+                    <input className="form-input" disabled={isClosed || isCulminado} value={student.c4} onChange={(e) => updateGrade(student.id, 3, e.target.value)} />
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                     <span className="form-label">Final</span>
@@ -238,10 +275,10 @@ export default function GradesControl() {
           </div>
         )}
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
-          <ActionButton variant="primary" onClick={handleSaveGrades} disabled={isClosed || isSaving || grades.length === 0}>
+          <ActionButton variant="primary" onClick={handleSaveGrades} disabled={isClosed || isCulminado || isSaving || grades.length === 0}>
             <Save size={16} /> {isSaving ? 'Guardando...' : 'Guardar Notas'}
           </ActionButton>
-          <ActionButton variant="accent" onClick={handleCloseActa} disabled={isClosed || isSaving || grades.length === 0}>Cerrar acta</ActionButton>
+          <ActionButton variant="accent" onClick={handleCloseActa} disabled={isClosed || isCulminado || isSaving || grades.length === 0}>Cerrar acta</ActionButton>
         </div>
       </SectionCard>
       <ConfirmDialog

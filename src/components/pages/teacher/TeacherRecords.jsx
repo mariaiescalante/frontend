@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { CheckCircle2, FileLock2 } from 'lucide-react';
-import { ActionButton, AdminPageShell, DataTable, SectionCard, StatusBadge, ConfirmDialog } from '../admin/AdminPageShell';
+import { ActionButton, AdminPageShell, DataTable, SectionCard, StatusBadge, ConfirmDialog, CustomSelect } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
 
@@ -12,14 +12,31 @@ export default function TeacherRecords() {
   
   const [assignments, setAssignments] = useState([]);
   const [allDetails, setAllDetails] = useState([]);
+  const [periods, setPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('');
+
+  useEffect(() => {
+    async function loadPeriods() {
+      try {
+        const perRes = await api.get('/periods');
+        const perList = Array.isArray(perRes.data) ? perRes.data : perRes;
+        setPeriods(perList);
+        const active = perList.find(p => p.period_status === 'Activo') || perList[0];
+        setSelectedPeriod(String(active?.id_period || ''));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadPeriods();
+  }, []);
 
   useEffect(() => {
     async function loadData() {
-      if (!user?.id_teacher) return;
+      if (!user?.id_teacher || !selectedPeriod) return;
       try {
         setLoading(true);
         const [secRes, detRes] = await Promise.all([
-          api.get('/sections'),
+          api.get(`/sections?id_period=${selectedPeriod}`),
           api.get('/registration-details')
         ]);
         
@@ -33,7 +50,7 @@ export default function TeacherRecords() {
       }
     }
     loadData();
-  }, [user]);
+  }, [user, selectedPeriod]);
 
   const records = useMemo(() => {
     return assignments.map((item) => {
@@ -62,6 +79,8 @@ export default function TeacherRecords() {
   }, [assignments, allDetails]);
 
   const openCount = records.filter((record) => record.status !== 'cerrada').length;
+  const selectedPeriodObj = periods.find(p => String(p.id_period) === String(selectedPeriod));
+  const isCulminado = selectedPeriodObj?.period_status === 'Culminado';
 
   const closeRecord = (record) => {
     if (record.detailsCount === 0) {
@@ -139,6 +158,16 @@ export default function TeacherRecords() {
         title="Control de cierre"
         description="Una vez cerrada el acta, las notas de la seccion no podran editarse y pasarán al récord definitivo del estudiante."
       >
+        <div style={{ marginBottom: '16px', maxWidth: '300px' }}>
+          <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Período Académico</span>
+            <CustomSelect
+              value={selectedPeriod}
+              onChange={(val) => setSelectedPeriod(String(val))}
+              options={periods.map(p => ({ value: String(p.id_period), label: p.name_period }))}
+            />
+          </label>
+        </div>
         <DataTable columns={['Codigo', 'Asignatura', 'Seccion', 'Carrera', 'Periodo', 'Estado', 'Accion']}>
           {records.length === 0 ? (
             <tr>
@@ -162,6 +191,8 @@ export default function TeacherRecords() {
                 <td>
                   {record.status === 'cerrada' ? (
                     <StatusBadge tone="warning">Bloqueada</StatusBadge>
+                  ) : isCulminado ? (
+                    <StatusBadge tone="danger">Período culminado</StatusBadge>
                   ) : (
                     <ActionButton 
                       variant="secondary" 

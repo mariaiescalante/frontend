@@ -12,15 +12,36 @@ export default function EnrollmentsManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [periods, setPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('');
 
+  // Cargar períodos al montar y elegir el activo
+  useEffect(() => {
+    async function init() {
+      try {
+        const perRes = await api.get('/periods');
+        const perList = Array.isArray(perRes.data) ? perRes.data : perRes;
+        setPeriods(perList);
+        const active = perList.find(p => p.period_status === 'Activo') || perList[0];
+        setSelectedPeriod(String(active?.id_period || ''));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    init();
+  }, []);
+
+  // Cargar inscripciones cuando cambia página o período seleccionado
   useEffect(() => {
     async function loadData() {
+      if (!selectedPeriod) return;
       try {
         setLoading(true);
         const params = new URLSearchParams({
           page: currentPage,
           limit: 10,
         });
+        if (selectedPeriod) params.set('id_period', selectedPeriod);
         const regRes = await api.get(`/registrations?${params.toString()}`);
         if (regRes?.data && regRes?.meta) {
           setAllRegistrations(regRes.data);
@@ -39,7 +60,7 @@ export default function EnrollmentsManagement() {
       }
     }
     loadData();
-  }, [currentPage]);
+  }, [currentPage, selectedPeriod]);
 
   const requests = useMemo(() => {
     return allRegistrations.map(reg => {
@@ -110,15 +131,23 @@ export default function EnrollmentsManagement() {
         title="Inscripciones por Carrera"
         description="Listado detallado de solicitudes con acceso a su ficha de materias registradas."
         actions={
-          <CustomSelect
-            value={filter}
-            onChange={(val) => { setFilter(String(val)); setCurrentPage(1); }}
-            options={careers.map(career => ({
-              value: career,
-              label: career
-            }))}
-            style={{ minWidth: '220px' }}
-          />
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <CustomSelect
+              value={selectedPeriod}
+              onChange={(val) => { setSelectedPeriod(String(val)); setCurrentPage(1); }}
+              options={periods.map(p => ({ value: String(p.id_period), label: p.name_period }))}
+              style={{ minWidth: '160px' }}
+            />
+            <CustomSelect
+              value={filter}
+              onChange={(val) => { setFilter(String(val)); setCurrentPage(1); }}
+              options={careers.map(career => ({
+                value: career,
+                label: career
+              }))}
+              style={{ minWidth: '220px' }}
+            />
+          </div>
         }
       >
         <DataTable columns={["Solicitud", "Estudiante", "Carrera", "Período", "Materias", "Acciones"]}>

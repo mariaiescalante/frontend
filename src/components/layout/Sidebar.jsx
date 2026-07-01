@@ -33,13 +33,12 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
   useEffect(() => {
     async function checkEnrollment() {
       try {
-        const res = await api.get('/periods');
-        const periodsList = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
-        // Check if there is any period with enrollment_status 'Abierta'
-        const hasOpenEnrollment = periodsList.some((p) => p.enrollment_status === 'Abierta');
-        setIsEnrollmentOpen(hasOpenEnrollment);
-      } catch (err) {
-        console.error('Error checking enrollment status in sidebar:', err);
+        const res = await api.get('/periods/active');
+        const activePeriod = res.data || res;
+        // Enrollment is open only when status is 'Abierta'
+        setIsEnrollmentOpen(activePeriod?.enrollment_status === 'Abierta');
+      } catch {
+        // If there's no active period or error, enrollment is closed by default
         setIsEnrollmentOpen(false);
       }
     }

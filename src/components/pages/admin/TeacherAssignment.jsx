@@ -11,6 +11,8 @@ export default function TeacherAssignment() {
   const [pensums, setPensums] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [periods, setPeriods] = useState([]);
+  const [selectedPeriodId, setSelectedPeriodId] = useState('');
 
   const [form, setForm] = useState({
     id_career: '',
@@ -20,14 +22,17 @@ export default function TeacherAssignment() {
     id_teacher: '',
   });
 
-  async function loadData() {
+  async function loadData(periodId) {
     try {
       setLoading(true);
+      if (!periodId) { setLoading(false); return; }
+
+      const sectionsUrl = `/sections?id_period=${periodId}`;
       const [careersRes, semestersRes, teachersRes, sectionsRes, pensumsRes] = await Promise.all([
         api.get('/careers'),
         api.get('/semesters'),
         api.get('/teachers'),
-        api.get('/sections'),
+        api.get(sectionsUrl),
         api.get('/pensums'),
       ]);
 
@@ -83,8 +88,17 @@ export default function TeacherAssignment() {
   }
 
   useEffect(() => {
-    loadData();
+    api.get('/periods').then(res => {
+      const rawPeriods = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+      setPeriods(rawPeriods);
+      const active = rawPeriods.find(p => p.is_active || p.period_status === 'Activo');
+      setSelectedPeriodId(active ? active.id_period : '');
+    }).catch(() => setPeriods([]));
   }, []);
+
+  useEffect(() => {
+    loadData(selectedPeriodId);
+  }, [selectedPeriodId]);
 
   const selectedCareer = useMemo(() => {
     return careers.find(c => c.id_career === Number(form.id_career));
@@ -278,6 +292,23 @@ export default function TeacherAssignment() {
         { label: 'Conflictos', value: scheduleConflict ? '1' : '0', hint: 'Validación de choque de horario', icon: Slash, tone: scheduleConflict ? 'danger' : 'info' }
       ]}
     >
+      <div style={{ marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 16px' }}>
+        <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9rem' }}>Período académico:</span>
+        <select
+          value={selectedPeriodId}
+          onChange={(e) => setSelectedPeriodId(e.target.value)}
+          style={{
+            padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1',
+            background: '#fff', fontSize: '0.9rem', fontWeight: 500, minWidth: '200px'
+          }}
+        >
+          {periods.map(p => (
+            <option key={p.id_period} value={p.id_period}>
+              {p.name_period} {p.period_status === 'Activo' ? '(Activo)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '18px', alignItems: 'start' }}>
         <SectionCard title="Flujo de asignación" description="La secuencia de selección limita errores y mantiene la navegación intuitiva.">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '14px' }}>

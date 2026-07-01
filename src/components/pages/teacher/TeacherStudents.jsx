@@ -34,14 +34,31 @@ export default function TeacherStudents() {
   const [allDetails, setAllDetails] = useState([]);
   const [allRegistrations, setAllRegistrations] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const [periods, setPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('');
+
+  useEffect(() => {
+    async function loadPeriods() {
+      try {
+        const perRes = await api.get('/periods');
+        const perList = Array.isArray(perRes.data) ? perRes.data : perRes;
+        setPeriods(perList);
+        const active = perList.find(p => p.period_status === 'Activo') || perList[0];
+        setSelectedPeriod(String(active?.id_period || ''));
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadPeriods();
+  }, []);
 
   useEffect(() => {
     async function loadData() {
-      if (!user?.id_teacher) return;
+      if (!user?.id_teacher || !selectedPeriod) return;
       try {
         setLoading(true);
         const [secRes, detRes, regRes, userRes] = await Promise.all([
-          api.get('/sections'),
+          api.get(`/sections?id_period=${selectedPeriod}`),
           api.get('/registration-details'),
           api.get('/registrations'),
           api.get('/users')
@@ -134,7 +151,7 @@ export default function TeacherStudents() {
 
   const isEditWindowOpen = useMemo(() => {
     if (!sectionObj) return false;
-    // If any student has grade_status === Confirmada, acta is closed.
+    if (sectionObj.AcademicPeriod?.period_status === 'Culminado') return false;
     if (editableRecords.length > 0 && editableRecords[0].grade_status === 'Confirmada') return false;
     return true;
   }, [sectionObj, editableRecords]);
@@ -552,6 +569,14 @@ export default function TeacherStudents() {
       >
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
           <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Período Académico</span>
+            <CustomSelect
+              value={selectedPeriod}
+              onChange={(val) => setSelectedPeriod(String(val))}
+              options={periods.map(p => ({ value: String(p.id_period), label: p.name_period }))}
+            />
+          </label>
+          <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Carrera</span>
             <CustomSelect
               value={career}
@@ -589,9 +614,13 @@ export default function TeacherStudents() {
         </div>
 
         <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <StatusBadge tone={isEditWindowOpen ? 'success' : 'warning'}>
-            {isEditWindowOpen ? 'Edicion habilitada' : 'Acta cerrada / Solo lectura'}
-          </StatusBadge>
+          {sectionObj?.AcademicPeriod?.period_status === 'Culminado' ? (
+            <StatusBadge tone="danger">PERÍODO CULMINADO (SOLO LECTURA)</StatusBadge>
+          ) : (
+            <StatusBadge tone={isEditWindowOpen ? 'success' : 'warning'}>
+              {isEditWindowOpen ? 'Edicion habilitada' : 'Acta cerrada / Solo lectura'}
+            </StatusBadge>
+          )}
           {sectionObj && isEditWindowOpen ? (
             <span style={{ fontSize: '0.88rem', color: '#64748b' }}>
               No olvides pulsar "Guardar Notas" luego de hacer los cambios.

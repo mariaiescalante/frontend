@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Layers3, PlusSquare, Search } from 'lucide-react';
 import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, ProgressBar, CustomSelect, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
@@ -18,6 +18,8 @@ export default function SectionsManagement() {
   const [query, setQuery] = useState('');
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
 
+  const [selectedPeriod, setSelectedPeriod] = useState('');
+
   const [form, setForm] = useState({
     id_period: '',
     id_subject: '',
@@ -31,32 +33,47 @@ export default function SectionsManagement() {
     schedule_end: '10:00'
   });
 
-  async function loadData() {
-    try {
-      setLoading(true);
-      const [secRes, carRes, subRes, teaRes, perRes] = await Promise.all([
-        api.get('/sections'),
-        api.get('/careers'),
-        api.get('/subjects'),
-        api.get('/teachers'),
-        api.get('/periods')
-      ]);
+  // Cargar datos de referencia una vez al montar
+  useEffect(() => {
+    async function init() {
+      try {
+        const [carRes, subRes, teaRes, perRes] = await Promise.all([
+          api.get('/careers'),
+          api.get('/subjects'),
+          api.get('/teachers'),
+          api.get('/periods')
+        ]);
+        setCareers(Array.isArray(carRes.data) ? carRes.data : carRes);
+        setSubjects(Array.isArray(subRes.data) ? subRes.data : subRes);
+        setTeachers(Array.isArray(teaRes.data) ? teaRes.data : teaRes);
+        const perList = Array.isArray(perRes.data) ? perRes.data : perRes;
+        setPeriods(perList);
+        const active = perList.find(p => p.period_status === 'Activo') || perList[0];
+        setSelectedPeriod(String(active?.id_period || ''));
+      } catch (err) {
+        console.error('Error fetching reference data:', err);
+      }
+    }
+    init();
+  }, []);
 
+  // Cuando cambia el período seleccionado, cargar secciones
+  const loadSections = useCallback(async (periodId) => {
+    if (!periodId) return;
+    setLoading(true);
+    try {
+      const secRes = await api.get(`/sections?id_period=${periodId}`);
       setSections(Array.isArray(secRes.data) ? secRes.data : secRes);
-      setCareers(Array.isArray(carRes.data) ? carRes.data : carRes);
-      setSubjects(Array.isArray(subRes.data) ? subRes.data : subRes);
-      setTeachers(Array.isArray(teaRes.data) ? teaRes.data : teaRes);
-      setPeriods(Array.isArray(perRes.data) ? perRes.data : perRes);
     } catch (err) {
-      console.error('Error fetching data for sections management:', err);
+      console.error('Error fetching sections:', err);
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (selectedPeriod) loadSections(selectedPeriod);
+  }, [selectedPeriod, loadSections]);
 
   const visibleSections = useMemo(() => {
     return sections.filter((section) => {
@@ -71,7 +88,7 @@ export default function SectionsManagement() {
   const handleNewSection = () => {
     setEditingSection(null);
     setForm({
-      id_period: periods[0]?.id_period || '',
+      id_period: selectedPeriod,
       id_subject: subjects[0]?.id_subject || '',
       id_teacher: teachers[0]?.id_teacher || '',
       id_career: careers[0]?.id_career || '',
@@ -139,7 +156,7 @@ export default function SectionsManagement() {
       }
 
       setModalOpen(false);
-      loadData();
+      loadSections(selectedPeriod);
     } catch (err) {
       console.error('Error saving section:', err);
       alert(err.message || 'Error al guardar la sección');
@@ -157,7 +174,7 @@ export default function SectionsManagement() {
 
     try {
       await api.delete(`/sections/${id}`);
-      loadData();
+      loadSections(selectedPeriod);
     } catch (err) {
       console.error('Error deleting section:', err);
       alert(err.message || 'Error al eliminar la sección');
@@ -186,19 +203,34 @@ export default function SectionsManagement() {
   const activeCount = sections.length;
   const totalQuotas = sections.reduce((acc, s) => acc + s.quota_max, 0);
 
+  const selectedPeriodObj = periods.find(p => String(p.id_period) === String(selectedPeriod));
+  const isCulminado = selectedPeriodObj?.period_status === 'Culminado';
+
   return (
     <AdminPageShell
       eyebrow="Gestión de secciones"
       title="Secciones académicas y cupos"
       subtitle="El listado presenta cupos, horario y aula asignada con un estilo limpio para abrir nuevas secciones rápidamente."
-      actions={<ActionButton variant="accent" onClick={handleNewSection}><PlusSquare size={16} /> Abrir sección</ActionButton>}
+      actions={
+        <ActionButton variant="accent" onClick={handleNewSection} disabled={isCulminado}>
+          <PlusSquare size={16} /> Abrir sección
+        </ActionButton>
+      }
       metrics={[
-        { label: 'Secciones activas', value: activeCount.toString(), hint: 'Aulas abiertas en el período actual', icon: Layers3, tone: 'primary' },
+        { label: 'Secciones', value: activeCount.toString(), hint: `Aulas abiertas en el período seleccionado`, icon: Layers3, tone: 'primary' },
         { label: 'Cupos máximos', value: totalQuotas.toString(), hint: 'Matrícula total disponible', icon: Layers3, tone: 'info' }
       ]}
     >
-      <SectionCard title="Filtros de secciones" description="Refina por materia, carrera o texto libre para ubicar el grupo correcto.">
+      <SectionCard title="Filtros de secciones" description="Refina por período, materia, carrera o texto libre para ubicar el grupo correcto.">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '14px' }}>
+          <label className="form-group" style={{ marginBottom: 0 }}>
+            <span className="form-label">Período Académico</span>
+            <CustomSelect
+              value={selectedPeriod}
+              onChange={(val) => setSelectedPeriod(String(val))}
+              options={periods.map(p => ({ value: String(p.id_period), label: p.name_period }))}
+            />
+          </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Buscar</span>
             <div style={{ position: 'relative' }}>
@@ -265,8 +297,8 @@ export default function SectionsManagement() {
                 <ProgressBar value={100} tone="primary" />
               </div>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: 'auto' }}>
-                <ActionButton variant="secondary" onClick={() => handleEditSection(section)}>Editar</ActionButton>
-                <ActionButton variant="ghost" onClick={() => handleDelete(section.id_section)}>Cerrar sección</ActionButton>
+                <ActionButton variant="secondary" onClick={() => handleEditSection(section)} disabled={isCulminado}>Editar</ActionButton>
+                <ActionButton variant="ghost" onClick={() => handleDelete(section.id_section)} disabled={isCulminado}>Cerrar sección</ActionButton>
               </div>
             </article>
           );
