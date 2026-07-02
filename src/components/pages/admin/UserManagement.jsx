@@ -66,7 +66,7 @@ const normalizeBackendUser = (user) => {
     return {
       ...record,
       career: user?.career ?? '',
-      period: user?.period ?? user?.academic_period ?? '2026-II',
+      period: user?.period ?? user?.academic_period ?? 'Sin período',
       cum: Number(user?.cum ?? user?.average ?? 0)
     };
   }
@@ -130,7 +130,7 @@ const buildLocalRecord = (form) => {
       email: form.email.trim(),
       career: form.career,
       status: 'Activo',
-      period: '2026-II',
+      period: 'Sin período',
       cum: 0,
       username: form.username.trim(),
       phone: form.phone.trim()

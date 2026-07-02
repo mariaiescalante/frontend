@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Download, Search, Users, Save, FileSpreadsheet, Printer } from 'lucide-react';
+import { Download, Search, Users, Save, FileSpreadsheet, Printer, CheckCircle2, XCircle } from 'lucide-react';
 import { ActionButton, AdminPageShell, SectionCard, StatusBadge, CustomSelect } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
@@ -29,6 +29,12 @@ export default function TeacherStudents() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [notification, setNotification] = useState({ show: false, type: '', message: '' });
+
+  const showNotification = (type, message) => {
+    setNotification({ show: true, type, message });
+    setTimeout(() => setNotification({ show: false, type: '', message: '' }), 4000);
+  };
 
   const [assignments, setAssignments] = useState([]);
   const [allDetails, setAllDetails] = useState([]);
@@ -77,7 +83,7 @@ export default function TeacherStudents() {
       }
     }
     loadData();
-  }, [user]);
+  }, [user, selectedPeriod]);
 
   // Dropdown selections
   const careerOptions = useMemo(() => {
@@ -215,14 +221,14 @@ export default function TeacherStudents() {
           subject_status: status
         });
       }));
-      alert('Notas guardadas correctamente en la base de datos.');
+      showNotification('success', 'Notas guardadas exitosamente');
       
       // Reload details to sync state
       const detRes = await api.get('/registration-details');
       setAllDetails(Array.isArray(detRes) ? detRes : (detRes?.data || []));
     } catch(err) {
       console.error(err);
-      alert('Error guardando notas.');
+      showNotification('error', 'Error guardando notas.');
     } finally {
       setIsSaving(false);
     }
@@ -707,6 +713,54 @@ export default function TeacherStudents() {
           </table>
         </div>
       </SectionCard>
+      {/* NOTIFICACIÓN CENTRAL */}
+      <style>{`@keyframes notifPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+      {notification.show && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 110,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(15, 23, 42, 0.4)',
+            animation: 'notifPop 0.25s ease',
+          }}
+          onClick={() => setNotification({ show: false, type: '', message: '' })}
+        >
+          <div
+            style={{
+              width: 'min(360px, 90%)', background: '#ffffff', borderRadius: '24px',
+              padding: '40px 32px 32px', textAlign: 'center',
+              boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: '72px', height: '72px', borderRadius: '50%',
+              background: notification.type === 'success'
+                ? 'linear-gradient(135deg, #10b981, #059669)'
+                : 'linear-gradient(135deg, #ef4444, #dc2626)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            }}>
+              {notification.type === 'success'
+                ? <CheckCircle2 size={36} color="#ffffff" strokeWidth={2.5} />
+                : <XCircle size={36} color="#ffffff" strokeWidth={2.5} />
+              }
+            </div>
+            <h3 style={{
+              margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800,
+              color: notification.type === 'success' ? '#065f46' : '#991b1b',
+            }}>
+              {notification.type === 'success' ? 'Guardado' : 'Error'}
+            </h3>
+            <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5 }}>
+              {notification.message}
+            </p>
+            <ActionButton variant="accent" onClick={() => setNotification({ show: false, type: '', message: '' })}>
+              Aceptar
+            </ActionButton>
+          </div>
+        </div>
+      )}
     </AdminPageShell>
   );
 }

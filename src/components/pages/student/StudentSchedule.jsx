@@ -28,7 +28,7 @@ export default function StudentSchedule() {
         
         // Unwrap responses safely
         const rawPeriods = Array.isArray(periodsRes) ? periodsRes : (periodsRes?.data || []);
-        const activePeriod = rawPeriods.find(p => p.enrollment_status === 'Abierta');
+        const activePeriod = rawPeriods.find(p => p.period_status === 'Activo' && p.enrollment_status === 'Abierta');
         if (!activePeriod) {
           setEnrolled([]);
           return;

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { BookMarked, Layers3, PlusCircle, Trash2, CheckCircle2 } from 'lucide-react';
-import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect, ConfirmDialog } from './AdminPageShell';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { BookMarked, Layers3, PlusCircle, Trash2, CheckCircle2, AlertTriangle, XCircle, Eye, EyeOff } from 'lucide-react';
+import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function PensumManagement() {
@@ -16,7 +16,17 @@ export default function PensumManagement() {
   const [modalOpen, setModalOpen] = useState(false);
   const [pensumModalOpen, setPensumModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, name: '' });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, name: '', code: '' });
+  const [passwordDialog, setPasswordDialog] = useState({ open: false, id: null });
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [notification, setNotification] = useState({ show: false, type: '', message: '' });
+  const pendingDeleteIdRef = useRef(null);
+
+  const showNotification = (type, message) => {
+    setNotification({ show: true, type, message });
+    setTimeout(() => setNotification({ show: false, type: '', message: '' }), 4000);
+  };
 
   // Subject Form state with up to 3 optional prerequisites
   const [form, setForm] = useState({
@@ -39,34 +49,43 @@ export default function PensumManagement() {
   });
 
   async function loadData() {
-    try {
-      setLoading(true);
-      const [careersRes, pensumsRes, semestersRes, subjectsRes] = await Promise.all([
-        api.get('/careers'),
-        api.get('/pensums'),
-        api.get('/semesters'),
-        api.get('/subjects'),
-      ]);
+    setLoading(true);
 
-      const rawCareers = Array.isArray(careersRes.data) ? careersRes.data : (Array.isArray(careersRes) ? careersRes : []);
-      const rawPensums = Array.isArray(pensumsRes.data) ? pensumsRes.data : (Array.isArray(pensumsRes) ? pensumsRes : []);
-      const rawSemesters = Array.isArray(semestersRes.data) ? semestersRes.data : (Array.isArray(semestersRes) ? semestersRes : []);
-      const rawSubjects = Array.isArray(subjectsRes.data) ? subjectsRes.data : (Array.isArray(subjectsRes) ? subjectsRes : []);
+    const [careersRes, pensumsRes, semestersRes, subjectsRes] = await Promise.allSettled([
+      api.get('/careers'),
+      api.get('/pensums'),
+      api.get('/semesters'),
+      api.get('/subjects'),
+    ]);
 
-      setCareers(rawCareers);
-      setPensums(rawPensums);
-      setSemesters(rawSemesters);
-      setGlobalSubjects(rawSubjects);
-
-      // Auto-select first active career if not set
-      if (rawCareers.length > 0 && !careerCode) {
-        setCareerCode(rawCareers[0].code_career);
+    if (careersRes.status === 'fulfilled') {
+      const data = careersRes.value;
+      const raw = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+      setCareers(raw);
+      if (raw.length > 0 && !careerCode) {
+        setCareerCode(raw[0].code_career);
       }
-    } catch (err) {
-      console.error('Error fetching pensum data:', err);
-    } finally {
-      setLoading(false);
     }
+
+    if (pensumsRes.status === 'fulfilled') {
+      const data = pensumsRes.value;
+      const raw = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+      setPensums(raw);
+    }
+
+    if (semestersRes.status === 'fulfilled') {
+      const data = semestersRes.value;
+      const raw = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+      setSemesters(raw);
+    }
+
+    if (subjectsRes.status === 'fulfilled') {
+      const data = subjectsRes.value;
+      const raw = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+      setGlobalSubjects(raw);
+    }
+
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -219,21 +238,48 @@ export default function PensumManagement() {
     }
   };
 
-  const handleDeleteSubject = (id_pensum_subject, name) => {
-    setConfirmDelete({ open: true, id: id_pensum_subject, name });
+  const handleDeleteSubject = (id_pensum_subject, name, code) => {
+    setDeleteDialog({ open: true, id: id_pensum_subject, name, code });
   };
 
-  const executeDeleteSubject = async () => {
-    const { id, name } = confirmDelete;
+  const executeRemoveFromPensum = async () => {
+    const { id, name } = deleteDialog;
     if (!id) return;
-    setConfirmDelete({ open: false, id: null, name: '' });
+    setDeleteDialog({ open: false, id: null, name: '', code: '' });
 
     try {
       await api.delete(`/pensum-subjects/${id}`);
       await loadData();
     } catch (err) {
       console.error('Error removing subject from pensum:', err);
-      if (name) alert(`Error al remover la materia "${name}" del pensum`);
+      if (name) showNotification('error', `Error al remover la materia "${name}" del pensum`);
+    }
+  };
+
+  const executeDeleteCompletely = () => {
+    const { id } = deleteDialog;
+    if (!id) return;
+    pendingDeleteIdRef.current = id;
+    setDeleteDialog({ open: false, id: null, name: '', code: '' });
+    setDeletePassword('');
+    setPasswordDialog({ open: true, id });
+  };
+
+  const executeFullDeleteWithPassword = async () => {
+    const id = pendingDeleteIdRef.current || passwordDialog.id;
+    if (!id || !deletePassword) return;
+
+    try {
+      await api.post(`/pensum-subjects/${id}/full-delete`, { password: deletePassword });
+      setPasswordDialog({ open: false, id: null });
+      pendingDeleteIdRef.current = null;
+      setDeletePassword('');
+      await loadData();
+      showNotification('success', 'Materia eliminada exitosamente');
+    } catch (err) {
+      console.error('Error deleting subject completely:', err);
+      const msg = err.data?.message || err.message || 'Error al eliminar la materia';
+      showNotification('error', msg);
     }
   };
 
@@ -408,7 +454,7 @@ export default function PensumManagement() {
                               </span>
                             </div>
                             <button
-                              onClick={() => handleDeleteSubject(subject.id_pensum_subject, subject.name)}
+                              onClick={() => handleDeleteSubject(subject.id_pensum_subject, subject.name, subject.code)}
                               style={{
                                 border: 'none',
                                 background: 'transparent',
@@ -741,15 +787,187 @@ export default function PensumManagement() {
           </label>
         </div>
       </Modal>
-      <ConfirmDialog
-        open={confirmDelete.open}
-        title="Remover materia"
-        message={`¿Está seguro que desea remover la materia "${confirmDelete.name}" de este pensum?`}
-        confirmText="Remover"
-        variant="danger"
-        onConfirm={executeDeleteSubject}
-        onCancel={() => setConfirmDelete({ open: false, id: null, name: '' })}
-      />
+      {/* DIÁLOGO CONTRASEÑA */}
+      {passwordDialog.open && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px', zIndex: 80,
+          }}
+          onClick={() => { setPasswordDialog({ open: false, id: null }); setDeletePassword(''); }}
+        >
+          <div
+            style={{
+              width: 'min(400px, 100%)', background: '#ffffff', border: '1px solid #dbe4f0',
+              borderRadius: '22px', boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+              padding: '32px', textAlign: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%',
+              background: '#fff1f2', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', margin: '0 auto 20px',
+            }}>
+              <AlertTriangle size={28} color="#b91c1c" />
+            </div>
+            <h3 style={{ margin: '0 0 12px', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+              Eliminar completamente
+            </h3>
+            <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: '0.95rem', lineHeight: 1.6 }}>
+              Ingrese su contraseña de administrador para confirmar la eliminación definitiva de la materia.
+            </p>
+            <div style={{ position: 'relative', marginBottom: '20px' }}>
+              <input
+                className="form-input"
+                type={showPassword ? 'text' : 'password'}
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Contraseña de administrador"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') executeFullDeleteWithPassword(); }}
+                style={{ textAlign: 'center', paddingRight: '44px', width: '100%' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#64748b', padding: '8px', display: 'flex',
+                }}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <ActionButton variant="ghost" onClick={() => { setPasswordDialog({ open: false, id: null }); setDeletePassword(''); }}>
+                Cancelar
+              </ActionButton>
+              <button
+                type="button"
+                onClick={executeFullDeleteWithPassword}
+                disabled={!deletePassword}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  borderRadius: '12px', padding: '11px 20px', fontFamily: 'var(--font-heading)',
+                  fontSize: '0.85rem', fontWeight: 700, cursor: deletePassword ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s ease', opacity: deletePassword ? 1 : 0.5,
+                  background: '#b91c1c', color: '#ffffff', border: '1px solid #b91c1c',
+                }}
+              >
+                Confirmar y eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteDialog.open && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px', zIndex: 70,
+          }}
+          onClick={() => setDeleteDialog({ open: false, id: null, name: '', code: '' })}
+        >
+          <div
+            style={{
+              width: 'min(440px, 100%)', background: '#ffffff', border: '1px solid #dbe4f0',
+              borderRadius: '22px', boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+              padding: '32px', textAlign: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%',
+              background: '#fff1f2', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', margin: '0 auto 20px',
+            }}>
+              <AlertTriangle size={28} color="#b91c1c" />
+            </div>
+            <h3 style={{ margin: '0 0 12px', fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+              Eliminar materia
+            </h3>
+            <p style={{ margin: '0 0 8px', color: '#64748b', fontSize: '0.95rem', lineHeight: 1.6 }}>
+              ¿Qué desea hacer con <strong>{deleteDialog.name}</strong> ({deleteDialog.code})?
+            </p>
+            <p style={{ margin: '0 0 28px', color: '#94a3b8', fontSize: '0.82rem' }}>
+              Si solo la remueve del pensum, podrá volver a agregarla después.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <ActionButton variant="ghost" onClick={() => setDeleteDialog({ open: false, id: null, name: '', code: '' })}>
+                Cancelar
+              </ActionButton>
+              <ActionButton variant="accent" onClick={executeRemoveFromPensum}>
+                Solo remover del pensum
+              </ActionButton>
+              <button
+                type="button"
+                onClick={executeDeleteCompletely}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  borderRadius: '12px', padding: '11px 20px', fontFamily: 'var(--font-heading)',
+                  fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease',
+                  background: '#b91c1c', color: '#ffffff', border: '1px solid #b91c1c',
+                }}
+              >
+                Eliminar completamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NOTIFICACIÓN CENTRAL */}
+      <style>{`@keyframes notifPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+      {notification.show && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 110,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(15, 23, 42, 0.4)',
+            animation: 'notifPop 0.25s ease',
+          }}
+          onClick={() => setNotification({ show: false, type: '', message: '' })}
+        >
+          <div
+            style={{
+              width: 'min(360px, 90%)', background: '#ffffff', borderRadius: '24px',
+              padding: '40px 32px 32px', textAlign: 'center',
+              boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: '72px', height: '72px', borderRadius: '50%',
+              background: notification.type === 'success'
+                ? 'linear-gradient(135deg, #10b981, #059669)'
+                : 'linear-gradient(135deg, #ef4444, #dc2626)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            }}>
+              {notification.type === 'success'
+                ? <CheckCircle2 size={36} color="#ffffff" strokeWidth={2.5} />
+                : <XCircle size={36} color="#ffffff" strokeWidth={2.5} />
+              }
+            </div>
+            <h3 style={{
+              margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800,
+              color: notification.type === 'success' ? '#065f46' : '#991b1b',
+            }}>
+              {notification.type === 'success' ? 'Eliminado' : 'Error'}
+            </h3>
+            <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5 }}>
+              {notification.message}
+            </p>
+            <ActionButton variant="accent" onClick={() => setNotification({ show: false, type: '', message: '' })}>
+              Aceptar
+            </ActionButton>
+          </div>
+        </div>
+      )}
     </AdminPageShell>
   );
 }

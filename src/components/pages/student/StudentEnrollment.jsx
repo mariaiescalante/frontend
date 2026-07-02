@@ -106,7 +106,7 @@ export default function StudentEnrollment() {
         setLoadingEnrollment(true);
         const resPeriods = await api.get('/periods');
         const periodsList = (Array.isArray(resPeriods) ? resPeriods : (Array.isArray(resPeriods?.data) ? resPeriods.data : []));
-        const activePeriod = periodsList.find((p) => p.enrollment_status === 'Abierta');
+        const activePeriod = periodsList.find((p) => p.period_status === 'Activo' && p.enrollment_status === 'Abierta');
         
         if (activePeriod) {
           setIsEnrollmentOpen(true);

@@ -22,7 +22,7 @@ export default function StudentDocuments() {
         ]);
         
         const rawPeriods = Array.isArray(periodsRes) ? periodsRes : (periodsRes?.data || []);
-        const activePeriod = rawPeriods.find(p => p.enrollment_status === 'Abierta');
+        const activePeriod = rawPeriods.find(p => p.period_status === 'Activo' && p.enrollment_status === 'Abierta');
         if (activePeriod) setActivePeriodName(activePeriod.name_period);
         
         if (!activePeriod) return;
