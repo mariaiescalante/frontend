@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { BadgeCheck, UserRoundCog, Slash } from 'lucide-react';
+import { BadgeCheck, UserRoundCog, Slash, CheckCircle2, XCircle } from 'lucide-react';
 import { AdminPageShell, ActionButton, SectionCard, StatusBadge, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
@@ -12,6 +12,12 @@ export default function TeacherAssignment() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [periods, setPeriods] = useState([]);
+  const [notification, setNotification] = useState({ show: false, type: '', message: '' });
+
+  const showNotification = (type, message) => {
+    setNotification({ show: true, type, message });
+    setTimeout(() => setNotification({ show: false, type: '', message: '' }), 4000);
+  };
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
 
   const [form, setForm] = useState({
@@ -223,15 +229,15 @@ export default function TeacherAssignment() {
   const handleSave = async () => {
     try {
       const { id_section, id_teacher } = form;
-      if (!id_section || !id_teacher) {
-        alert('Por favor seleccione una sección y un docente.');
+        if (!id_section || !id_teacher) {
+        showNotification('error', 'Por favor seleccione una sección y un docente.');
         return;
       }
       setSubmitting(true);
 
       const sectionObj = sections.find(s => s.id_section === Number(id_section));
       if (!sectionObj) {
-        alert('Sección no encontrada.');
+        showNotification('error', 'Sección no encontrada.');
         return;
       }
 
@@ -248,11 +254,11 @@ export default function TeacherAssignment() {
       };
 
       await api.put(`/sections/${id_section}`, payload);
-      alert('Asignación de docente realizada con éxito.');
+      showNotification('success', 'Asignación de docente realizada con éxito.');
       await loadData();
     } catch (err) {
       console.error('Error updating section teacher:', err);
-      alert(err.response?.data?.message || err.message || 'Error al guardar la asignación');
+      showNotification('error', err.response?.data?.message || err.message || 'Error al guardar la asignación');
     } finally {
       setSubmitting(false);
     }
@@ -411,6 +417,54 @@ export default function TeacherAssignment() {
           )}
         </SectionCard>
       </div>
+
+      <style>{`@keyframes notifPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+      {notification.show && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 110,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(15, 23, 42, 0.4)',
+            animation: 'notifPop 0.25s ease',
+          }}
+          onClick={() => setNotification({ show: false, type: '', message: '' })}
+        >
+          <div
+            style={{
+              width: 'min(360px, 90%)', background: '#ffffff', borderRadius: '24px',
+              padding: '40px 32px 32px', textAlign: 'center',
+              boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: '72px', height: '72px', borderRadius: '50%',
+              background: notification.type === 'success'
+                ? 'linear-gradient(135deg, #10b981, #059669)'
+                : 'linear-gradient(135deg, #ef4444, #dc2626)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            }}>
+              {notification.type === 'success'
+                ? <CheckCircle2 size={36} color="#ffffff" strokeWidth={2.5} />
+                : <XCircle size={36} color="#ffffff" strokeWidth={2.5} />
+              }
+            </div>
+            <h3 style={{
+              margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800,
+              color: notification.type === 'success' ? '#065f46' : '#991b1b',
+            }}>
+              {notification.type === 'success' ? 'Asignado' : 'Error'}
+            </h3>
+            <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5 }}>
+              {notification.message}
+            </p>
+            <ActionButton variant="accent" onClick={() => setNotification({ show: false, type: '', message: '' })}>
+              Aceptar
+            </ActionButton>
+          </div>
+        </div>
+      )}
     </AdminPageShell>
   );
 }

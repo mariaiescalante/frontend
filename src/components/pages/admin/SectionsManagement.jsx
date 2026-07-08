@@ -7,7 +7,6 @@ export default function SectionsManagement() {
   const [sections, setSections] = useState([]);
   const [careers, setCareers] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [teachers, setTeachers] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +22,6 @@ export default function SectionsManagement() {
   const [form, setForm] = useState({
     id_period: '',
     id_subject: '',
-    id_teacher: '',
     id_career: '',
     section_code: 'A',
     quota_max: 30,
@@ -37,15 +35,13 @@ export default function SectionsManagement() {
   useEffect(() => {
     async function init() {
       try {
-        const [carRes, subRes, teaRes, perRes] = await Promise.all([
+        const [carRes, subRes, perRes] = await Promise.all([
           api.get('/careers'),
           api.get('/subjects'),
-          api.get('/teachers'),
           api.get('/periods')
         ]);
         setCareers(Array.isArray(carRes.data) ? carRes.data : carRes);
         setSubjects(Array.isArray(subRes.data) ? subRes.data : subRes);
-        setTeachers(Array.isArray(teaRes.data) ? teaRes.data : teaRes);
         const perList = Array.isArray(perRes.data) ? perRes.data : perRes;
         setPeriods(perList);
         const active = perList.find(p => p.period_status === 'Activo') || perList[0];
@@ -90,7 +86,6 @@ export default function SectionsManagement() {
     setForm({
       id_period: selectedPeriod,
       id_subject: subjects[0]?.id_subject || '',
-      id_teacher: teachers[0]?.id_teacher || '',
       id_career: careers[0]?.id_career || '',
       section_code: 'A',
       quota_max: 30,
@@ -119,7 +114,6 @@ export default function SectionsManagement() {
     setForm({
       id_period: section.id_period,
       id_subject: section.id_subject,
-      id_teacher: section.id_teacher,
       id_career: section.id_career,
       section_code: section.section_code,
       quota_max: section.quota_max,
@@ -136,7 +130,6 @@ export default function SectionsManagement() {
       const payload = {
         id_period: Number(form.id_period),
         id_subject: Number(form.id_subject),
-        id_teacher: Number(form.id_teacher),
         id_career: Number(form.id_career),
         section_code: form.section_code.trim(),
         quota_max: Number(form.quota_max),
@@ -144,7 +137,7 @@ export default function SectionsManagement() {
         schedule_info: `${form.schedule_day} ${form.schedule_start} - ${form.schedule_end}`
       };
 
-      if (!payload.id_period || !payload.id_subject || !payload.id_teacher || !payload.id_career || !payload.section_code || !payload.quota_max) {
+      if (!payload.id_period || !payload.id_subject || !payload.id_career || !payload.section_code || !payload.quota_max) {
         alert('Por favor complete todos los campos obligatorios.');
         return;
       }
@@ -355,17 +348,6 @@ export default function SectionsManagement() {
               value={form.id_period}
               onChange={value => setForm({...form, id_period: value})}
               options={periods.map(p => ({ value: p.id_period, label: p.name_period }))}
-            />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Docente</span>
-            <CustomSelect
-              value={form.id_teacher}
-              onChange={value => setForm({...form, id_teacher: value})}
-              options={teachers.map(t => ({
-                value: t.id_teacher,
-                label: t.User ? `${t.User.first_name || ''} ${t.User.first_lastname || ''}`.trim() : 'Docente sin nombre'
-              }))}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
