@@ -448,7 +448,7 @@ export default function StudentSchedule() {
     <AdminPageShell
       eyebrow="Portal del Estudiante"
       title="Consulta de Horario Escolar"
-      subtitle="Visualiza tu agenda semanal de clases, aulas asignadas y descarga tu comprobante de inscripción oficial en PDF."
+      subtitle="Horario semanal de clases, aulas asignadas y comprobante de inscripción."
       actions={
         enrolled.length > 0 && (
           <ActionButton variant="accent" onClick={handlePrintComprobante}>

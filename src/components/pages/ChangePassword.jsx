@@ -41,6 +41,11 @@ export default function ChangePassword() {
       return;
     }
 
+    if (!/[A-Z]/.test(normalizedNew) || !/[^a-zA-Z0-9]/.test(normalizedNew)) {
+      setError('La nueva contraseña debe contener al menos una mayúscula y un carácter especial.');
+      return;
+    }
+
     if (normalizedNew !== normalizedConfirm) {
       setError('La nueva contraseña y su confirmación no coinciden.');
       return;

@@ -553,7 +553,7 @@ export default function TeacherStudents() {
     <AdminPageShell
       eyebrow="Modulo Docente"
       title="Ver Estudiantes Inscritos y Registrar Evaluaciones"
-      subtitle="Selecciona carrera, asignatura y seccion para cargar notas por estudiante en la base de datos."
+      subtitle="Selecciona carrera, asignatura y sección para registrar calificaciones por estudiante."
       metrics={metrics}
       actions={(
         <>

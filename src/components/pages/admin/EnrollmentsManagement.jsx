@@ -120,7 +120,7 @@ export default function EnrollmentsManagement() {
     <AdminPageShell
       eyebrow="Gestión de inscripciones"
       title="Auditoría de solicitudes académicas"
-      subtitle="Supervisa las inscripciones de estudiantes y accede al detalle de sus materias inscritas con una vista uniforme conectada a la base de datos."
+      subtitle="Supervisión de inscripciones y detalle de materias por estudiante y período."
       metrics={[
         { label: 'Total de Inscripciones', value: String(requests.length), hint: 'Solicitudes registradas en el sistema', icon: ClipboardList, tone: 'primary' },
         { label: 'Materias Inscritas', value: String(requests.reduce((sum, r) => sum + r.courses, 0)), hint: 'Total de asignaturas cargadas', icon: ClipboardList, tone: 'info' },

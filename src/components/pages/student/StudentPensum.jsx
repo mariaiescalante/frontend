@@ -193,7 +193,7 @@ export default function StudentPensum() {
     <AdminPageShell
       eyebrow="Portal del Estudiante"
       title="Pensum y Malla Curricular de Estudios"
-      subtitle={`Consulta la malla académica oficial de tu carrera (${user?.career || 'Sin carrera'}), el estatus de aprobación de tus unidades curriculares y los prerrequisitos (prelación) de cada materia.`}
+      subtitle={`Malla académica de ${user?.career || 'tu carrera'} con estatus de aprobación y prerrequisitos.`}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
         

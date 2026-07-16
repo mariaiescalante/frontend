@@ -164,8 +164,8 @@ export default function CareersManagement() {
   return (
     <AdminPageShell
       eyebrow="Gestión de carreras"
-      title="Carreras con identidad visual uniforme"
-      subtitle="Catálogo académico con buscador, métricas y tarjetas claras para editar la oferta sin perder la coherencia del panel."
+      title="Gestión de carreras universitarias"
+      subtitle="Catálogo de carreras con indicadores y opciones para editar la oferta académica."
       actions={
         <ActionButton variant="accent" onClick={handleNewCareer}>
           <Plus size={16} /> Nueva carrera

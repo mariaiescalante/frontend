@@ -96,7 +96,7 @@ export default function StudentProfile() {
     <AdminPageShell
       eyebrow="Portal del Estudiante"
       title="Datos Personales y Programa Académico"
-      subtitle="Consulta tu ficha de estudiante, edita tu información de contacto y revisa tu estado académico actual en la institución."
+      subtitle="Ficha de estudiante, información de contacto y estado académico actual."
     >
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px' }}>
         {/* Personal details card */}

@@ -322,7 +322,7 @@ export default function PensumManagement() {
     <AdminPageShell
       eyebrow="Gestión de pensum"
       title="Plan de estudios por carrera"
-      subtitle="La malla académica se conecta con el backend para editar asignaturas, créditos y prelaciones en tiempo real."
+      subtitle="Plan de estudios por carrera con asignaturas, créditos y prelaciones entre materias."
       actions={
         <div style={{ display: 'flex', gap: '10px' }}>
           {currentPensum && (

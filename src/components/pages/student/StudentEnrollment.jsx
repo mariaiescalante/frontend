@@ -467,7 +467,7 @@ export default function StudentEnrollment() {
     <AdminPageShell
       eyebrow="Inscripción de Materias"
       title="Selección de Unidades Curriculares"
-      subtitle={`Período Académico Activo: ${activePeriodName}. Selecciona las asignaturas que deseas inscribir, respetando el límite de unidades de crédito y las prelaciones.`}
+      subtitle={`Período: ${activePeriodName}. Selecciona asignaturas según tu límite de créditos y prelaciones.`}
     >
       <div className="enrollment-grid">
         {/* Available Subjects column */}

@@ -272,7 +272,7 @@ export default function TeacherAssignment() {
     return (
       <AdminPageShell
         eyebrow="Asignación docente"
-        title="Flujo jerárquico de vinculación académica"
+      title="Asignación de docentes a secciones"
         subtitle="Cargando información..."
         metrics={[
           { label: 'Asignaciones vigentes', value: '...', hint: 'Cargando...', icon: UserRoundCog, tone: 'primary' },
@@ -291,7 +291,7 @@ export default function TeacherAssignment() {
     <AdminPageShell
       eyebrow="Asignación docente"
       title="Flujo jerárquico de vinculación académica"
-      subtitle="Selecciona carrera, ciclo, materia, sección y docente en una secuencia clara que respeta el lenguaje visual del resto del portal."
+      subtitle="Asignación de docentes a secciones por carrera, semestre y materia."
       metrics={[
         { label: 'Asignaciones vigentes', value: `${assignedSections.length}`, hint: 'Secciones activas con docente asignado', icon: UserRoundCog, tone: 'primary' },
         { label: 'Docentes registrados', value: `${teachers.length}`, hint: 'Cuerpo docente registrado', icon: BadgeCheck, tone: 'success' },

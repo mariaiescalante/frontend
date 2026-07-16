@@ -500,7 +500,7 @@ export default function StudentDocuments() {
     <AdminPageShell
       eyebrow="Portal del Estudiante"
       title="Generación de Constancias y Trámites"
-      subtitle="Descarga e imprime de manera instantánea y automatizada las constancias y reportes de tu expediente institucional."
+      subtitle="Descarga e imprime constancias y reportes de tu expediente institucional."
     >
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
         

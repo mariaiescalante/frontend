@@ -461,8 +461,12 @@ export default function UserManagement() {
     if (!isValidEmail(form.email)) return 'El correo no tiene un formato válido.';
     if (normalizeDocumentNumber(form.documentNumber).length !== 8) return 'La cédula debe tener 8 dígitos.';
     if (normalizePhoneNumber(form.phone).length !== 11) return 'El teléfono debe tener 11 dígitos.';
-    if (form.password.trim() && form.password.trim().length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres.';
+    const pwd = form.password.trim();
+    if (pwd && pwd.length < 8) {
+      return 'La contraseña debe tener al menos 8 caracteres.';
+    }
+    if (pwd && (!/[A-Z]/.test(pwd) || !/[^a-zA-Z0-9]/.test(pwd))) {
+      return 'La contraseña debe contener al menos una mayúscula y un carácter especial.';
     }
 
     if (form.userType === 'student' && !form.career.trim()) return 'Selecciona una carrera para el estudiante.';
@@ -636,7 +640,7 @@ export default function UserManagement() {
     <AdminPageShell
       eyebrow="Gestión de usuarios"
       title="Registro de estudiantes, docentes y administradores"
-      subtitle="Administra altas, búsquedas y estados con una vista limpia que conserva la misma estética del panel principal."
+      subtitle="Registro, edición y gestión de estudiantes, docentes y administradores del sistema."
       actions={
         <>
           <ActionButton variant={activeTab === 'students' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('students'); setCurrentPage(1); }}>

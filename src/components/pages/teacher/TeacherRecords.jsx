@@ -136,7 +136,7 @@ export default function TeacherRecords() {
     <AdminPageShell
       eyebrow="Modulo Docente"
       title="Cerrar Actas de Notas"
-      subtitle="Cierra actas para bloquear edicion y dejar constancia academica final en el sistema."
+      subtitle="Cierre de actas de notas para dejar constancia académica definitiva."
       metrics={[
         {
           label: 'Actas abiertas',
