@@ -26,7 +26,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
-    const apiMessage = error.response?.data?.message;
+    const apiMessage = error.response?.data?.message || error.response?.data?.error;
     const message = apiMessage || error.message || 'Error de red';
 
     if (status === 401) {
