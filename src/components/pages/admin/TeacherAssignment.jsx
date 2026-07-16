@@ -8,7 +8,6 @@ export default function TeacherAssignment() {
   const [semesters, setSemesters] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [sections, setSections] = useState([]);
-  const [pensums, setPensums] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [periods, setPeriods] = useState([]);
@@ -34,25 +33,22 @@ export default function TeacherAssignment() {
       if (!periodId) { setLoading(false); return; }
 
       const sectionsUrl = `/sections?id_period=${periodId}`;
-      const [careersRes, semestersRes, teachersRes, sectionsRes, pensumsRes] = await Promise.all([
+      const [careersRes, semestersRes, teachersRes, sectionsRes] = await Promise.all([
         api.get('/careers'),
         api.get('/semesters'),
         api.get('/teachers'),
         api.get(sectionsUrl),
-        api.get('/pensums'),
       ]);
 
       const rawCareers = Array.isArray(careersRes.data) ? careersRes.data : (Array.isArray(careersRes) ? careersRes : []);
       const rawSemesters = Array.isArray(semestersRes.data) ? semestersRes.data : (Array.isArray(semestersRes) ? semestersRes : []);
       const rawTeachers = Array.isArray(teachersRes.data) ? teachersRes.data : (Array.isArray(teachersRes) ? teachersRes : []);
       const rawSections = Array.isArray(sectionsRes.data) ? sectionsRes.data : (Array.isArray(sectionsRes) ? sectionsRes : []);
-      const rawPensums = Array.isArray(pensumsRes.data) ? pensumsRes.data : (Array.isArray(pensumsRes) ? pensumsRes : []);
 
       setCareers(rawCareers);
       setSemesters(rawSemesters);
       setTeachers(rawTeachers);
       setSections(rawSections);
-      setPensums(rawPensums);
 
       // Initialize form fields
       const initialForm = {
@@ -64,20 +60,22 @@ export default function TeacherAssignment() {
       };
 
       // Set first matching subject and section if available
-      const activePensum = rawPensums.find(p => p.id_career === rawCareers[0]?.id_career && p.is_active) ||
-                           rawPensums.find(p => p.id_career === rawCareers[0]?.id_career);
-      if (activePensum && rawSemesters[0]) {
-        const matchingSubjects = (activePensum.PensumSubjects || [])
-          .filter(ps => ps.id_semester === rawSemesters[0].id_semester)
-          .map(ps => ps.Subject)
-          .filter(Boolean);
+      const firstCareerId = rawCareers[0]?.id_career;
+      if (firstCareerId) {
+        const careerSections = rawSections.filter(sec => sec.id_career === firstCareerId);
+        const subjectMap = new Map();
+        careerSections.forEach(sec => {
+          if (sec.Subject && !subjectMap.has(sec.id_subject)) {
+            subjectMap.set(sec.id_subject, sec.Subject);
+          }
+        });
+        const firstSubject = Array.from(subjectMap.values())[0];
         
-        if (matchingSubjects[0]) {
-          initialForm.id_subject = matchingSubjects[0].id_subject;
+        if (firstSubject) {
+          initialForm.id_subject = firstSubject.id_subject;
           
-          const matchingSections = rawSections.filter(sec => 
-            sec.id_subject === matchingSubjects[0].id_subject &&
-            sec.id_career === rawCareers[0].id_career
+          const matchingSections = careerSections.filter(sec => 
+            sec.id_subject === firstSubject.id_subject
           );
           if (matchingSections[0]) {
             initialForm.id_section = matchingSections[0].id_section;
@@ -106,23 +104,17 @@ export default function TeacherAssignment() {
     loadData(selectedPeriodId);
   }, [selectedPeriodId]);
 
-  const selectedCareer = useMemo(() => {
-    return careers.find(c => c.id_career === Number(form.id_career));
-  }, [careers, form.id_career]);
-
-  const currentPensum = useMemo(() => {
-    if (!selectedCareer) return null;
-    return pensums.find(p => p.id_career === selectedCareer.id_career && p.is_active) ||
-           pensums.find(p => p.id_career === selectedCareer.id_career);
-  }, [pensums, selectedCareer]);
-
   const eligibleSubjects = useMemo(() => {
-    if (!currentPensum || !form.id_semester) return [];
-    return (currentPensum.PensumSubjects || [])
-      .filter(ps => ps.id_semester === Number(form.id_semester))
-      .map(ps => ps.Subject)
-      .filter(Boolean);
-  }, [currentPensum, form.id_semester]);
+    if (!form.id_career) return [];
+    const careerSections = sections.filter(sec => sec.id_career === Number(form.id_career));
+    const subjectMap = new Map();
+    careerSections.forEach(sec => {
+      if (sec.Subject && !subjectMap.has(sec.id_subject)) {
+        subjectMap.set(sec.id_subject, sec.Subject);
+      }
+    });
+    return Array.from(subjectMap.values());
+  }, [sections, form.id_career]);
 
   const eligibleSections = useMemo(() => {
     if (!form.id_subject || !form.id_career) return [];
@@ -134,27 +126,25 @@ export default function TeacherAssignment() {
 
   // Handle cascading dropdown state changes
   const handleCareerChange = (id_career) => {
-    const activePensum = pensums.find(p => p.id_career === Number(id_career) && p.is_active) ||
-                         pensums.find(p => p.id_career === Number(id_career));
-    
     let nextSubjectId = '';
     let nextSectionId = '';
     
-    if (activePensum && form.id_semester) {
-      const matchSubjects = (activePensum.PensumSubjects || [])
-        .filter(ps => ps.id_semester === Number(form.id_semester))
-        .map(ps => ps.Subject)
-        .filter(Boolean);
-      
-      if (matchSubjects[0]) {
-        nextSubjectId = matchSubjects[0].id_subject;
-        const matchSections = sections.filter(sec => 
-          sec.id_subject === matchSubjects[0].id_subject &&
-          sec.id_career === Number(id_career)
-        );
-        if (matchSections[0]) {
-          nextSectionId = matchSections[0].id_section;
-        }
+    const careerSections = sections.filter(sec => sec.id_career === Number(id_career));
+    const subjectMap = new Map();
+    careerSections.forEach(sec => {
+      if (sec.Subject && !subjectMap.has(sec.id_subject)) {
+        subjectMap.set(sec.id_subject, sec.Subject);
+      }
+    });
+    const availableSubjects = Array.from(subjectMap.values());
+    
+    if (availableSubjects[0]) {
+      nextSubjectId = availableSubjects[0].id_subject;
+      const matchSections = careerSections.filter(sec => 
+        sec.id_subject === availableSubjects[0].id_subject
+      );
+      if (matchSections[0]) {
+        nextSectionId = matchSections[0].id_section;
       }
     }
     
@@ -167,24 +157,17 @@ export default function TeacherAssignment() {
   };
 
   const handleSemesterChange = (id_semester) => {
-    let nextSubjectId = '';
-    let nextSectionId = '';
+    let nextSubjectId = form.id_subject;
+    let nextSectionId = form.id_section;
     
-    if (currentPensum) {
-      const matchSubjects = (currentPensum.PensumSubjects || [])
-        .filter(ps => ps.id_semester === Number(id_semester))
-        .map(ps => ps.Subject)
-        .filter(Boolean);
-      
-      if (matchSubjects[0]) {
-        nextSubjectId = matchSubjects[0].id_subject;
-        const matchSections = sections.filter(sec => 
-          sec.id_subject === matchSubjects[0].id_subject &&
-          sec.id_career === Number(form.id_career)
-        );
-        if (matchSections[0]) {
-          nextSectionId = matchSections[0].id_section;
-        }
+    if (nextSubjectId) {
+      const stillValid = sections.some(sec => 
+        sec.id_subject === Number(nextSubjectId) &&
+        sec.id_career === Number(form.id_career)
+      );
+      if (!stillValid) {
+        nextSubjectId = '';
+        nextSectionId = '';
       }
     }
     
