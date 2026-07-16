@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { BookMarked, Layers3, PlusCircle, Trash2, CheckCircle2, AlertTriangle, XCircle, Eye, EyeOff } from 'lucide-react';
 import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
 
 export default function PensumManagement() {
+  const [searchParams] = useSearchParams();
   const [careers, setCareers] = useState([]);
   const [pensums, setPensums] = useState([]);
   const [semesters, setSemesters] = useState([]);
@@ -11,7 +13,7 @@ export default function PensumManagement() {
   const [selectedGlobalSubjectId, setSelectedGlobalSubjectId] = useState('');
   const [isCreatingNewSubject, setIsCreatingNewSubject] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [careerCode, setCareerCode] = useState('');
+  const [careerCode, setCareerCode] = useState(searchParams.get('career') || '');
   const [semesterFilter, setSemesterFilter] = useState('Todos');
   const [modalOpen, setModalOpen] = useState(false);
   const [pensumModalOpen, setPensumModalOpen] = useState(false);

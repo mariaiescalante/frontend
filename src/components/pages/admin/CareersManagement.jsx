@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, School, BookOpenCheck, Plus } from 'lucide-react';
 import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, ProgressBar, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
@@ -48,6 +49,7 @@ const decorateCareer = (c) => {
 };
 
 export default function CareersManagement() {
+  const navigate = useNavigate();
   const [careers, setCareers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -231,7 +233,7 @@ export default function CareersManagement() {
 
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <ActionButton variant="secondary" onClick={() => handleEditCareer(career)}>Editar</ActionButton>
-              <ActionButton variant="ghost">Ver pensum</ActionButton>
+              <ActionButton variant="ghost" onClick={() => navigate(`/admin/pensum?career=${career.code}`)}>Ver pensum</ActionButton>
             </div>
           </article>
         ))}
