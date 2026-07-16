@@ -22,6 +22,7 @@ export default function PensumManagement() {
   const [showPassword, setShowPassword] = useState(false);
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
   const pendingDeleteIdRef = useRef(null);
+  const submittingRef = useRef(false);
 
   const showNotification = (type, message) => {
     setNotification({ show: true, type, message });
@@ -162,12 +163,14 @@ export default function PensumManagement() {
   };
 
   const handleSavePensum = async () => {
+    if (submittingRef.current) return;
     try {
       const { id_career, name_pensum, resolution_date, is_active } = pensumForm;
       if (!id_career || !name_pensum) {
         alert('Por favor complete todos los campos requeridos.');
         return;
       }
+      submittingRef.current = true;
       setSubmitting(true);
       await api.post('/pensums', {
         id_career: Number(id_career),
@@ -182,6 +185,7 @@ export default function PensumManagement() {
       alert(err.response?.data?.message || err.message || 'Error al guardar el pensum');
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   };
 
@@ -202,6 +206,7 @@ export default function PensumManagement() {
   };
 
   const handleSaveSubject = async () => {
+    if (submittingRef.current) return;
     try {
       const { code_subject, name_subject, credit_units, id_pensum, id_semester, id_prerequisite_1, id_prerequisite_2, id_prerequisite_3 } = form;
 
@@ -210,6 +215,7 @@ export default function PensumManagement() {
         return;
       }
 
+      submittingRef.current = true;
       setSubmitting(true);
 
       const prereqs = [id_prerequisite_1, id_prerequisite_2, id_prerequisite_3]
@@ -235,6 +241,7 @@ export default function PensumManagement() {
       alert(msg);
     } finally {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   };
 
