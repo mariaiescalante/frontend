@@ -142,7 +142,7 @@ export default function TeacherSubjects() {
     <AdminPageShell
       eyebrow="Modulo Docente"
       title="Consultar Asignaturas Impartidas"
-      subtitle="Visualiza las asignaturas asignadas con su seccion, carrera y semestre."
+      subtitle="Asignaturas impartidas con sección, carrera y semestre asociado."
       metrics={metrics}
     >
       <SectionCard

@@ -203,7 +203,7 @@ export default function SectionsManagement() {
     <AdminPageShell
       eyebrow="Gestión de secciones"
       title="Secciones académicas y cupos"
-      subtitle="El listado presenta cupos, horario y aula asignada con un estilo limpio para abrir nuevas secciones rápidamente."
+      subtitle="Consulta, apertura y edición de secciones con cupos, horarios y aulas asignadas."
       actions={
         <ActionButton variant="accent" onClick={handleNewSection} disabled={isCulminado}>
           <PlusSquare size={16} /> Abrir sección
@@ -301,7 +301,7 @@ export default function SectionsManagement() {
       <Modal
         open={modalOpen}
         title={editingSection ? "Editar sección" : "Abrir nueva sección"}
-        subtitle="El formulario respeta la identidad visual del panel para crear una sección sin saltos de diseño."
+        subtitle="Define los datos de la nueva sección: materia, cupo, horario, aula y docente."
         onClose={() => setModalOpen(false)}
         footer={
           <>

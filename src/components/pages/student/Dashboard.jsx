@@ -106,7 +106,7 @@ export default function StudentDashboard() {
     <AdminPageShell
       eyebrow="Portal del Estudiante"
       title={`Bienvenido de nuevo, ${profile.name} ${profile.lastname}`}
-      subtitle="Desde este panel puedes gestionar tu carga académica, inscribir asignaturas del periodo actual, consultar calificaciones e imprimir tus documentos oficiales."
+      subtitle="Carga académica, inscripción de asignaturas, calificaciones y documentos oficiales."
       metrics={metrics}
     >
       {/* Dynamic enrollment status banner */}

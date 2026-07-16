@@ -141,7 +141,7 @@ export default function AdminDashboard() {
     <AdminPageShell
       eyebrow="Dashboard administrativo"
       title="Visión general del panel de administración"
-      subtitle="La portada conserva el mismo lenguaje visual que los nuevos módulos: superficies claras, encabezados oscuros y acentos dorados para resaltar la acción principal."
+      subtitle="Métricas generales, actividad reciente del sistema y tareas administrativas pendientes."
       metrics={metrics}
     >
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { CheckCircle2, FileLock2 } from 'lucide-react';
+import { CheckCircle2, XCircle, FileLock2 } from 'lucide-react';
 import { ActionButton, AdminPageShell, DataTable, SectionCard, StatusBadge, ConfirmDialog, CustomSelect } from '../admin/AdminPageShell';
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
@@ -9,6 +9,12 @@ export default function TeacherRecords() {
   const [loading, setLoading] = useState(true);
   const [isClosing, setIsClosing] = useState(false);
   const [confirmClose, setConfirmClose] = useState({ open: false, record: null });
+  const [notification, setNotification] = useState({ show: false, type: '', message: '' });
+
+  const showNotification = (type, message) => {
+    setNotification({ show: true, type, message });
+    setTimeout(() => setNotification({ show: false, type: '', message: '' }), 4000);
+  };
   
   const [assignments, setAssignments] = useState([]);
   const [allDetails, setAllDetails] = useState([]);
@@ -84,7 +90,7 @@ export default function TeacherRecords() {
 
   const closeRecord = (record) => {
     if (record.detailsCount === 0) {
-      alert('Esta sección no tiene estudiantes inscritos.');
+      showNotification('error', 'Esta sección no tiene estudiantes inscritos.');
       return;
     }
     setConfirmClose({ open: true, record });
@@ -104,7 +110,7 @@ export default function TeacherRecords() {
         })
       ));
       
-      alert('Acta cerrada exitosamente.');
+      showNotification('success', 'Acta cerrada exitosamente.');
       
       // Recargar detalles
       const detRes = await api.get('/registration-details');
@@ -112,7 +118,7 @@ export default function TeacherRecords() {
 
     } catch (err) {
       console.error(err);
-      alert('Ocurrió un error al intentar cerrar el acta.');
+      showNotification('error', 'Ocurrió un error al intentar cerrar el acta.');
     } finally {
       setIsClosing(false);
     }
@@ -136,7 +142,7 @@ export default function TeacherRecords() {
     <AdminPageShell
       eyebrow="Modulo Docente"
       title="Cerrar Actas de Notas"
-      subtitle="Cierra actas para bloquear edicion y dejar constancia academica final en el sistema."
+      subtitle="Cierre de actas de notas para dejar constancia académica definitiva."
       metrics={[
         {
           label: 'Actas abiertas',
@@ -217,6 +223,53 @@ export default function TeacherRecords() {
         onConfirm={executeCloseRecord}
         onCancel={() => setConfirmClose({ open: false, record: null })}
       />
+      <style>{`@keyframes notifPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+      {notification.show && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 110,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(15, 23, 42, 0.4)',
+            animation: 'notifPop 0.25s ease',
+          }}
+          onClick={() => setNotification({ show: false, type: '', message: '' })}
+        >
+          <div
+            style={{
+              width: 'min(360px, 90%)', background: '#ffffff', borderRadius: '24px',
+              padding: '40px 32px 32px', textAlign: 'center',
+              boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              width: '72px', height: '72px', borderRadius: '50%',
+              background: notification.type === 'success'
+                ? 'linear-gradient(135deg, #10b981, #059669)'
+                : 'linear-gradient(135deg, #ef4444, #dc2626)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            }}>
+              {notification.type === 'success'
+                ? <CheckCircle2 size={36} color="#ffffff" strokeWidth={2.5} />
+                : <XCircle size={36} color="#ffffff" strokeWidth={2.5} />
+              }
+            </div>
+            <h3 style={{
+              margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800,
+              color: notification.type === 'success' ? '#065f46' : '#991b1b',
+            }}>
+              {notification.type === 'success' ? 'Acta cerrada' : 'Error'}
+            </h3>
+            <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5 }}>
+              {notification.message}
+            </p>
+            <ActionButton variant="accent" onClick={() => setNotification({ show: false, type: '', message: '' })}>
+              Aceptar
+            </ActionButton>
+          </div>
+        </div>
+      )}
     </AdminPageShell>
   );
 }

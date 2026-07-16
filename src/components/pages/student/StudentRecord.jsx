@@ -428,7 +428,7 @@ export default function StudentRecord() {
     <AdminPageShell
       eyebrow="Portal del Estudiante"
       title="Récord y Trayectoria Académica"
-      subtitle="Consulta tu historial oficial de calificaciones obtenidas por periodo lectivo, créditos aprobados y descarga tu expediente de notas digital."
+      subtitle="Historial oficial de calificaciones, créditos aprobados y expediente de notas."
       metrics={metrics}
       actions={
         fullHistory.length > 0 && (

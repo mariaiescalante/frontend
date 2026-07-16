@@ -76,7 +76,7 @@ export default function TeacherHistory() {
     <AdminPageShell
       eyebrow="Modulo Docente"
       title="Consultar Historial de Asignaturas Impartidas"
-      subtitle="Consulta periodos anteriores en modo solo lectura para mantener trazabilidad academica."
+      subtitle="Historial de asignaturas impartidas en periodos académicos anteriores."
       metrics={[
         {
           label: 'Periodos registrados',

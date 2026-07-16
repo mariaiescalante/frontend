@@ -78,7 +78,7 @@ export default function TeacherDashboard() {
     <AdminPageShell
       eyebrow="Panel Docente"
       title="Dashboard Docente"
-      subtitle="Vista de resumen del docente. Los procesos academicos operativos estan en los modulos del menu lateral."
+      subtitle="Resumen de asignaturas activas, notas pendientes e historial académico."
       metrics={[
         {
           label: 'Asignaturas activas',
