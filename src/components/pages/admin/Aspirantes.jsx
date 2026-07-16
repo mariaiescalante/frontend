@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Search, Users, UserCheck, CheckCircle2, XCircle, AlertCircle, Trash2, Calendar, FileText, MapPin, Eye, Info } from 'lucide-react';
+import { Search, Users, UserCheck, CheckCircle2, XCircle, AlertCircle, Trash2, Calendar, FileText, MapPin, Eye, Info, Image } from 'lucide-react';
 import { AdminPageShell, ActionButton, DataTable, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect, Pagination, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
 
@@ -22,6 +22,9 @@ export default function Aspirantes() {
   const [totalItems, setTotalItems] = useState(0);
 
   const [stats, setStats] = useState({ approved: 0, pending: 0, rejected: 0 });
+  const [documents, setDocuments] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -92,11 +95,22 @@ export default function Aspirantes() {
     ];
   }, [totalItems, stats]);
 
-  const handleViewDetails = (applicant) => {
+  const handleViewDetails = async (applicant) => {
     setSelectedApplicant(applicant);
     setActionError('');
     setActionSuccess('');
     setModalOpen(true);
+    setDocuments([]);
+    setDocumentsLoading(true);
+    try {
+      const res = await api.get(`/pre-documents?id_pre=${applicant.id_pre}`);
+      setDocuments(Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []);
+    } catch (err) {
+      console.error('Error fetching documents:', err);
+      setDocuments([]);
+    } finally {
+      setDocumentsLoading(false);
+    }
   };
 
   const getApplicantCode = (applicant) => applicant?.verification_code || `PR-${String(applicant?.id_pre || '').padStart(6, '0')}`;
@@ -377,7 +391,7 @@ export default function Aspirantes() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             
             {/* COLUMN 1: Personal & Contact */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
@@ -525,6 +539,78 @@ export default function Aspirantes() {
                   </div>
                 </div>
               </div>
+
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', wordBreak: 'break-word' }}>
+                <h4 style={{ margin: '0 0 14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                  <Image size={18} style={{ color: '#0b5ed7' }} /> Documentos Cargados
+                  {documents.length > 0 && (
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b', marginLeft: 'auto' }}>{documents.length} archivo(s)</span>
+                  )}
+                </h4>
+                {documentsLoading ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>Cargando documentos...</div>
+                ) : documents.length === 0 ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', border: '1px dashed #cbd5e1', borderRadius: '8px' }}>
+                    No se han subido documentos para este aspirante.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    {documents.map((doc) => (
+                      <div
+                        key={doc.id_doc}
+                        style={{
+                          width: '180px',
+                          background: '#ffffff',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '10px',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = '0 8px 20px rgba(3,27,78,0.1)';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = 'none';
+                          e.currentTarget.style.transform = 'none';
+                        }}
+                        onClick={() => setPreviewDoc(doc)}
+                      >
+                        <div style={{ aspectRatio: '16/10', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          <img
+                            src={doc.file_path}
+                            alt={doc.document_type}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                          />
+                          <div style={{ display: 'none', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#94a3b8', padding: '20px' }}>
+                            <Image size={32} />
+                            <span style={{ fontSize: '0.8rem', textAlign: 'center' }}>No se pudo cargar la imagen</span>
+                          </div>
+                        </div>
+                        <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.75rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.document_type}</div>
+                          <span style={{
+                            alignSelf: 'flex-start',
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            padding: '2px 6px',
+                            borderRadius: '999px',
+                            background: doc.is_verified ? '#f0fdf4' : '#fef9c3',
+                            color: doc.is_verified ? '#16a34a' : '#a16207',
+                          }}>
+                            {doc.is_verified ? 'Verificado' : 'Pendiente'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
           </div>
@@ -539,6 +625,70 @@ export default function Aspirantes() {
         onConfirm={executeDeleteApplicant}
         onCancel={() => setConfirmDelete({ open: false, id: null })}
       />
+
+      {previewDoc && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            background: 'rgba(0,0,0,0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'zoom-out',
+          }}
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            style={{
+              position: 'relative',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+            }}
+          >
+            <button
+              style={{
+                alignSelf: 'flex-end',
+                background: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                color: '#fff',
+                borderRadius: '50%',
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                fontSize: 20,
+                fontWeight: 700,
+                backdropFilter: 'blur(4px)',
+              }}
+              onClick={() => setPreviewDoc(null)}
+            >
+              ✕
+            </button>
+            <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 600, textAlign: 'center' }}>
+              {previewDoc.document_type}
+            </div>
+            <img
+              src={previewDoc.file_path}
+              alt={previewDoc.document_type}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '75vh',
+                objectFit: 'contain',
+                borderRadius: '12px',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+              }}
+            />
+          </div>
+        </div>
+      )}
     </AdminPageShell>
   );
 }
