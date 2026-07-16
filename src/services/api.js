@@ -7,6 +7,7 @@ const getToken = () => localStorage.getItem(TOKEN_KEY);
 
 const api = axios.create({
   baseURL: BASE_URL,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -41,19 +42,33 @@ api.interceptors.response.use(
   }
 );
 
-const request = async (method, endpoint, data, config = {}) => {
-  const response = await api.request({
-    url: endpoint,
-    method,
-    data,
-    ...config,
-  });
+const request = async (method, endpoint, data, config = {}, retries = 2) => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await api.request({
+        url: endpoint,
+        method,
+        data,
+        ...config,
+      });
 
-  if (response.status === 204) {
-    return null;
+      if (response.status === 204) {
+        return null;
+      }
+
+      return response.data;
+    } catch (error) {
+      const isNetworkError = !error.response;
+      const isLastAttempt = attempt === retries;
+
+      if (isNetworkError && !isLastAttempt) {
+        await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
+        continue;
+      }
+
+      throw error;
+    }
   }
-
-  return response.data;
 };
 
 export const http = {
