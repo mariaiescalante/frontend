@@ -21,8 +21,8 @@ export default function GradesControl() {
         const [perRes, detRes, regRes, userRes] = await Promise.all([
           api.get('/periods'),
           api.get('/registration-details'),
-          api.get('/registrations'),
-          api.get('/users')
+          api.get('/registrations?limit=200'),
+          api.get('/users?limit=200')
         ]);
         const perList = Array.isArray(perRes.data) ? perRes.data : perRes;
         setPeriods(perList);
@@ -77,12 +77,17 @@ export default function GradesControl() {
     const details = allDetails.filter(d => d.id_section === selectedSection.id_section);
     return details.map(d => {
       const reg = allRegistrations.find(r => r.id_registration === d.id_registration);
-      const studentUser = allUsers.find(u => u.Student?.id_student === reg?.id_student);
+      const studentUser = d.Registration?.Student?.User || reg?.Student?.User || allUsers.find(u => (u.Student?.id_student === reg?.id_student || u.id_student === reg?.id_student || u.id_user === reg?.Student?.id_user));
+      
+      const cedula = studentUser?.document_id || d.Registration?.Student?.User?.document_id || reg?.Student?.User?.document_id || 'Sin CI';
+      const firstName = studentUser?.first_name || d.Registration?.Student?.User?.first_name || reg?.Student?.User?.first_name || '';
+      const lastName = studentUser?.first_lastname || d.Registration?.Student?.User?.first_lastname || reg?.Student?.User?.first_lastname || '';
+      const fullName = `${firstName} ${lastName}`.trim();
       
       return {
         id: d.id_detail,
-        cedula: studentUser?.document_id || 'Sin CI',
-        name: `${studentUser?.first_name || ''} ${studentUser?.first_lastname || ''}`.trim() || 'Desconocido',
+        cedula: cedula,
+        name: fullName || 'Desconocido',
         c1: Number(d.corte_1) || 0,
         c2: Number(d.corte_2) || 0,
         c3: Number(d.corte_3) || 0,

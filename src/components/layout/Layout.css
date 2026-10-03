@@ -896,17 +896,104 @@
 }
 
 
-/* On small screens, ensure modal panels have comfortable padding */
+/* On small screens, ensure modal panels have comfortable padding and full responsive support */
 @media (max-width: 640px) {
   .sgums-modal-overlay {
-    padding: 12px !important;
-    padding-top: 12px !important;
+    padding: 8px !important;
+    padding-top: max(8px, env(safe-area-inset-top, 8px)) !important;
+    padding-bottom: 30px !important;
     align-items: flex-start !important;
   }
 
+  .sgums-modal-overlay .sgums-modal-card,
   .sgums-modal-overlay .glass-panel {
     border-radius: 16px !important;
+    width: 100% !important;
+    margin-bottom: 24px !important;
   }
+
+  .sgums-modal-header {
+    padding: 16px 14px !important;
+    gap: 12px !important;
+  }
+
+  .sgums-modal-header h3 {
+    font-size: 1.15rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .sgums-modal-header p {
+    font-size: 0.82rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .sgums-modal-body {
+    padding: 14px 12px !important;
+  }
+
+  .sgums-modal-footer {
+    padding: 12px 14px 20px !important;
+  }
+
+  /* Specific responsive styles for administrative enrollment modal */
+  .enroll-modal-footer-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    width: 100% !important;
+    padding-bottom: 8px !important;
+  }
+
+  .enroll-modal-counters {
+    width: 100% !important;
+    justify-content: space-around !important;
+    padding: 9px 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .enroll-modal-actions {
+    width: 100% !important;
+    display: flex !important;
+    gap: 10px !important;
+  }
+
+  .enroll-modal-actions button {
+    flex: 1 !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .enroll-modal-actions {
+    flex-direction: column-reverse !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .enroll-modal-actions button {
+    width: 100% !important;
+    flex: none !important;
+    padding: 11px 16px !important;
+    font-size: 0.88rem !important;
+    justify-content: center !important;
+  }
+
+  .enroll-modal-counters {
+    font-size: 0.82rem !important;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+  }
+
+  .enroll-section-bottom-row {
+    padding-left: 0 !important;
+  }
+}
+
+/* When modal overlay is active, hide chatbot floating button so it never interferes with modal actions */
+body:has(.sgums-modal-overlay) [aria-label="Abrir chat"],
+body:has(.sgums-modal-overlay) .chatbot-window {
+  display: none !important;
 }
 
 /* Print styles to hide UI elements on browser native print (Ctrl + P) */

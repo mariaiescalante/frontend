@@ -13,6 +13,7 @@ import PensumManagement from './components/pages/admin/PensumManagement';
 import AcademicPeriods from './components/pages/admin/AcademicPeriods';
 import EnrollmentsManagement from './components/pages/admin/EnrollmentsManagement';
 import SectionsManagement from './components/pages/admin/SectionsManagement';
+import ClassroomsManagement from './components/pages/admin/ClassroomsManagement';
 import TeacherAssignment from './components/pages/admin/TeacherAssignment';
 import GradesControl from './components/pages/admin/GradesControl';
 import AcademicHistory from './components/pages/admin/AcademicHistory';
@@ -30,6 +31,7 @@ import StudentSchedule from './components/pages/student/StudentSchedule';
 import StudentRecord from './components/pages/student/StudentRecord';
 import StudentDocuments from './components/pages/student/StudentDocuments';
 import useAuth from './hooks/useAuth';
+import { hasModulePermission } from './constants/permissions';
 import './App.css';
 
 // Simple helper components to make every sidebar link functional immediately!
@@ -59,8 +61,18 @@ const PlaceholderPage = ({ title }) => (
   </div>
 );
 
+const ProtectedRoute = ({ permission, children }) => {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  if (permission && !hasModulePermission(user, permission)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+};
+
 const DashboardRedirect = () => {
-  const { isAdmin, isTeacher, isStudent, loading } = useAuth();
+  const { user, isAdmin, isTeacher, isStudent, isControlEstudios, isGestionAcademica, loading } = useAuth();
 
   // While auth is still resolving, render nothing to avoid a premature
   // redirect to /login before the role has been loaded.
@@ -68,7 +80,23 @@ const DashboardRedirect = () => {
     return null;
   }
 
-  if (isAdmin) {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (hasModulePermission(user, 'admin:dashboard') && (isAdmin || isControlEstudios || isGestionAcademica || !hasModulePermission(user, 'teacher:dashboard'))) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  if (hasModulePermission(user, 'teacher:dashboard')) {
+    return <Navigate to="/teacher/dashboard" replace />;
+  }
+
+  if (hasModulePermission(user, 'student:dashboard')) {
+    return <Navigate to="/student/dashboard" replace />;
+  }
+
+  if (isAdmin || isControlEstudios || isGestionAcademica) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
@@ -102,31 +130,32 @@ function App() {
             <Route path="dashboard" element={<DashboardRedirect />} />
             <Route path="change-password" element={<ChangePassword />} />
 
-            {/* Role-based Dashboards */}
-            <Route path="admin/dashboard" element={<AdminDashboard />} />
-            <Route path="admin/users" element={<UserManagement />} />
-            <Route path="admin/careers" element={<CareersManagement />} />
-            <Route path="admin/pensum" element={<PensumManagement />} />
-            <Route path="admin/periods" element={<AcademicPeriods />} />
-            <Route path="admin/enrollments" element={<EnrollmentsManagement />} />
-            <Route path="admin/sections" element={<SectionsManagement />} />
-            <Route path="admin/teacher-assignment" element={<TeacherAssignment />} />
-            <Route path="admin/grades" element={<GradesControl />} />
-            <Route path="admin/history" element={<AcademicHistory />} />
-            <Route path="admin/pre-registrations" element={<Aspirantes />} />
+            {/* Role-based Dashboards with Granular Permissions */}
+            <Route path="admin/dashboard" element={<ProtectedRoute permission="admin:dashboard"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="admin/users" element={<ProtectedRoute permission="admin:users"><UserManagement /></ProtectedRoute>} />
+            <Route path="admin/careers" element={<ProtectedRoute permission="admin:careers"><CareersManagement /></ProtectedRoute>} />
+            <Route path="admin/pensum" element={<ProtectedRoute permission="admin:pensum"><PensumManagement /></ProtectedRoute>} />
+            <Route path="admin/periods" element={<ProtectedRoute permission="admin:periods"><AcademicPeriods /></ProtectedRoute>} />
+            <Route path="admin/enrollments" element={<ProtectedRoute permission="admin:enrollments"><EnrollmentsManagement /></ProtectedRoute>} />
+            <Route path="admin/sections" element={<ProtectedRoute permission="admin:sections"><SectionsManagement /></ProtectedRoute>} />
+            <Route path="admin/classrooms" element={<ProtectedRoute permission="admin:classrooms"><ClassroomsManagement /></ProtectedRoute>} />
+            <Route path="admin/teacher-assignment" element={<ProtectedRoute permission="admin:teacher-assignment"><TeacherAssignment /></ProtectedRoute>} />
+            <Route path="admin/grades" element={<ProtectedRoute permission="admin:grades"><GradesControl /></ProtectedRoute>} />
+            <Route path="admin/history" element={<ProtectedRoute permission="admin:history"><AcademicHistory /></ProtectedRoute>} />
+            <Route path="admin/pre-registrations" element={<ProtectedRoute permission="admin:pre-registrations"><Aspirantes /></ProtectedRoute>} />
             <Route path="admin/aspirantes" element={<Navigate to="/admin/pre-registrations" replace />} />
-            <Route path="teacher/dashboard" element={<TeacherDashboard />} />
-            <Route path="teacher/subjects" element={<TeacherSubjects />} />
-            <Route path="teacher/students" element={<TeacherStudents />} />
-            <Route path="teacher/records" element={<TeacherRecords />} />
-            <Route path="teacher/history" element={<TeacherHistory />} />
-            <Route path="student/dashboard" element={<StudentDashboard />} />
-            <Route path="student/profile" element={<StudentProfile />} />
-            <Route path="student/pensum" element={<StudentPensum />} />
-            <Route path="student/enrollment" element={<StudentEnrollment />} />
-            <Route path="student/schedule" element={<StudentSchedule />} />
-            <Route path="student/record" element={<StudentRecord />} />
-            <Route path="student/documents" element={<StudentDocuments />} />
+            <Route path="teacher/dashboard" element={<ProtectedRoute permission="teacher:dashboard"><TeacherDashboard /></ProtectedRoute>} />
+            <Route path="teacher/subjects" element={<ProtectedRoute permission="teacher:subjects"><TeacherSubjects /></ProtectedRoute>} />
+            <Route path="teacher/students" element={<ProtectedRoute permission="teacher:students"><TeacherStudents /></ProtectedRoute>} />
+            <Route path="teacher/records" element={<ProtectedRoute permission="teacher:records"><TeacherRecords /></ProtectedRoute>} />
+            <Route path="teacher/history" element={<ProtectedRoute permission="teacher:history"><TeacherHistory /></ProtectedRoute>} />
+            <Route path="student/dashboard" element={<ProtectedRoute permission="student:dashboard"><StudentDashboard /></ProtectedRoute>} />
+            <Route path="student/profile" element={<ProtectedRoute permission="student:profile"><StudentProfile /></ProtectedRoute>} />
+            <Route path="student/pensum" element={<ProtectedRoute permission="student:pensum"><StudentPensum /></ProtectedRoute>} />
+            <Route path="student/enrollment" element={<ProtectedRoute permission="student:enrollment"><StudentEnrollment /></ProtectedRoute>} />
+            <Route path="student/schedule" element={<ProtectedRoute permission="student:schedule"><StudentSchedule /></ProtectedRoute>} />
+            <Route path="student/record" element={<ProtectedRoute permission="student:record"><StudentRecord /></ProtectedRoute>} />
+            <Route path="student/documents" element={<ProtectedRoute permission="student:documents"><StudentDocuments /></ProtectedRoute>} />
 
             {/* Placeholders for Stitch Screens */}
             <Route path="students" element={<PlaceholderPage title="Gestión de Estudiantes" />} />

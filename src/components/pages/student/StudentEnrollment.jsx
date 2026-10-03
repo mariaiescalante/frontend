@@ -79,6 +79,7 @@ function hasOverlap(sch1, sch2) {
   const commonDays = p1.days.filter(d => p2.days.includes(d));
   if (commonDays.length === 0) return false;
   
+  return (p1.start < p2.end && p1.end > p2.start);
 }
 
 export default function StudentEnrollment() {
@@ -132,29 +133,49 @@ export default function StudentEnrollment() {
           const rawRegDetails = Array.isArray(regDetRes) ? regDetRes : (regDetRes?.data || []);
 
           // 1. Build record
-          const studentRegistrations = rawRegistrations.filter(r => r.id_student === user.id_student);
-          const studentRegIds = studentRegistrations.map(r => r.id_registration);
-          const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration) && d.subject_status !== 'Retirado');
+          const studentId = user?.id_student || user?.Student?.id_student || user?.student?.id_student;
+          const studentRegistrations = rawRegistrations.filter(r => String(r.id_student) === String(studentId));
+          const studentRegIds = new Set(studentRegistrations.map(r => String(r.id_registration)));
+          
+          const studentDetails = rawRegDetails.filter(d => 
+            studentRegIds.has(String(d.id_registration)) && d.subject_status !== 'Retirado'
+          );
 
           const fetchedRecord = studentDetails.map(d => {
-            const sec = rawSections.find(s => s.id_section === d.id_section);
+            const sec = d.Section || rawSections.find(s => String(s.id_section) === String(d.id_section));
             const subj = sec?.Subject;
+            const finalNote = parseFloat(d.final_note ?? 0);
+            const rawStatus = (d.subject_status || '').trim();
+
+            const isApproved = (
+              rawStatus.toLowerCase().startsWith('aprob') ||
+              (!isNaN(finalNote) && finalNote >= 9.5 && rawStatus !== 'Retirado')
+            );
+
+            const isFailed = (
+              rawStatus.toLowerCase().startsWith('reprob') ||
+              (!isApproved && !isNaN(finalNote) && finalNote > 0 && finalNote < 9.5)
+            );
+
             return {
-              code: subj?.code_subject || '',
+              id_detail: d.id_detail,
+              id_section: d.id_section,
+              id_subject: subj?.id_subject,
+              code: (subj?.code_subject || '').trim(),
               name: subj?.name_subject || 'Desconocido',
               credits: subj?.credit_units || 0,
               grade: d.final_note,
-              status: (d.subject_status === 'Aprobada' || d.subject_status === 'Aprobado') ? 'Aprobada' : ((d.subject_status === 'Reprobada' || d.subject_status === 'Reprobado') ? 'Reprobada' : 'Pendiente')
+              status: isApproved ? 'Aprobada' : (isFailed ? 'Reprobada' : 'Pendiente')
             };
           });
           setRecord(fetchedRecord);
 
           // Check if already enrolled in this period
-          const currentPeriodReg = studentRegistrations.find(r => r.id_period === activePeriod.id_period);
+          const currentPeriodReg = studentRegistrations.find(r => String(r.id_period) === String(activePeriod.id_period));
           if (currentPeriodReg) {
-            const currentDetails = rawRegDetails.filter(d => d.id_registration === currentPeriodReg.id_registration && d.subject_status !== 'Retirado');
+            const currentDetails = rawRegDetails.filter(d => String(d.id_registration) === String(currentPeriodReg.id_registration) && d.subject_status !== 'Retirado');
             const currentEnrolled = currentDetails.map(d => {
-              const sec = rawSections.find(s => s.id_section === d.id_section);
+              const sec = d.Section || rawSections.find(s => String(s.id_section) === String(d.id_section));
               return {
                 code: sec?.Subject?.code_subject || '',
                 name: sec?.Subject?.name_subject || '',
@@ -171,8 +192,8 @@ export default function StudentEnrollment() {
           }
 
           // 2. Build pensumSystems (like StudentPensum.jsx)
-          const currentPensum = (rawPensums.find((p) => p.Career?.name_career?.toLowerCase() === user.career.toLowerCase() && p.is_active) ||
-                                rawPensums.find((p) => p.Career?.name_career?.toLowerCase() === user.career.toLowerCase()));
+          const currentPensum = (rawPensums.find((p) => p.Career?.name_career?.toLowerCase() === user.career?.toLowerCase() && p.is_active) ||
+                                rawPensums.find((p) => p.Career?.name_career?.toLowerCase() === user.career?.toLowerCase()));
           
           if (currentPensum) {
             const limit = currentPensum.Career?.total_semesters || 8;
@@ -185,20 +206,32 @@ export default function StudentEnrollment() {
               const subjectsInSemester = psList
                 .filter((ps) => ps.id_semester === sem.id_semester)
                 .map((ps) => {
-                  const prereqCodes = Array.isArray(ps.Prerequisites)
-                    ? ps.Prerequisites.map((pr) => {
-                        const sub = pr.RequiredPensumSubject?.Subject;
-                        return sub?.code_subject || sub?.code || pr.RequiredPensumSubject?.code_subject;
-                      }).filter(Boolean)
-                    : [];
+                  const prereqCodes = [];
+                  const prereqSubjectIds = [];
+
+                  if (Array.isArray(ps.Prerequisites)) {
+                    ps.Prerequisites.forEach((pr) => {
+                      const sub = pr.RequiredPensumSubject?.Subject;
+                      const code = sub?.code_subject || sub?.code || pr.RequiredPensumSubject?.code_subject;
+                      if (code) prereqCodes.push(code.trim());
+
+                      const idSub = sub?.id_subject || pr.RequiredPensumSubject?.id_subject;
+                      if (idSub) prereqSubjectIds.push(Number(idSub));
+                    });
+                  }
+
                   const prereqText = prereqCodes.length > 0 ? prereqCodes.join(', ') : 'Ninguno';
 
                   return {
+                    id_pensum_subject: ps.id_pensum_subject,
+                    id_subject: ps.id_subject || ps.Subject?.id_subject,
                     code: ps.Subject?.code_subject || ps.code_subject || '',
                     name: ps.Subject?.name_subject || 'Sin nombre',
                     credits: ps.Subject?.credit_units || 0,
                     mandatory: true,
                     prereq: prereqText,
+                    prereqCodes: prereqCodes,
+                    prereqSubjectIds: prereqSubjectIds
                   };
                 });
 
@@ -212,21 +245,32 @@ export default function StudentEnrollment() {
 
           // 3. Build availableSections map
           const sectionsMap = {};
-          rawSections.filter(s => s.id_period === activePeriod.id_period).forEach(sec => {
+          rawSections.filter(s => String(s.id_period) === String(activePeriod.id_period)).forEach(sec => {
              const code = sec.Subject?.code_subject || '';
-             if(!sectionsMap[code]) sectionsMap[code] = [];
-             
-             const enrolledCount = rawRegDetails.filter(d => d.id_section === sec.id_section).length;
+             const idSubj = sec.id_subject || sec.Subject?.id_subject;
 
-             sectionsMap[code].push({
+             const enrolledCount = rawRegDetails.filter(d => String(d.id_section) === String(sec.id_section) && d.subject_status !== 'Retirado').length;
+
+             const secObj = {
                 id_section: sec.id_section,
+                id_subject: idSubj,
                 code: sec.section_code,
                 schedule: sec.schedule_info || 'Por asignar',
                 classroom: sec.classroom || 'Por asignar',
                 teacher: sec.Teacher?.User ? `${sec.Teacher.User.first_name} ${sec.Teacher.User.first_lastname}` : 'Sin profesor',
                 capacity: sec.quota_max || 30,
                 enrolled: enrolledCount
-             });
+             };
+
+             if (code) {
+               if (!sectionsMap[code]) sectionsMap[code] = [];
+               sectionsMap[code].push(secObj);
+             }
+             if (idSubj) {
+               const idKey = `id_${idSubj}`;
+               if (!sectionsMap[idKey]) sectionsMap[idKey] = [];
+               sectionsMap[idKey].push(secObj);
+             }
           });
           setAvailableSections(sectionsMap);
 
@@ -246,9 +290,33 @@ export default function StudentEnrollment() {
     checkEnrollment();
   }, [user]);
 
-  const approvedCodes = useMemo(() => {
-    return new Set(record.filter((item) => item.status === 'Aprobada').map((item) => item.code));
+  const approvedList = useMemo(() => {
+    return record.filter((item) => item.status === 'Aprobada');
   }, [record]);
+
+  const approvedCodes = useMemo(() => {
+    const set = new Set();
+    approvedList.forEach((item) => {
+      if (item.code) {
+        const clean = item.code.trim();
+        set.add(clean);
+        set.add(clean.toUpperCase());
+        set.add(clean.toLowerCase());
+        set.add(clean.replace(/[-\s]/g, '').toUpperCase());
+      }
+    });
+    return set;
+  }, [approvedList]);
+
+  const approvedSubjectIds = useMemo(() => {
+    const set = new Set();
+    approvedList.forEach((item) => {
+      if (item.id_subject) {
+        set.add(Number(item.id_subject));
+      }
+    });
+    return set;
+  }, [approvedList]);
 
   // Handle subject toggle
   const handleToggleSubject = (subjectCode) => {
@@ -528,11 +596,42 @@ export default function StudentEnrollment() {
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0, width: '100%' }}>
                 {activeGroup.subjects.map((subject) => {
-                  const isPassed = approvedCodes.has(subject.code);
-                  const isPrereqMet = subject.prereq === 'Ninguno' || subject.prereq.split(', ').every(pr => approvedCodes.has(pr));
-                  const isBlocked = !isPassed && !isPrereqMet;
+                  const isPassed = (
+                    approvedCodes.has(subject.code) ||
+                    approvedCodes.has(subject.code.replace(/[-\s]/g, '').toUpperCase()) ||
+                    (subject.id_subject && approvedSubjectIds.has(Number(subject.id_subject)))
+                  );
 
-                  const sections = availableSections[subject.code] || [];
+                  const isPrereqMet = (() => {
+                    if (!subject.prereq || subject.prereq === 'Ninguno' || (subject.prereqCodes && subject.prereqCodes.length === 0)) {
+                      return true;
+                    }
+
+                    // Check by subject IDs first
+                    if (subject.prereqSubjectIds && subject.prereqSubjectIds.length > 0) {
+                      const allIdsMet = subject.prereqSubjectIds.every(id => approvedSubjectIds.has(id));
+                      if (allIdsMet) return true;
+                    }
+
+                    // Check by codes
+                    const reqCodes = subject.prereqCodes && subject.prereqCodes.length > 0
+                      ? subject.prereqCodes
+                      : subject.prereq.split(',').map(s => s.trim()).filter(Boolean);
+
+                    return reqCodes.every(pr => {
+                      const clean = pr.trim();
+                      if (clean === 'Ninguno') return true;
+                      return (
+                        approvedCodes.has(clean) ||
+                        approvedCodes.has(clean.toUpperCase()) ||
+                        approvedCodes.has(clean.toLowerCase()) ||
+                        approvedCodes.has(clean.replace(/[-\s]/g, '').toUpperCase())
+                      );
+                    });
+                  })();
+
+                  const isBlocked = !isPassed && !isPrereqMet;
+                  const sections = availableSections[subject.code] || availableSections[`id_${subject.id_subject}`] || [];
                   const isSelected = selectedSubjects[subject.code] !== undefined;
 
                   return (
@@ -589,8 +688,9 @@ export default function StudentEnrollment() {
                             </StatusBadge>
                           )}
                           {!isPassed && !isBlocked && !isSelected && sections.length > 0 && (
-                            <StatusBadge tone="info" style={{ fontSize: '0.72rem' }}>
-                              Habilitada
+                            <StatusBadge tone="info" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              {subject.prereq !== 'Ninguno' && <CheckCircle size={10} />}
+                              {subject.prereq !== 'Ninguno' ? 'Prelación aprobada' : 'Habilitada'}
                             </StatusBadge>
                           )}
                           {!isPassed && !isBlocked && !isSelected && sections.length === 0 && (

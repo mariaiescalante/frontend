@@ -310,14 +310,14 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
         justifyContent: 'center',
         padding: '16px',
         paddingTop: 'max(16px, env(safe-area-inset-top, 16px))',
-        zIndex: 60,
+        zIndex: 10000,
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
       }}
       onClick={onClose}
     >
       <div
-        className="glass-panel custom-modal-scrollbar"
+        className="glass-panel custom-modal-scrollbar sgums-modal-card"
         style={{
           width: 'min(920px, 100%)',
           maxHeight: 'none',
@@ -330,7 +330,7 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
         }}
         onClick={(event) => event.stopPropagation()}
       >
-        <header style={{ padding: '22px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', wordBreak: 'break-word' }}>
+        <header className="sgums-modal-header" style={{ padding: '22px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '20px', wordBreak: 'break-word' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#0f172a' }}>{title}</h3>
             {subtitle ? <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', lineHeight: 1.55 }}>{subtitle}</p> : null}
@@ -356,9 +356,9 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
             <X size={18} />
           </button>
         </header>
-        <div style={{ padding: '24px' }}>{children}</div>
+        <div className="sgums-modal-body" style={{ padding: '24px' }}>{children}</div>
         {footer ? (
-          <footer style={{ padding: '18px 24px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+          <footer className="sgums-modal-footer" style={{ padding: '18px 24px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
             {footer}
           </footer>
         ) : null}
@@ -554,7 +554,7 @@ export function ConfirmDialog({ open, title, message, confirmText = 'Confirmar',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '16px',
-        zIndex: 70,
+        zIndex: 10050,
       }}
       onClick={onCancel}
     >

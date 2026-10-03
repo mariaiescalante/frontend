@@ -33,9 +33,11 @@ export function AuthProvider({ children }) {
   const isInitializing = useRef(true);
 
   // Parse user role helpers
-  const isAdmin = user?.role === 'Administrador' || user?.role === 'Admin';
-  const isStudent = user?.role === 'Estudiante';
-  const isTeacher = user?.role === 'Docente';
+  const isAdmin = user?.role === 'Administrador' || user?.role === 'Admin' || user?.id_role === 1;
+  const isStudent = user?.role === 'Estudiante' || user?.id_role === 3;
+  const isTeacher = user?.role === 'Docente' || user?.id_role === 2;
+  const isControlEstudios = user?.role === 'Control de Estudios' || user?.id_role === 4;
+  const isGestionAcademica = user?.role === 'Gestión Académica' || user?.id_role === 5;
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
@@ -103,6 +105,8 @@ export function AuthProvider({ children }) {
     isAdmin,
     isStudent,
     isTeacher,
+    isControlEstudios,
+    isGestionAcademica,
     isAuthenticated: !!user,
   };
 

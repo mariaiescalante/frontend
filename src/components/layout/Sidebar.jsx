@@ -18,12 +18,14 @@ import {
   UserCheck,
   History,
   FileLock2,
-  Users
+  Users,
+  DoorOpen
 } from 'lucide-react';
+import { hasModulePermission } from '../../constants/permissions';
 import universityLogo from '../../assets/logo-uptnt.png';
 
 export default function Sidebar({ mobileOpen = false, onMobileClose }) {
-  const { user, logout, isAdmin, isStudent, isTeacher } = useAuth();
+  const { user, logout, isAdmin, isStudent, isTeacher, isControlEstudios, isGestionAcademica } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isEnrollmentOpen, setIsEnrollmentOpen] = useState(false);
@@ -74,6 +76,8 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
     if (isAdmin) return 'ADMIN PORTAL';
     if (isTeacher) return 'DOCENTE PORTAL';
     if (isStudent) return 'PORTAL ESTUDIANTE';
+    if (isControlEstudios) return 'CONTROL DE ESTUDIOS';
+    if (isGestionAcademica) return 'GESTIÓN ACADÉMICA';
     return 'PORTAL ACADÉMICO';
   };
 
@@ -84,145 +88,175 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
     return (first + last).toUpperCase();
   };
 
-  // Sidebar navigation menu items based on role
+  // Sidebar navigation menu items based on granular permissions
   const menuItems = [
     {
+      id: 'admin:dashboard',
       path: '/admin/dashboard',
       name: 'Dashboard',
       icon: LayoutDashboard,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:dashboard')
     },
     {
+      id: 'admin:users',
       path: '/admin/users',
       name: 'Usuarios',
       icon: UserCog,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:users')
     },
     {
+      id: 'admin:careers',
       path: '/admin/careers',
       name: 'Carreras',
       icon: Award,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:careers')
     },
     {
+      id: 'admin:pensum',
       path: '/admin/pensum',
       name: 'Pensum',
       icon: BookOpen,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:pensum')
     },
     {
+      id: 'admin:periods',
       path: '/admin/periods',
       name: 'Períodos',
       icon: Calendar,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:periods')
     },
     {
+      id: 'admin:enrollments',
       path: '/admin/enrollments',
       name: 'Inscripciones',
       icon: ClipboardCheck,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:enrollments')
     },
     {
+      id: 'admin:sections',
       path: '/admin/sections',
       name: 'Secciones',
       icon: Layers,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:sections')
     },
     {
+      id: 'admin:classrooms',
+      path: '/admin/classrooms',
+      name: 'Aulas y Espacios',
+      icon: DoorOpen,
+      visible: hasModulePermission(user, 'admin:classrooms')
+    },
+    {
+      id: 'admin:teacher-assignment',
       path: '/admin/teacher-assignment',
       name: 'Asignación Docente',
       icon: UserCheck,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:teacher-assignment')
     },
     {
+      id: 'admin:grades',
       path: '/admin/grades',
       name: 'Notas',
       icon: ClipboardList,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:grades')
     },
     {
+      id: 'admin:pre-registrations',
       path: '/admin/pre-registrations',
       name: 'Aspirantes',
       icon: Users,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:pre-registrations')
     },
     {
+      id: 'admin:history',
       path: '/admin/history',
       name: 'Historial',
       icon: History,
-      visible: isAdmin
+      visible: hasModulePermission(user, 'admin:history')
     },
     {
+      id: 'teacher:dashboard',
       path: '/teacher/dashboard',
       name: 'Dashboard',
       icon: LayoutDashboard,
-      visible: isTeacher
+      visible: hasModulePermission(user, 'teacher:dashboard')
     },
     {
+      id: 'teacher:subjects',
       path: '/teacher/subjects',
       name: 'Asignaturas Impartidas',
       icon: BookOpen,
-      visible: isTeacher
+      visible: hasModulePermission(user, 'teacher:subjects')
     },
     {
+      id: 'teacher:students',
       path: '/teacher/students',
       name: 'Estudiantes Inscritos',
       icon: Users,
-      visible: isTeacher
+      visible: hasModulePermission(user, 'teacher:students')
     },
     {
+      id: 'teacher:records',
       path: '/teacher/records',
       name: 'Cerrar Actas',
       icon: FileLock2,
-      visible: isTeacher
+      visible: hasModulePermission(user, 'teacher:records')
     },
     {
+      id: 'teacher:history',
       path: '/teacher/history',
       name: 'Historial Impartido',
       icon: History,
-      visible: isTeacher
+      visible: hasModulePermission(user, 'teacher:history')
     },
     {
+      id: 'student:dashboard',
       path: '/student/dashboard',
       name: 'Dashboard',
       icon: LayoutDashboard,
-      visible: isStudent
+      visible: hasModulePermission(user, 'student:dashboard')
     },
     {
+      id: 'student:profile',
       path: '/student/profile',
       name: 'Datos Personales',
       icon: UserCog,
-      visible: isStudent
+      visible: hasModulePermission(user, 'student:profile')
     },
     {
+      id: 'student:pensum',
       path: '/student/pensum',
       name: 'Pensum de Estudios',
       icon: BookOpen,
-      visible: isStudent
+      visible: hasModulePermission(user, 'student:pensum')
     },
     {
+      id: 'student:enrollment',
       path: '/student/enrollment',
       name: 'Inscripción de Materias',
       icon: ClipboardCheck,
-      visible: isStudent && isEnrollmentOpen
+      visible: hasModulePermission(user, 'student:enrollment') && isEnrollmentOpen
     },
     {
+      id: 'student:schedule',
       path: '/student/schedule',
       name: 'Mi Horario',
       icon: Calendar,
-      visible: isStudent
+      visible: hasModulePermission(user, 'student:schedule')
     },
     {
+      id: 'student:record',
       path: '/student/record',
       name: 'Récord Académico',
       icon: History,
-      visible: isStudent
+      visible: hasModulePermission(user, 'student:record')
     },
     {
+      id: 'student:documents',
       path: '/student/documents',
       name: 'Constancias y Reportes',
       icon: FileLock2,
-      visible: isStudent
+      visible: hasModulePermission(user, 'student:documents')
     }
   ];
 

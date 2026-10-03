@@ -37,21 +37,29 @@ export default function StudentPensum() {
         setSemesters(rawSemesters);
 
         // Build actual student record from backend database
-        const studentRegistrations = rawReg.filter(r => r.id_student === user.id_student);
-        const studentRegIds = studentRegistrations.map(r => r.id_registration);
-        const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration) && d.subject_status !== 'Retirado');
+        const studentId = user?.id_student || user?.Student?.id_student || user?.student?.id_student;
+        const studentRegistrations = rawReg.filter(r => String(r.id_student) === String(studentId));
+        const studentRegIds = new Set(studentRegistrations.map(r => String(r.id_registration)));
+        const studentDetails = rawRegDetails.filter(d => studentRegIds.has(String(d.id_registration)) && d.subject_status !== 'Retirado');
 
         const fetchedRecord = studentDetails.map(d => {
-          const sec = rawSections.find(s => s.id_section === d.id_section);
+          const sec = d.Section || rawSections.find(s => String(s.id_section) === String(d.id_section));
           const subj = sec?.Subject;
-          
+          const finalNote = parseFloat(d.final_note ?? 0);
+          const rawStatus = (d.subject_status || '').trim();
+
           let statusStr = 'Pendiente';
-          if (d.subject_status === 'Aprobada' || d.subject_status === 'Aprobado') statusStr = 'Aprobada';
-          else if (d.subject_status === 'Reprobada' || d.subject_status === 'Reprobado') statusStr = 'Reprobada';
-          else if (d.subject_status === 'En curso' || d.subject_status === 'Cursando') statusStr = 'Cursando';
+          if (rawStatus.toLowerCase().startsWith('aprob') || (!isNaN(finalNote) && finalNote >= 9.5 && rawStatus !== 'Retirado')) {
+            statusStr = 'Aprobada';
+          } else if (rawStatus.toLowerCase().startsWith('reprob') || (!isNaN(finalNote) && finalNote > 0 && finalNote < 9.5)) {
+            statusStr = 'Reprobada';
+          } else if (rawStatus === 'En curso' || rawStatus === 'Cursando') {
+            statusStr = 'Cursando';
+          }
 
           return {
-            code: subj?.code_subject || '',
+            id_subject: subj?.id_subject,
+            code: (subj?.code_subject || '').trim(),
             name: subj?.name_subject || 'Desconocido',
             credits: subj?.credit_units || 0,
             grade: d.final_note,
@@ -105,6 +113,7 @@ export default function StudentPensum() {
 
           return {
             id_pensum_subject: ps.id_pensum_subject,
+            id_subject: ps.id_subject || ps.Subject?.id_subject,
             code: ps.Subject?.code_subject || ps.code_subject || '',
             name: ps.Subject?.name_subject || 'Sin nombre',
             credits: ps.Subject?.credit_units || 0,
@@ -129,8 +138,13 @@ export default function StudentPensum() {
   }, [semestersWithSubjects, activeSemester]);
 
   // Helper to determine the status and grade of a subject
-  const getSubjectStatus = (code) => {
-    const found = record.find((item) => item.code === code);
+  const getSubjectStatus = (subject) => {
+    const code = subject?.code;
+    const idSubj = subject?.id_subject;
+    const found = record.find((item) => 
+      (code && item.code?.toLowerCase() === code.toLowerCase()) || 
+      (idSubj && item.id_subject === idSubj)
+    );
     if (!found) return { status: 'Pendiente', grade: null };
     return {
       status: found.status, // 'Aprobada' or 'Reprobada'
@@ -226,7 +240,7 @@ export default function StudentPensum() {
                 </div>
               ) : (
                 activeGroup.subjects.map((subject) => {
-                  const info = getSubjectStatus(subject.code);
+                  const info = getSubjectStatus(subject);
                   let statusColor = '#94a3b8'; // default grey
                   let statusBg = 'rgba(148, 163, 184, 0.05)';
                   let statusBorder = 'rgba(148, 163, 184, 0.15)';

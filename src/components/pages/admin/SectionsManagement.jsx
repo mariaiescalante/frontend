@@ -3,11 +3,109 @@ import { Layers3, PlusSquare, Search } from 'lucide-react';
 import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, ProgressBar, CustomSelect, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
 
+const START_HOURS = [
+  '07:00 AM',
+  '08:00 AM',
+  '09:00 AM',
+  '10:00 AM',
+  '11:00 AM',
+  '12:00 PM',
+  '01:00 PM',
+  '02:00 PM',
+  '03:00 PM',
+  '04:00 PM',
+  '05:00 PM',
+  '06:00 PM',
+  '07:00 PM',
+  '08:00 PM'
+];
+
+const END_HOURS = [
+  '08:00 AM',
+  '09:00 AM',
+  '10:00 AM',
+  '11:00 AM',
+  '12:00 PM',
+  '01:00 PM',
+  '02:00 PM',
+  '03:00 PM',
+  '04:00 PM',
+  '05:00 PM',
+  '06:00 PM',
+  '07:00 PM',
+  '08:00 PM',
+  '09:00 PM',
+  '10:00 PM'
+];
+
+function to12Hour(timeStr) {
+  if (!timeStr) return '08:00 AM';
+  const clean = timeStr.trim();
+  if (/am|pm/i.test(clean)) {
+    const m = clean.match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+    if (m) {
+      return `${m[1].padStart(2, '0')}:${m[2]} ${m[3].toUpperCase()}`;
+    }
+    return clean.toUpperCase();
+  }
+
+  const m = clean.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return clean;
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  let suffix = 'AM';
+  if (h >= 12) {
+    suffix = 'PM';
+    if (h > 12) h -= 12;
+  } else if (h === 0) {
+    h = 12;
+  }
+  return `${String(h).padStart(2, '0')}:${min} ${suffix}`;
+}
+
+function parseScheduleInfo(scheduleInfo) {
+  let day = 'Lunes';
+  let start = '08:00 AM';
+  let end = '10:00 AM';
+
+  if (!scheduleInfo) return { day, start, end };
+
+  const match = scheduleInfo.match(/^([A-Za-zÁÉÍÓÚáéíóúñÑ]+)\s+([^-\s]+(?:\s*[AaPp][Mm])?)\s*-\s*([^-\s]+(?:\s*[AaPp][Mm])?)$/);
+  if (match) {
+    day = match[1];
+    start = to12Hour(match[2]);
+    end = to12Hour(match[3]);
+  }
+  return { day, start, end };
+}
+
+function formatScheduleWithAMPM(scheduleInfo) {
+  if (!scheduleInfo) return 'N/A';
+  const { day, start, end } = parseScheduleInfo(scheduleInfo);
+  return `${day} ${start} - ${end}`;
+}
+
+function timeToMinutes(tStr) {
+  if (!tStr) return 0;
+  const m = tStr.match(/^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$/);
+  if (!m) return 0;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const suffix = m[3] ? m[3].toUpperCase() : null;
+
+  if (suffix === 'PM' && h < 12) h += 12;
+  else if (suffix === 'AM' && h === 12) h = 0;
+  else if (!suffix && h >= 1 && h < 8) h += 12;
+
+  return h * 60 + min;
+}
+
 export default function SectionsManagement() {
   const [sections, setSections] = useState([]);
   const [careers, setCareers] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [periods, setPeriods] = useState([]);
+  const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [subjectFilter, setSubjectFilter] = useState('Todas');
@@ -27,8 +125,8 @@ export default function SectionsManagement() {
     quota_max: 30,
     classroom: 'Aula 01',
     schedule_day: 'Lunes',
-    schedule_start: '08:00',
-    schedule_end: '10:00'
+    schedule_start: '08:00 AM',
+    schedule_end: '10:00 AM'
   });
 
   // Cargar datos de referencia una vez al montar
@@ -44,10 +142,27 @@ export default function SectionsManagement() {
         setSubjects(Array.isArray(subRes.data) ? subRes.data : subRes);
         const perList = Array.isArray(perRes.data) ? perRes.data : perRes;
         setPeriods(perList);
+
+        // Cargar aulas con fallback seguro por si el backend remoto aún no tiene el endpoint
+        try {
+          const classRes = await api.get('/classrooms');
+          const classList = Array.isArray(classRes.data) ? classRes.data : (Array.isArray(classRes) ? classRes : []);
+          if (classList.length > 0) {
+            setClassrooms(classList);
+          }
+        } catch (classErr) {
+          console.warn('Aulas no disponibles en esta instancia del backend, usando lista por defecto:', classErr?.message);
+        }
+
         const active = perList.find(p => p.period_status === 'Activo') || perList[0];
-        setSelectedPeriod(String(active?.id_period || ''));
+        if (active) {
+          setSelectedPeriod(String(active.id_period));
+        } else {
+          setLoading(false);
+        }
       } catch (err) {
         console.error('Error fetching reference data:', err);
+        setLoading(false);
       }
     }
     init();
@@ -81,6 +196,30 @@ export default function SectionsManagement() {
     });
   }, [sections, subjectFilter, careerFilter, query]);
 
+  const currentSchedule = `${form.schedule_day} ${form.schedule_start} - ${form.schedule_end}`;
+
+  const isInvalidTimeRange = useMemo(() => {
+    return timeToMinutes(form.schedule_end) <= timeToMinutes(form.schedule_start);
+  }, [form.schedule_start, form.schedule_end]);
+
+  const conflictSection = useMemo(() => {
+    if (!form.classroom || !form.schedule_day) return null;
+    return sections.find(s => {
+      if (!editingSection || s.id_section !== editingSection.id_section) {
+        if (s.classroom === form.classroom) {
+          return formatScheduleWithAMPM(s.schedule_info) === formatScheduleWithAMPM(currentSchedule);
+        }
+      }
+      return false;
+    });
+  }, [sections, form.classroom, currentSchedule, editingSection]);
+
+  const selectedClassroomObj = useMemo(() => {
+    return classrooms.find(c => c.name_classroom === form.classroom || c.code_classroom === form.classroom);
+  }, [classrooms, form.classroom]);
+
+  const isOverCapacity = selectedClassroomObj && Number(form.quota_max) > Number(selectedClassroomObj.capacity);
+
   const handleNewSection = () => {
     setEditingSection(null);
     setForm({
@@ -89,27 +228,17 @@ export default function SectionsManagement() {
       id_career: careers[0]?.id_career || '',
       section_code: 'A',
       quota_max: 30,
-      classroom: 'Aula 01',
+      classroom: classrooms[0]?.name_classroom || 'Aula 01',
       schedule_day: 'Lunes',
-      schedule_start: '08:00',
-      schedule_end: '10:00'
+      schedule_start: '08:00 AM',
+      schedule_end: '10:00 AM'
     });
     setModalOpen(true);
   };
 
   const handleEditSection = (section) => {
     setEditingSection(section);
-    let day = 'Lunes';
-    let start = '08:00';
-    let end = '10:00';
-    if (section.schedule_info) {
-      const match = section.schedule_info.match(/^(\w+)\s+(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/);
-      if (match) {
-        day = match[1];
-        start = match[2];
-        end = match[3];
-      }
-    }
+    const { day, start, end } = parseScheduleInfo(section.schedule_info);
 
     setForm({
       id_period: section.id_period,
@@ -117,7 +246,7 @@ export default function SectionsManagement() {
       id_career: section.id_career,
       section_code: section.section_code,
       quota_max: section.quota_max,
-      classroom: section.classroom || 'Aula 01',
+      classroom: section.classroom || (classrooms[0]?.name_classroom || 'Aula 01'),
       schedule_day: day,
       schedule_start: start,
       schedule_end: end
@@ -127,6 +256,16 @@ export default function SectionsManagement() {
 
   const handleSave = async () => {
     try {
+      if (isInvalidTimeRange) {
+        alert('La hora de culminación debe ser posterior a la hora de inicio.');
+        return;
+      }
+
+      if (conflictSection) {
+        alert(`Conflicto de Horario: El aula "${form.classroom}" ya está asignada en el horario ${currentSchedule} a la sección ${conflictSection.section_code} de ${conflictSection.Subject?.name_subject || 'otra asignatura'}. Por favor selecciona otra aula o cambia el horario.`);
+        return;
+      }
+
       const payload = {
         id_period: Number(form.id_period),
         id_subject: Number(form.id_subject),
@@ -134,7 +273,7 @@ export default function SectionsManagement() {
         section_code: form.section_code.trim(),
         quota_max: Number(form.quota_max),
         classroom: form.classroom,
-        schedule_info: `${form.schedule_day} ${form.schedule_start} - ${form.schedule_end}`
+        schedule_info: currentSchedule
       };
 
       if (!payload.id_period || !payload.id_subject || !payload.id_career || !payload.section_code || !payload.quota_max) {
@@ -279,7 +418,7 @@ export default function SectionsManagement() {
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
-                <div><span style={{ color: '#64748b', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: 700 }}>Horario</span><strong style={{ display: 'block', fontSize: '0.88rem' }}>{section.schedule_info || 'N/A'}</strong></div>
+                <div><span style={{ color: '#64748b', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: 700 }}>Horario</span><strong style={{ display: 'block', fontSize: '0.88rem' }}>{formatScheduleWithAMPM(section.schedule_info)}</strong></div>
                 <div><span style={{ color: '#64748b', fontSize: '0.78rem', textTransform: 'uppercase', fontWeight: 700 }}>Aula</span><strong style={{ display: 'block', fontSize: '0.88rem' }}>{section.classroom || 'N/A'}</strong></div>
               </div>
               <div>
@@ -356,8 +495,8 @@ export default function SectionsManagement() {
           </label>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Horario</span>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Horario (Día y Bloque de Horas)</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '10px' }}>
               <CustomSelect
                 value={form.schedule_day}
                 onChange={value => setForm({...form, schedule_day: value})}
@@ -366,27 +505,81 @@ export default function SectionsManagement() {
               <CustomSelect
                 value={form.schedule_start}
                 onChange={value => setForm({...form, schedule_start: value})}
-                options={['07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(t => ({ value: t, label: `Desde ${t}` }))}
+                options={START_HOURS.map(t => ({ value: t, label: `Desde ${t}` }))}
               />
               <CustomSelect
                 value={form.schedule_end}
                 onChange={value => setForm({...form, schedule_end: value})}
-                options={['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'].map(t => ({ value: t, label: `Hasta ${t}` }))}
+                options={END_HOURS.map(t => ({ value: t, label: `Hasta ${t}` }))}
               />
             </div>
           </div>
+
+          {isInvalidTimeRange && (
+            <div style={{
+              gridColumn: '1 / -1',
+              padding: '10px 14px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '10px',
+              color: '#b91c1c',
+              fontSize: '0.84rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>⚠️ <strong>Horario Inválido:</strong> La hora de culminación ({form.schedule_end}) debe ser posterior a la hora de inicio ({form.schedule_start}).</span>
+            </div>
+          )}
           
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Aula</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Aula / Espacio Asignado</span>
             <CustomSelect
               value={form.classroom}
               onChange={value => setForm({...form, classroom: value})}
-              options={[
+              options={classrooms.length > 0 ? classrooms.map(c => ({
+                value: c.name_classroom,
+                label: `${c.name_classroom} - ${c.building} (Cap: ${c.capacity} | ${c.classroom_type})`
+              })) : [
                 ...['Aula 01', 'Aula 02', 'Aula 03', 'Aula 04', 'Aula 05', 'Aula 06', 'Aula 07'].map(a => ({ value: a, label: a })),
                 ...['Lab 01', 'Lab 02', 'Lab 03', 'Lab 04'].map(a => ({ value: a, label: a }))
               ]}
             />
           </label>
+
+          {conflictSection && (
+            <div style={{
+              gridColumn: '1 / -1',
+              padding: '12px 16px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '12px',
+              color: '#b91c1c',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>⚠️ <strong>Conflicto de Espacio:</strong> El espacio "{form.classroom}" ya está ocupado en este horario ({currentSchedule}) por la sección <strong>{conflictSection.section_code}</strong> de <strong>{conflictSection.Subject?.name_subject || 'otra asignatura'}</strong>.</span>
+            </div>
+          )}
+
+          {isOverCapacity && (
+            <div style={{
+              gridColumn: '1 / -1',
+              padding: '12px 16px',
+              background: 'rgba(255, 209, 0, 0.15)',
+              border: '1px solid rgba(255, 209, 0, 0.35)',
+              borderRadius: '12px',
+              color: '#854d0e',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>⚠️ <strong>Advertencia de Aforo:</strong> Los cupos solicitados ({form.quota_max}) superan la capacidad física máxima del aula ({selectedClassroomObj.capacity} puestos).</span>
+            </div>
+          )}
         </div>
       </Modal>
       <ConfirmDialog

@@ -32,23 +32,31 @@ export default function StudentRecord() {
           periodMap[p.id_period] = p.name_period;
         });
 
-        const studentRegistrations = rawReg.filter(r => r.id_student === user.id_student);
-        const studentRegIds = studentRegistrations.map(r => r.id_registration);
-        const studentDetails = rawRegDetails.filter(d => studentRegIds.includes(d.id_registration) && d.subject_status !== 'Retirado');
+        const studentId = user?.id_student || user?.Student?.id_student || user?.student?.id_student;
+        const studentRegistrations = rawReg.filter(r => String(r.id_student) === String(studentId));
+        const studentRegIds = new Set(studentRegistrations.map(r => String(r.id_registration)));
+        const studentDetails = rawRegDetails.filter(d => studentRegIds.has(String(d.id_registration)) && d.subject_status !== 'Retirado');
 
         const history = studentDetails.map(d => {
-          const sec = rawSections.find(s => s.id_section === d.id_section);
+          const sec = d.Section || rawSections.find(s => String(s.id_section) === String(d.id_section));
           const subj = sec?.Subject;
-          const reg = studentRegistrations.find(r => r.id_registration === d.id_registration);
+          const reg = studentRegistrations.find(r => String(r.id_registration) === String(d.id_registration));
           const periodName = periodMap[reg?.id_period] || 'Desconocido';
+          const finalNote = parseFloat(d.final_note ?? 0);
+          const rawStatus = (d.subject_status || '').trim();
           
           let statusStr = 'Pendiente';
-          if (d.subject_status === 'Aprobada' || d.subject_status === 'Aprobado') statusStr = 'Aprobada';
-          else if (d.subject_status === 'Reprobada' || d.subject_status === 'Reprobado') statusStr = 'Reprobada';
-          else if (d.subject_status === 'En curso' || d.subject_status === 'Cursando') statusStr = 'Cursando';
+          if (rawStatus.toLowerCase().startsWith('aprob') || (!isNaN(finalNote) && finalNote >= 9.5 && rawStatus !== 'Retirado')) {
+            statusStr = 'Aprobada';
+          } else if (rawStatus.toLowerCase().startsWith('reprob') || (!isNaN(finalNote) && finalNote > 0 && finalNote < 9.5)) {
+            statusStr = 'Reprobada';
+          } else if (rawStatus === 'En curso' || rawStatus === 'Cursando') {
+            statusStr = 'Cursando';
+          }
 
           return {
-            code: subj?.code_subject || '',
+            id_subject: subj?.id_subject,
+            code: (subj?.code_subject || '').trim(),
             name: subj?.name_subject || 'Desconocido',
             credits: subj?.credit_units || 0,
             grade: (statusStr === 'Cursando' || statusStr === 'Pendiente') ? '--' : d.final_note,
