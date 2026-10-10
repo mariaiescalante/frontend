@@ -524,7 +524,7 @@ export default function TeacherAssignment() {
                 fontWeight: 700,
                 cursor: 'pointer',
                 border: 'none',
-                background: sectionFilterTab === 'all' ? '#0f172a' : '#f1f5f9',
+                background: sectionFilterTab === 'all' ? '#1d4ed8' : '#f1f5f9',
                 color: sectionFilterTab === 'all' ? '#ffffff' : '#475569',
                 transition: 'all 0.15s ease'
               }}
@@ -616,12 +616,16 @@ export default function TeacherAssignment() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ 
-                          padding: '3px 8px', 
-                          borderRadius: '6px', 
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '4px 10px', 
+                          borderRadius: '8px', 
                           fontSize: '0.8rem', 
                           fontWeight: 800, 
-                          background: '#0f172a', 
-                          color: '#ffd100' 
+                          background: 'rgba(59, 130, 246, 0.12)', 
+                          color: '#1d4ed8',
+                          border: '1px solid rgba(59, 130, 246, 0.25)',
+                          letterSpacing: '0.02em'
                         }}>
                           Sección {sec.section_code}
                         </span>
