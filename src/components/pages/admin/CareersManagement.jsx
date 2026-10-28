@@ -40,6 +40,7 @@ const decorateCareer = (c) => {
     code: c.code_career,
     name: c.name_career,
     semesters: c.total_semesters,
+    regime: c.academic_regime || 'Semestral',
     status: c.is_active ? 'Activa' : 'Inactiva',
     faculty,
     head,
@@ -59,6 +60,7 @@ export default function CareersManagement() {
     code_career: '',
     name_career: '',
     total_semesters: 10,
+    academic_regime: 'Semestral',
     is_active: true
   });
 
@@ -82,7 +84,7 @@ export default function CareersManagement() {
 
   const visibleCareers = useMemo(() => {
     return careers.filter((career) => 
-      `${career.code} ${career.name} ${career.faculty}`.toLowerCase().includes(query.toLowerCase())
+      `${career.code} ${career.name} ${career.faculty} ${career.regime}`.toLowerCase().includes(query.toLowerCase())
     );
   }, [careers, query]);
 
@@ -92,6 +94,7 @@ export default function CareersManagement() {
       code_career: '',
       name_career: '',
       total_semesters: 10,
+      academic_regime: 'Semestral',
       is_active: true
     });
     setModalOpen(true);
@@ -103,6 +106,7 @@ export default function CareersManagement() {
       code_career: career.code,
       name_career: career.name,
       total_semesters: career.semesters,
+      academic_regime: career.regime || 'Semestral',
       is_active: career.status === 'Activa'
     });
     setModalOpen(true);
@@ -114,6 +118,7 @@ export default function CareersManagement() {
         code_career: form.code_career.trim(),
         name_career: form.name_career.trim(),
         total_semesters: Number(form.total_semesters),
+        academic_regime: form.academic_regime || 'Semestral',
         is_active: form.is_active
       };
 
@@ -191,7 +196,10 @@ export default function CareersManagement() {
           <article key={career.code} className="glass-panel" style={{ background: '#ffffff', border: '1px solid #dbe4f0', borderRadius: '18px', padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <StatusBadge tone={career.status === 'Activa' ? 'success' : 'warning'}>{career.status}</StatusBadge>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <StatusBadge tone={career.status === 'Activa' ? 'success' : 'warning'}>{career.status}</StatusBadge>
+                  <StatusBadge tone={career.regime === 'Trimestral' ? 'accent' : 'info'}>{career.regime}</StatusBadge>
+                </div>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{career.name}</h3>
                 <p style={{ margin: 0, color: '#64748b', fontSize: '0.88rem' }}>{career.faculty}</p>
               </div>
@@ -217,7 +225,9 @@ export default function CareersManagement() {
                 <strong>{career.creditsRequired}</strong>
               </div>
               <div>
-                <p style={{ margin: '0 0 6px', color: '#64748b', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Semestres</p>
+                <p style={{ margin: '0 0 6px', color: '#64748b', fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                  {career.regime === 'Trimestral' ? 'Trimestres' : 'Semestres'}
+                </p>
                 <strong>{career.semesters}</strong>
               </div>
               <div>
@@ -261,10 +271,23 @@ export default function CareersManagement() {
             <input className="form-input" value={form.name_career} onChange={e => setForm({...form, name_career: e.target.value})} placeholder="Nombre (ej: Ingeniería en Sistemas)" />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Semestres</span>
-            <input className="form-input" type="number" value={form.total_semesters} onChange={e => setForm({...form, total_semesters: e.target.value})} placeholder="Cantidad de Semestres" />
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Régimen Académico</span>
+            <CustomSelect
+              value={form.academic_regime}
+              onChange={value => setForm({...form, academic_regime: value})}
+              options={[
+                { value: 'Semestral', label: 'Semestral' },
+                { value: 'Trimestral', label: 'Trimestral' }
+              ]}
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>
+              {form.academic_regime === 'Trimestral' ? 'Cantidad de Trimestres' : 'Cantidad de Semestres'}
+            </span>
+            <input className="form-input" type="number" min="1" max="20" value={form.total_semesters} onChange={e => setForm({...form, total_semesters: e.target.value})} placeholder="Ej: 12" />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Estado</span>
             <CustomSelect
               value={form.is_active ? 'true' : 'false'}

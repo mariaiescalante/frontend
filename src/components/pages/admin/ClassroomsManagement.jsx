@@ -23,7 +23,8 @@ import {
   fieldStyle,
   ProgressBar,
   CustomSelect,
-  ConfirmDialog
+  ConfirmDialog,
+  Pagination
 } from './AdminPageShell';
 import api from '../../../services/api';
 
@@ -57,6 +58,10 @@ export default function ClassroomsManagement() {
   const [buildingFilter, setBuildingFilter] = useState('Todos');
   const [typeFilter, setTypeFilter] = useState('Todos');
   const [statusFilter, setStatusFilter] = useState('Todos');
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   // Modales
   const [modalOpen, setModalOpen] = useState(false);
@@ -138,6 +143,24 @@ export default function ClassroomsManagement() {
       return matchesBuilding && matchesType && matchesStatus && matchesQuery;
     });
   }, [classrooms, buildingFilter, typeFilter, statusFilter, query]);
+
+  // Reset de página al cambiar filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [buildingFilter, typeFilter, statusFilter, query]);
+
+  // Cálculos de paginación
+  const totalPages = Math.ceil(visibleClassrooms.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedClassrooms = useMemo(() => {
+    return visibleClassrooms.slice(startIndex, startIndex + itemsPerPage);
+  }, [visibleClassrooms, startIndex, itemsPerPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   // Métricas
   const stats = useMemo(() => {
@@ -369,89 +392,108 @@ export default function ClassroomsManagement() {
           <p style={{ fontSize: '0.9rem', marginTop: '6px' }}>Ajusta los filtros de búsqueda o agrega un nuevo espacio físico.</p>
         </div>
       ) : (
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '20px' }}>
-          {visibleClassrooms.map((item) => (
-            <article
-              key={item.id_classroom}
-              style={{
-                background: '#ffffff',
-                border: '1px solid #dbe4f0',
-                borderRadius: '18px',
-                padding: '22px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '16px',
-                boxShadow: '0 4px 14px rgba(15, 23, 42, 0.03)',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-                <div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
-                    <StatusBadge tone="primary">{item.code_classroom}</StatusBadge>
-                    <StatusBadge tone={statusToneMap[item.status] || 'neutral'}>{item.status}</StatusBadge>
-                  </div>
-                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>{item.name_classroom}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '0.85rem', marginTop: '4px' }}>
-                    <Building2 size={15} />
-                    <span>{item.building} • {item.floor || 'PB'}</span>
-                  </div>
-                </div>
-                <StatusBadge tone={typeToneMap[item.classroom_type] || 'neutral'}>{item.classroom_type}</StatusBadge>
-              </div>
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#64748b' }}>
+              Mostrando {startIndex + 1}–{Math.min(startIndex + itemsPerPage, visibleClassrooms.length)} de {visibleClassrooms.length} {visibleClassrooms.length === 1 ? 'espacio' : 'espacios'}
+            </span>
+            {totalPages > 1 && (
+              <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0f172a' }}>
+                Página {currentPage} de {totalPages}
+              </span>
+            )}
+          </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <div>
-                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 800, display: 'block' }}>Capacidad</span>
-                  <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{item.capacity} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>estudiantes</span></strong>
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '20px' }}>
+            {paginatedClassrooms.map((item) => (
+              <article
+                key={item.id_classroom}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #dbe4f0',
+                  borderRadius: '18px',
+                  padding: '22px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                  boxShadow: '0 4px 14px rgba(15, 23, 42, 0.03)',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                  <div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
+                      <StatusBadge tone="primary">{item.code_classroom}</StatusBadge>
+                      <StatusBadge tone={statusToneMap[item.status] || 'neutral'}>{item.status}</StatusBadge>
+                    </div>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>{item.name_classroom}</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '0.85rem', marginTop: '4px' }}>
+                      <Building2 size={15} />
+                      <span>{item.building} • {item.floor || 'PB'}</span>
+                    </div>
+                  </div>
+                  <StatusBadge tone={typeToneMap[item.classroom_type] || 'neutral'}>{item.classroom_type}</StatusBadge>
                 </div>
-                <div>
-                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 800, display: 'block' }}>Régimen</span>
-                  <strong style={{ fontSize: '0.92rem', color: '#0f172a' }}>Presencial</strong>
-                </div>
-              </div>
 
-              {item.resources && (
-                <div>
-                  <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Equipamiento / Recursos</span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {item.resources.split(',').map((res, idx) => (
-                      <span
-                        key={idx}
-                        style={{
-                          fontSize: '0.78rem',
-                          background: '#f1f5f9',
-                          color: '#334155',
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          border: '1px solid #e2e8f0'
-                        }}
-                      >
-                        {res.trim()}
-                      </span>
-                    ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 800, display: 'block' }}>Capacidad</span>
+                    <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{item.capacity} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>estudiantes</span></strong>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 800, display: 'block' }}>Régimen</span>
+                    <strong style={{ fontSize: '0.92rem', color: '#0f172a' }}>Presencial</strong>
                   </div>
                 </div>
-              )}
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
-                <ActionButton
-                  variant="secondary"
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  onClick={() => handleViewSchedule(item)}
-                >
-                  <Calendar size={15} /> Ver Ocupación
-                </ActionButton>
-                <ActionButton variant="secondary" onClick={() => handleEditClassroom(item)}>
-                  Editar
-                </ActionButton>
-                <ActionButton variant="ghost" onClick={() => handleDelete(item)}>
-                  Eliminar
-                </ActionButton>
-              </div>
-            </article>
-          ))}
-        </section>
+                {item.resources && (
+                  <div>
+                    <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, display: 'block', marginBottom: '6px' }}>Equipamiento / Recursos</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {item.resources.split(',').map((res, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            fontSize: '0.78rem',
+                            background: '#f1f5f9',
+                            color: '#334155',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: '1px solid #e2e8f0'
+                          }}
+                        >
+                          {res.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
+                  <ActionButton
+                    variant="secondary"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    onClick={() => handleViewSchedule(item)}
+                  >
+                    <Calendar size={15} /> Ver Ocupación
+                  </ActionButton>
+                  <ActionButton variant="secondary" onClick={() => handleEditClassroom(item)}>
+                    Editar
+                  </ActionButton>
+                  <ActionButton variant="ghost" onClick={() => handleDelete(item)}>
+                    Eliminar
+                  </ActionButton>
+                </div>
+              </article>
+            ))}
+          </section>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </>
       )}
 
       {/* 4. Modal: Crear / Editar Aula */}

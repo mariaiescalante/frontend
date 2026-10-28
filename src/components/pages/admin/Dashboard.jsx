@@ -85,19 +85,23 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedActivity, setSelectedActivity] = useState(null);
+  const [selectedPeriodIndex, setSelectedPeriodIndex] = useState(0);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await getAdminDashboard();
+      setData(res);
+    } catch (err) {
+      console.error('Error fetching admin dashboard:', err);
+      setError(err.message || 'Error al cargar datos del dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const res = await getAdminDashboard();
-        setData(res);
-      } catch (err) {
-        console.error('Error fetching admin dashboard:', err);
-        setError(err.message || 'Error al cargar datos del dashboard');
-      } finally {
-        setLoading(false);
-      }
-    }
     loadData();
   }, []);
 
@@ -121,6 +125,70 @@ export default function AdminDashboard() {
     );
   }
 
+  if (error && !data) {
+    return (
+      <AdminPageShell
+        eyebrow="Dashboard administrativo"
+        title="Visión general del panel de administración"
+        subtitle="Error al conectar con los servicios del sistema."
+        metrics={[
+          { label: 'Estudiantes activos', value: '0', hint: 'Sin sincronizar', icon: Users, tone: 'primary' },
+          { label: 'Secciones habilitadas', value: '0', hint: 'Sin sincronizar', icon: ClipboardList, tone: 'warning' },
+          { label: 'Docentes registrados', value: '0', hint: 'Sin sincronizar', icon: GraduationCap, tone: 'success' },
+          { label: 'Inscripciones hoy', value: '0', hint: 'Sin sincronizar', icon: LayoutGrid, tone: 'info' }
+        ]}
+      >
+        <div style={{
+          backgroundColor: '#fff',
+          borderRadius: '16px',
+          padding: '36px',
+          textAlign: 'center',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+          border: '1px solid #fee2e2',
+          borderTop: '4px solid #ef4444'
+        }}>
+          <h4 style={{ color: '#991b1b', fontSize: '1.2rem', fontWeight: 800, margin: '0 0 12px 0' }}>
+            No se pudieron cargar los datos del Dashboard
+          </h4>
+          <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '480px', margin: '0 auto 20px auto' }}>
+            {error.includes('Token') || error.includes('401') || error.includes('autorizado') || error.includes('Bearer')
+              ? 'Tu sesión ha expirado o el token de acceso ya no es válido. Por favor vuelve a iniciar sesión.'
+              : error}
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button
+              onClick={loadData}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '8px',
+                backgroundColor: '#ffd100',
+                border: 'none',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={() => { window.location.href = '/login'; }}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '8px',
+                backgroundColor: '#051124',
+                color: '#fff',
+                border: 'none',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Iniciar Sesión
+            </button>
+          </div>
+        </div>
+      </AdminPageShell>
+    );
+  }
+
   const metrics = [
     { label: 'Estudiantes activos', value: data?.metrics?.activeStudents.toLocaleString() || '0', hint: '+3.2% vs ciclo anterior', icon: Users, tone: 'primary' },
     { label: 'Secciones habilitadas', value: data?.metrics?.sectionsCount.toString() || '0', hint: 'Capacidad promedio: 82%', icon: ClipboardList, tone: 'warning' },
@@ -136,6 +204,8 @@ export default function AdminDashboard() {
     Trash: Trash2,
     Update: PenTool
   };
+
+  const currentPeriod = (data?.activePeriods && data.activePeriods[selectedPeriodIndex]) || data?.periodInfo;
 
   return (
     <AdminPageShell
@@ -221,11 +291,43 @@ export default function AdminDashboard() {
               </h3>
             </div>
 
+            {/* Regime tabs if multiple active periods exist */}
+            {data?.activePeriods && data.activePeriods.length > 1 && (
+              <div style={{ display: 'flex', gap: '6px', margin: '6px 0 10px 0', position: 'relative', zIndex: 2 }}>
+                {data.activePeriods.map((p, idx) => (
+                  <button
+                    key={p.id || idx}
+                    type="button"
+                    onClick={() => setSelectedPeriodIndex(idx)}
+                    style={{
+                      flex: 1,
+                      padding: '6px 8px',
+                      borderRadius: '8px',
+                      border: selectedPeriodIndex === idx ? '2px solid #ffd100' : '1px solid #e2e8f0',
+                      backgroundColor: selectedPeriodIndex === idx ? '#fffdf0' : '#f8fafc',
+                      color: selectedPeriodIndex === idx ? '#7c5a00' : '#64748b',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span>{p.type || 'Semestral'}:</span>
+                    <span style={{ color: selectedPeriodIndex === idx ? '#0f172a' : '#64748b' }}>{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Side-by-side flex row layout */}
             <div style={{ display: 'flex', gap: '20px', alignItems: 'center', margin: '14px 0', position: 'relative', zIndex: 2 }}>
               {/* Left Column: Larger Gauge */}
               <div style={{ flexShrink: 0 }}>
-                <PeriodCircularProgress percentage={data?.periodInfo?.percentage || 0} />
+                <PeriodCircularProgress percentage={currentPeriod?.percentage || 0} />
               </div>
 
               {/* Right Column: Key Details */}
@@ -238,7 +340,10 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '0.62rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Período</span>
-                    <span style={{ fontSize: '0.825rem', fontWeight: '800', color: '#0f172a' }}>{data?.periodInfo?.name || 'No definido'}</span>
+                    <span style={{ fontSize: '0.825rem', fontWeight: '800', color: '#0f172a' }}>
+                      {currentPeriod?.name || 'No definido'}
+                      {currentPeriod?.type ? ` (${currentPeriod.type})` : ''}
+                    </span>
                   </div>
                 </div>
 
@@ -250,7 +355,7 @@ export default function AdminDashboard() {
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '0.62rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Tiempo Restante</span>
                     <span style={{ fontSize: '0.825rem', fontWeight: '800', color: '#0f172a' }}>
-                        {data?.periodInfo?.daysRemaining ?? 0} días
+                        {currentPeriod?.daysRemaining ?? 0} días
                     </span>
                   </div>
                 </div>
@@ -258,8 +363,8 @@ export default function AdminDashboard() {
                 {/* 3. Status with pulsing green dot */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ 
-                    backgroundColor: data?.periodInfo?.status === 'Activo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(148, 163, 184, 0.1)', 
-                    color: data?.periodInfo?.status === 'Activo' ? '#22c55e' : '#64748b', 
+                    backgroundColor: currentPeriod?.status === 'Activo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(148, 163, 184, 0.1)', 
+                    color: currentPeriod?.status === 'Activo' ? '#22c55e' : '#64748b', 
                     padding: '6px', 
                     borderRadius: '6px', 
                     display: 'flex' 
@@ -269,7 +374,7 @@ export default function AdminDashboard() {
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '0.62rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '700' }}>Estado</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      {data?.periodInfo?.status === 'Activo' && (
+                      {currentPeriod?.status === 'Activo' && (
                         <span className="status-pulsing-dot" style={{ 
                           width: '6px', 
                           height: '6px', 
@@ -278,8 +383,8 @@ export default function AdminDashboard() {
                           display: 'inline-block'
                         }} />
                       )}
-                      <span style={{ fontSize: '0.825rem', fontWeight: '800', color: data?.periodInfo?.status === 'Activo' ? '#22c55e' : '#64748b', textTransform: 'capitalize' }}>
-                        {data?.periodInfo?.status || 'Sin período activo'}
+                      <span style={{ fontSize: '0.825rem', fontWeight: '800', color: currentPeriod?.status === 'Activo' ? '#22c55e' : '#64748b', textTransform: 'capitalize' }}>
+                        {currentPeriod?.status || 'Sin período activo'}
                       </span>
                     </div>
                   </div>

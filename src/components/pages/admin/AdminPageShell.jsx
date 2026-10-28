@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { X, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const tonePalette = {
   primary: {
@@ -189,7 +189,181 @@ export function MetricCard({ label, value, hint, icon: Icon, tone = 'primary' })
   );
 }
 
-export function AdminPageShell({ eyebrow = 'Panel administrativo', title, subtitle, actions, metrics = [], children }) {
+export function MetricsCarousel({ metrics = [] }) {
+  const containerRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const hasOverflow = el.scrollWidth > el.clientWidth + 4;
+    setCanScrollLeft(el.scrollLeft > 4);
+    setCanScrollRight(hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    const el = containerRef.current;
+    if (el) {
+      el.addEventListener('scroll', checkScroll, { passive: true });
+    }
+    window.addEventListener('resize', checkScroll);
+    return () => {
+      if (el) el.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [metrics, checkScroll]);
+
+  useEffect(() => {
+    const timer = setTimeout(checkScroll, 120);
+    return () => clearTimeout(timer);
+  }, [metrics, checkScroll]);
+
+  const handleScroll = (direction) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const scrollAmount = 260;
+    el.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  };
+
+  if (!metrics || metrics.length === 0) return null;
+
+  return (
+    <div className="metrics-carousel-wrapper" style={{ position: 'relative', width: '100%' }}>
+      {/* Botón Flecha Izquierda */}
+      <button
+        type="button"
+        aria-label="Desplazar a la izquierda"
+        onClick={() => handleScroll('left')}
+        className="metrics-carousel-arrow-btn"
+        style={{
+          position: 'absolute',
+          left: '-14px',
+          top: '50%',
+          transform: canScrollLeft ? 'translateY(-50%) scale(1)' : 'translateY(-50%) scale(0.8)',
+          zIndex: 10,
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: '#ffffff',
+          border: '1px solid #cbd5e1',
+          boxShadow: '0 6px 20px rgba(5, 17, 36, 0.16)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: canScrollLeft ? 'pointer' : 'default',
+          color: '#0f172a',
+          opacity: canScrollLeft ? 1 : 0,
+          pointerEvents: canScrollLeft ? 'auto' : 'none',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+      >
+        <ChevronLeft size={22} />
+      </button>
+
+      {/* Riel Horizontal Desplazable */}
+      <div
+        ref={containerRef}
+        className="metrics-carousel-track"
+        style={{
+          display: 'flex',
+          gap: '18px',
+          overflowX: 'auto',
+          scrollBehavior: 'smooth',
+          scrollSnapType: 'x mandatory',
+          padding: '4px 2px 14px 2px',
+          WebkitOverflowScrolling: 'touch'
+        }}
+      >
+        {metrics.map((metric) => (
+          <div
+            key={metric.label}
+            style={{
+              flex: '0 0 240px',
+              minWidth: '235px',
+              scrollSnapAlign: 'start'
+            }}
+          >
+            <MetricCard {...metric} />
+          </div>
+        ))}
+      </div>
+
+      {/* Botón Flecha Derecha */}
+      <button
+        type="button"
+        aria-label="Desplazar a la derecha"
+        onClick={() => handleScroll('right')}
+        className="metrics-carousel-arrow-btn"
+        style={{
+          position: 'absolute',
+          right: '-14px',
+          top: '50%',
+          transform: canScrollRight ? 'translateY(-50%) scale(1)' : 'translateY(-50%) scale(0.8)',
+          zIndex: 10,
+          width: '40px',
+          height: '40px',
+          borderRadius: '50%',
+          background: '#ffffff',
+          border: '1px solid #cbd5e1',
+          boxShadow: '0 6px 20px rgba(5, 17, 36, 0.16)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: canScrollRight ? 'pointer' : 'default',
+          color: '#0f172a',
+          opacity: canScrollRight ? 1 : 0,
+          pointerEvents: canScrollRight ? 'auto' : 'none',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
+      >
+        <ChevronRight size={22} />
+      </button>
+
+      <style>
+        {`
+          .metrics-carousel-arrow-btn:hover {
+            background-color: #ffd100 !important;
+            border-color: #ffd100 !important;
+            box-shadow: 0 8px 24px rgba(255, 209, 0, 0.45) !important;
+            transform: translateY(-50%) scale(1.12) !important;
+            color: #051124 !important;
+          }
+          .metrics-carousel-track::-webkit-scrollbar {
+            height: 6px;
+          }
+          .metrics-carousel-track::-webkit-scrollbar-track {
+            background: rgba(241, 245, 249, 0.8);
+            border-radius: 999px;
+          }
+          .metrics-carousel-track::-webkit-scrollbar-thumb {
+            background: rgba(203, 213, 225, 0.8);
+            border-radius: 999px;
+          }
+          .metrics-carousel-track::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 1);
+          }
+        `}
+      </style>
+    </div>
+  );
+}
+
+export function AdminPageShell({
+  eyebrow = 'Panel administrativo',
+  title,
+  subtitle,
+  actions,
+  metrics = [],
+  children,
+  carouselMetrics = false
+}) {
+  const isCarousel = carouselMetrics || (metrics && metrics.length > 4);
+
   return (
     <div className="admin-page-shell" style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
       <section
@@ -249,11 +423,15 @@ export function AdminPageShell({ eyebrow = 'Panel administrativo', title, subtit
       </section>
 
       {metrics.length ? (
+        isCarousel ? (
+          <MetricsCarousel metrics={metrics} />
+        ) : (
           <section className="admin-page-shell-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px' }}>
-          {metrics.map((metric) => (
-            <MetricCard key={metric.label} {...metric} />
-          ))}
-        </section>
+            {metrics.map((metric) => (
+              <MetricCard key={metric.label} {...metric} />
+            ))}
+          </section>
+        )
       ) : null}
 
       {children}

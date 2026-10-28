@@ -88,13 +88,16 @@ export default function StudentPensum() {
     );
   }, [pensums, user]);
 
-  // Group subjects by semesters
+  const isTrimestral = currentPensum?.Career?.academic_regime === 'Trimestral';
+  const targetType = isTrimestral ? 'Trimestre' : 'Semestre';
+
+  // Group subjects by semesters / trimesters
   const semestersWithSubjects = useMemo(() => {
     if (!currentPensum || semesters.length === 0) return [];
 
-    const limit = currentPensum.Career?.total_semesters || 8;
+    const limit = currentPensum.Career?.total_semesters || (isTrimestral ? 12 : 8);
     const activeSemesters = semesters
-      .filter((s) => s.number_semester <= limit)
+      .filter((s) => (s.type_term ? s.type_term === targetType : (isTrimestral ? s.name_semester.includes('Trimestre') : !s.name_semester.includes('Trimestre'))) && s.number_semester <= limit)
       .sort((a, b) => a.number_semester - b.number_semester);
 
     return activeSemesters.map((sem) => {
@@ -128,7 +131,7 @@ export default function StudentPensum() {
         subjects: subjectsInSemester,
       };
     });
-  }, [currentPensum, semesters]);
+  }, [currentPensum, semesters, isTrimestral, targetType]);
 
   // Auto-initialize active semester select
   useEffect(() => {
@@ -211,11 +214,14 @@ export default function StudentPensum() {
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
         
-        {/* Semester Selection Dropdown */}
-        <SectionCard title="Filtrar por Semestre" description="Selecciona el semestre para ver las unidades curriculares correspondientes.">
+        {/* Semester / Trimester Selection Dropdown */}
+        <SectionCard 
+          title={isTrimestral ? "Filtrar por Trimestre" : "Filtrar por Semestre"} 
+          description={isTrimestral ? "Selecciona el trimestre para ver las unidades curriculares correspondientes." : "Selecciona el semestre para ver las unidades curriculares correspondientes."}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-              Seleccionar Semestre
+              {isTrimestral ? 'Seleccionar Trimestre' : 'Seleccionar Semestre'}
             </span>
             <CustomSelect
               value={activeSemester || ''}
@@ -231,12 +237,12 @@ export default function StudentPensum() {
         {activeGroup && (
           <SectionCard
             title={`Asignaturas - ${activeGroup.term}`}
-            description="Asignaturas obligatorias y electivas correspondientes al semestre seleccionado."
+            description={isTrimestral ? "Asignaturas correspondientes al trimestre seleccionado." : "Asignaturas obligatorias y electivas correspondientes al semestre seleccionado."}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {activeGroup.subjects.length === 0 ? (
                 <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.92rem', fontStyle: 'italic' }}>
-                  No hay asignaturas registradas para este semestre.
+                  No hay asignaturas registradas para este {isTrimestral ? 'trimestre' : 'semestre'}.
                 </div>
               ) : (
                 activeGroup.subjects.map((subject) => {

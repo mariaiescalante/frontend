@@ -17,6 +17,7 @@ export default function AcademicPeriods() {
     end_date: '',
     enrollment_status: 'Cerrada',
     period_status: 'Planificacion',
+    period_type: 'Semestral',
   });
 
   async function loadData() {
@@ -46,6 +47,7 @@ export default function AcademicPeriods() {
       end_date: period.end_date,
       enrollment_status: period.enrollment_status,
       period_status: period.period_status,
+      period_type: period.period_type || 'Semestral',
     });
   };
 
@@ -57,12 +59,13 @@ export default function AcademicPeriods() {
       end_date: '',
       enrollment_status: 'Cerrada',
       period_status: 'Planificacion',
+      period_type: 'Semestral',
     });
   };
 
   const handleSave = async () => {
     try {
-      const { name_period, start_date, end_date, enrollment_status, period_status } = form;
+      const { name_period, start_date, end_date, enrollment_status, period_status, period_type } = form;
       if (!name_period || !start_date || !end_date) {
         alert('Por favor complete todos los campos requeridos.');
         return;
@@ -75,6 +78,7 @@ export default function AcademicPeriods() {
         end_date,
         enrollment_status,
         period_status,
+        period_type: period_type || 'Semestral',
       };
 
       if (editingId) {
@@ -190,6 +194,7 @@ export default function AcademicPeriods() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>{period.name_period}</h4>
                         <div className="period-badges-container">
+                          <StatusBadge tone={period.period_type === 'Trimestral' ? 'accent' : 'info'}>{period.period_type || 'Semestral'}</StatusBadge>
                           <StatusBadge tone={badgeTone}>Periodo: {period.period_status}</StatusBadge>
                           <StatusBadge tone={isEnrollmentOpen ? 'warning' : 'neutral'}>Inscripción: {period.enrollment_status}</StatusBadge>
                         </div>
@@ -253,10 +258,21 @@ export default function AcademicPeriods() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <label className="form-group" style={{ marginBottom: 0 }}>
+              <span className="form-label">Tipo de régimen</span>
+              <CustomSelect
+                value={form.period_type}
+                onChange={(val) => setForm({ ...form, period_type: String(val) })}
+                options={[
+                  { value: 'Semestral', label: 'Semestral' },
+                  { value: 'Trimestral', label: 'Trimestral' }
+                ]}
+              />
+            </label>
+            <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Nombre del período</span>
               <input
                 className="form-input"
-                placeholder="Ej: 2027-I"
+                placeholder={form.period_type === 'Trimestral' ? 'Ej: 2027-T1' : 'Ej: 2027-I'}
                 value={form.name_period}
                 onChange={(e) => setForm({ ...form, name_period: e.target.value })}
               />

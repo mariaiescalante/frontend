@@ -27,16 +27,33 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
-    const apiMessage = error.response?.data?.message || error.response?.data?.error;
-    const message = apiMessage || error.message || 'Error de red';
+    const data = error.response?.data;
+
+    let detailMessage = null;
+    if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+      detailMessage = data.errors
+        .map(e => typeof e === 'object' ? `${e.campo ? e.campo + ': ' : ''}${e.mensaje || JSON.stringify(e)}` : String(e))
+        .join(', ');
+    }
+
+    const apiMessage = data?.message || data?.error;
+    let message = apiMessage;
+    if (detailMessage) {
+      message = apiMessage ? `${apiMessage}: ${detailMessage}` : detailMessage;
+    }
+    if (!message) {
+      message = error.message || 'Error de red';
+    }
 
     if (status === 401) {
       localStorage.removeItem(TOKEN_KEY);
+      window.dispatchEvent(new Event('auth:unauthorized'));
     }
 
     const normalizedError = new Error(message);
     normalizedError.status = status;
-    normalizedError.data = error.response?.data;
+    normalizedError.data = data;
+    normalizedError.response = error.response;
 
     return Promise.reject(normalizedError);
   }

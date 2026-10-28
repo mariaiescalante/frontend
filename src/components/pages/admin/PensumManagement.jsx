@@ -107,13 +107,19 @@ export default function PensumManagement() {
     );
   }, [pensums, selectedCareer]);
 
+  const isTrimestral = selectedCareer?.academic_regime === 'Trimestral';
+  const targetType = isTrimestral ? 'Trimestre' : 'Semestre';
+
+  const activeSemesters = useMemo(() => {
+    if (!selectedCareer) return [];
+    const limit = selectedCareer.total_semesters || (isTrimestral ? 12 : 8);
+    return semesters
+      .filter((s) => (s.type_term ? s.type_term === targetType : (isTrimestral ? s.name_semester.includes('Trimestre') : !s.name_semester.includes('Trimestre'))) && s.number_semester <= limit)
+      .sort((a, b) => a.number_semester - b.number_semester);
+  }, [selectedCareer, semesters, isTrimestral, targetType]);
+
   const semestersWithSubjects = useMemo(() => {
     if (!selectedCareer || !currentPensum) return [];
-
-    const limit = selectedCareer.total_semesters || 8;
-    const activeSemesters = semesters
-      .filter((s) => s.number_semester <= limit)
-      .sort((a, b) => a.number_semester - b.number_semester);
 
     return activeSemesters.map((sem) => {
       const psList = currentPensum.PensumSubjects || [];
@@ -146,7 +152,7 @@ export default function PensumManagement() {
         subjects: subjectsInSemester,
       };
     });
-  }, [currentPensum, selectedCareer, semesters]);
+  }, [currentPensum, selectedCareer, activeSemesters]);
 
   const filteredSemesters = useMemo(() => {
     return semesterFilter === 'Todos'
@@ -174,17 +180,20 @@ export default function PensumManagement() {
       }
       submittingRef.current = true;
       setSubmitting(true);
-      await api.post('/pensums', {
+      const payload = {
         id_career: Number(id_career),
         name_pensum: name_pensum.trim(),
-        resolution_date: resolution_date || null,
         is_active: Boolean(is_active),
-      });
+      };
+      if (resolution_date && typeof resolution_date === 'string' && resolution_date.trim()) {
+        payload.resolution_date = resolution_date.trim();
+      }
+      await api.post('/pensums', payload);
       setPensumModalOpen(false);
       await loadData();
     } catch (err) {
       console.error('Error saving pensum:', err);
-      alert(err.response?.data?.message || err.message || 'Error al guardar el pensum');
+      alert(err.message || 'Error al guardar el pensum');
     } finally {
       setSubmitting(false);
       submittingRef.current = false;
@@ -197,7 +206,7 @@ export default function PensumManagement() {
       name_subject: '',
       credit_units: 3,
       id_pensum: currentPensum?.id_pensum || '',
-      id_semester: semesters[0]?.id_semester || '',
+      id_semester: activeSemesters[0]?.id_semester || '',
       id_prerequisite_1: '',
       id_prerequisite_2: '',
       id_prerequisite_3: '',
@@ -239,8 +248,7 @@ export default function PensumManagement() {
       await loadData();
     } catch (err) {
       console.error('Error saving subject:', err);
-      const msg = err.response?.data?.message || err.message || 'Error al guardar la materia';
-      alert(msg);
+      alert(err.message || 'Error al guardar la materia');
     } finally {
       setSubmitting(false);
       submittingRef.current = false;
@@ -339,7 +347,7 @@ export default function PensumManagement() {
         {
           label: 'Ciclos visibles',
           value: `${semestersWithSubjects.length}`,
-          hint: 'Semestres cargados para la carrera activa',
+          hint: isTrimestral ? 'Trimestres cargados para la carrera activa' : 'Semestres cargados para la carrera activa',
           icon: Layers3,
           tone: 'primary',
         },
@@ -359,7 +367,7 @@ export default function PensumManagement() {
         },
       ]}
     >
-      <SectionCard title="Filtros del pensum" description="Elige la carrera y el semestre que deseas inspeccionar o editar.">
+      <SectionCard title="Filtros del pensum" description="Elige la carrera y el ciclo que deseas inspeccionar o editar.">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px', maxWidth: '760px' }}>
           <label className="form-group" style={{ marginBottom: 0 }}>
             <span className="form-label">Carrera</span>
@@ -369,17 +377,17 @@ export default function PensumManagement() {
                 setCareerCode(value);
                 setSemesterFilter('Todos');
               }}
-              options={careers.map((career) => ({ value: career.code_career, label: career.name_career }))}
+              options={careers.map((career) => ({ value: career.code_career, label: `${career.name_career} (${career.academic_regime || 'Semestral'})` }))}
             />
           </label>
           <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Semestre</span>
+            <span className="form-label">{isTrimestral ? 'Trimestre' : 'Semestre'}</span>
             <CustomSelect
               value={semesterFilter}
               onChange={(value) => setSemesterFilter(value)}
               style={semestersWithSubjects.length === 0 ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
               options={[
-                { value: 'Todos', label: 'Todos' },
+                { value: 'Todos', label: isTrimestral ? 'Todos los trimestres' : 'Todos los semestres' },
                 ...semestersWithSubjects.map((semester) => ({ value: semester.term, label: semester.term }))
               ]}
             />
@@ -434,7 +442,7 @@ export default function PensumManagement() {
                 <div style={{ padding: '20px' }}>
                   {semester.subjects.length === 0 ? (
                     <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: 0, textAlign: 'center', padding: '10px' }}>
-                      No hay materias asignadas a este semestre.
+                      No hay materias asignadas a este {isTrimestral ? 'trimestre' : 'semestre'}.
                     </p>
                   ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
@@ -535,13 +543,15 @@ export default function PensumManagement() {
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Semestre</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>
+              {isTrimestral ? 'Trimestre' : 'Semestre'}
+            </span>
             <CustomSelect
               value={form.id_semester}
               onChange={(value) => setForm({ ...form, id_semester: value })}
               options={[
-                { value: '', label: 'Seleccione un semestre' },
-                ...semesters.map((s) => ({ value: s.id_semester, label: s.name_semester }))
+                { value: '', label: isTrimestral ? 'Seleccione un trimestre' : 'Seleccione un semestre' },
+                ...(activeSemesters.length > 0 ? activeSemesters : semesters).map((s) => ({ value: s.id_semester, label: s.name_semester }))
               ]}
             />
           </label>

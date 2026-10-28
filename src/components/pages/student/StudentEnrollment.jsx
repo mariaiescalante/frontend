@@ -107,8 +107,9 @@ export default function StudentEnrollment() {
       try {
         setLoadingEnrollment(true);
         const resPeriods = await api.get('/periods');
-        const periodsList = (Array.isArray(resPeriods) ? resPeriods : (Array.isArray(resPeriods?.data) ? resPeriods.data : []));
-        const activePeriod = periodsList.find((p) => p.period_status === 'Activo');
+        const studentRegime = user?.academic_regime || 'Semestral';
+        const activePeriod = periodsList.find((p) => p.period_status === 'Activo' && (p.period_type || 'Semestral') === studentRegime)
+          || periodsList.find((p) => p.period_status === 'Activo');
         
         if (activePeriod) {
           setHasActivePeriod(true);
@@ -196,9 +197,11 @@ export default function StudentEnrollment() {
                                 rawPensums.find((p) => p.Career?.name_career?.toLowerCase() === user.career?.toLowerCase()));
           
           if (currentPensum) {
-            const limit = currentPensum.Career?.total_semesters || 8;
+            const isTrimestral = currentPensum.Career?.academic_regime === 'Trimestral';
+            const targetType = isTrimestral ? 'Trimestre' : 'Semestre';
+            const limit = currentPensum.Career?.total_semesters || (isTrimestral ? 12 : 8);
             const activeSemesters = rawSemesters
-              .filter((s) => s.number_semester <= limit)
+              .filter((s) => (s.type_term ? s.type_term === targetType : (isTrimestral ? s.name_semester.includes('Trimestre') : !s.name_semester.includes('Trimestre'))) && s.number_semester <= limit)
               .sort((a, b) => a.number_semester - b.number_semester);
 
             const mappedPensum = activeSemesters.map((sem) => {
@@ -237,6 +240,8 @@ export default function StudentEnrollment() {
 
               return {
                 semester: sem.number_semester,
+                termName: sem.name_semester,
+                isTrimestral,
                 subjects: subjectsInSemester,
               };
             });
@@ -573,25 +578,25 @@ export default function StudentEnrollment() {
         {/* Available Subjects column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', minWidth: 0, width: '100%' }}>
           
-          {/* Semester selection dropdown */}
+          {/* Semester / Trimester selection dropdown */}
           <div style={{ display: 'block', width: '100%', marginBottom: '14px' }}>
             <span style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>
-              Seleccionar Semestre
+              {activeGroup?.isTrimestral ? 'Seleccionar Trimestre' : 'Seleccionar Semestre'}
             </span>
             <CustomSelect
               value={activeSemester}
               onChange={(val) => setActiveSemester(Number(val))}
               options={pensumSystems.map((group) => ({
                 value: group.semester,
-                label: `Semestre ${group.semester}`
+                label: group.termName || `${group.isTrimestral ? 'Trimestre' : 'Semestre'} ${group.semester}`
               }))}
             />
           </div>
 
           {activeGroup && (
             <SectionCard
-              title={`Asignaturas - Semestre ${activeGroup.semester}`}
-              description={`Unidades curriculares ofertadas correspondientes al semestre ${activeGroup.semester}.`}
+              title={`Asignaturas - ${activeGroup.termName || `${activeGroup.isTrimestral ? 'Trimestre' : 'Semestre'} ${activeGroup.semester}`}`}
+              description={`Unidades curriculares ofertadas correspondientes al ${activeGroup.isTrimestral ? 'trimestre' : 'semestre'} ${activeGroup.semester}.`}
               style={{ overflow: 'visible' }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', minWidth: 0, width: '100%' }}>

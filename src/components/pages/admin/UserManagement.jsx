@@ -838,27 +838,53 @@ export default function UserManagement() {
       eyebrow="Gestión de usuarios"
       title="Administración de usuarios y roles"
       subtitle="Registro, edición y gestión de estudiantes, docentes, administradores, control de estudios y gestión académica."
+      carouselMetrics={true}
       actions={
-        <>
-          <ActionButton variant={activeTab === 'students' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('students'); setCurrentPage(1); }}>
-            Estudiantes
-          </ActionButton>
-          <ActionButton variant={activeTab === 'teachers' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('teachers'); setCurrentPage(1); }}>
-            Docentes
-          </ActionButton>
-          <ActionButton variant={activeTab === 'admins' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('admins'); setCurrentPage(1); }}>
-            Administradores
-          </ActionButton>
-          <ActionButton variant={activeTab === 'control_estudios' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('control_estudios'); setCurrentPage(1); }}>
-            Control de Estudios
-          </ActionButton>
-          <ActionButton variant={activeTab === 'gestion_academica' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('gestion_academica'); setCurrentPage(1); }}>
-            Gestión Académica
-          </ActionButton>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <ActionButton
+              variant={activeTab === 'students' ? 'accent' : 'secondary'}
+              onClick={() => { setActiveTab('students'); setCurrentPage(1); }}
+              style={activeTab === 'students' ? { fontWeight: 800, borderColor: '#f5c400', boxShadow: '0 6px 18px rgba(255, 209, 0, 0.35)' } : undefined}
+            >
+              Estudiantes
+            </ActionButton>
+            <ActionButton
+              variant={activeTab === 'teachers' ? 'accent' : 'secondary'}
+              onClick={() => { setActiveTab('teachers'); setCurrentPage(1); }}
+              style={activeTab === 'teachers' ? { fontWeight: 800, borderColor: '#f5c400', boxShadow: '0 6px 18px rgba(255, 209, 0, 0.35)' } : undefined}
+            >
+              Docentes
+            </ActionButton>
+            <ActionButton
+              variant={activeTab === 'admins' ? 'accent' : 'secondary'}
+              onClick={() => { setActiveTab('admins'); setCurrentPage(1); }}
+              style={activeTab === 'admins' ? { fontWeight: 800, borderColor: '#f5c400', boxShadow: '0 6px 18px rgba(255, 209, 0, 0.35)' } : undefined}
+            >
+              Administradores
+            </ActionButton>
+            <ActionButton
+              variant={activeTab === 'control_estudios' ? 'accent' : 'secondary'}
+              onClick={() => { setActiveTab('control_estudios'); setCurrentPage(1); }}
+              style={activeTab === 'control_estudios' ? { fontWeight: 800, borderColor: '#f5c400', boxShadow: '0 6px 18px rgba(255, 209, 0, 0.35)' } : undefined}
+            >
+              Control de Estudios
+            </ActionButton>
+            <ActionButton
+              variant={activeTab === 'gestion_academica' ? 'accent' : 'secondary'}
+              onClick={() => { setActiveTab('gestion_academica'); setCurrentPage(1); }}
+              style={activeTab === 'gestion_academica' ? { fontWeight: 800, borderColor: '#f5c400', boxShadow: '0 6px 18px rgba(255, 209, 0, 0.35)' } : undefined}
+            >
+              Gestión Académica
+            </ActionButton>
+          </div>
+
+          <div style={{ width: '1px', height: '28px', background: 'rgba(255, 255, 255, 0.25)', margin: '0 4px' }} />
+
           <ActionButton variant="accent" onClick={() => openUserModal()}>
             <UserPlus size={16} /> Nuevo usuario
           </ActionButton>
-        </>
+        </div>
       }
       metrics={[
         { label: 'Total Usuarios', value: String(stats.students + stats.teachers + stats.admins + stats.controlEstudios + stats.gestionAcademica), hint: 'Registrados en el sistema', icon: Users, tone: 'primary' },
