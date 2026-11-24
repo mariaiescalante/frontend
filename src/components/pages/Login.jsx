@@ -3,13 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Eye, EyeOff, ShieldAlert, LifeBuoy } from 'lucide-react';
 import useAuth from '../../hooks/useAuth';
 import universityLogo from '../../assets/logo-uptnt.png';
+import { LIMITS, sanitizeEmail } from '../../utils/validation';
 
 //const publicWebsiteUrl = import.meta.env.VITE_PUBLIC_SITE_URL || 'http://localhost:5174/';
 const publicWebsiteUrl = import.meta.env.VITE_PUBLIC_SITE_URL || 'https://sgumswebsite.netlify.app/';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, loading, error, isAuthenticated } = useAuth();
+  const { login, loading, error, isAuthenticated, user } = useAuth();
 
   // states to bind field values
   const [email, setEmail] = useState('');
@@ -19,9 +20,13 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated && !loading) {
-      navigate('/dashboard', { replace: true });
+      if (user?.must_change_password) {
+        navigate('/change-password', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,8 +39,12 @@ export default function Login() {
     }
 
     try {
-      await login(sanitizedEmail, sanitizedPassword);
-      navigate('/dashboard', { replace: true });
+      const loggedUser = await login(sanitizedEmail, sanitizedPassword);
+      if (loggedUser?.must_change_password) {
+        navigate('/change-password', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch {
       // El mensaje de error ya se expone desde AuthContext
     }
@@ -206,16 +215,17 @@ export default function Login() {
                 color: '#2d3748'
               }}
             >
-              Correo electrónico
+              Usuario o Correo electrónico
             </label>
             <div style={{ position: 'relative', width: '100%' }}>
               <input
                 id="email"
-                type="email"
-                placeholder="Ingrese su correo"
+                type="text"
+                maxLength={LIMITS.EMAIL_MAX}
+                placeholder="Ej: usuario_123 o correo@dominio.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
+                onChange={(e) => setEmail(e.target.value.replace(/\s+/g, ''))}
+                autoComplete="username"
                 required
                 style={{
                   width: '100%',
@@ -264,9 +274,10 @@ export default function Login() {
               <input
                 id="contrasena"
                 type={showPassword ? 'text' : 'password'}
+                maxLength={100}
                 placeholder="••••••••"
                 value={contrasena}
-                onChange={(e) => setContrasena(e.target.value)}
+                onChange={(e) => setContrasena(e.target.value.slice(0, 100))}
                 autoComplete="current-password"
                 required
                 style={{

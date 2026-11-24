@@ -3,10 +3,10 @@ import { MessageCircle, X, Send, Loader2, Bot } from 'lucide-react';
 import http from '../services/api';
 
 const getSaludo = (roleId, nombre) => ({
-  1: `¡Bienvenido ${nombre} al asistente de administracion del SGUMS! ¿En que puedo ayudarte con la gestion de usuarios, periodos academicos o configuracion del sistema?`,
-  2: `¡Bienvenido ${nombre} al asistente para docentes del SGUMS! ¿Necesitas ayuda con la carga de actas de notas o la gestion de tus secciones?`,
-  3: `¡Hola ${nombre}! Soy el asistente del SGUMS. Puedo ayudarte a consultar tu pensum, inscripciones, notas y mas. ¿Que necesitas?`,
-}[roleId]);
+  1: `¡Bienvenido ${nombre} al asistente administrativo del SGUMS! ¿En qué puedo orientarte sobre gestión de usuarios, carreras, pensum, períodos (semestral/trimestral), aulas, inscripciones o respaldo de la base de datos?`,
+  2: `¡Bienvenido ${nombre} al asistente para docentes del SGUMS! ¿Necesitas ayuda con tus asignaturas impartidas, la carga de calificaciones por cortes o el cierre de actas?`,
+  3: `¡Hola ${nombre}! Soy el asistente estudiantil del SGUMS. Puedo orientarte sobre tu pensum, inscripción de materias, horario, récord académico y descarga de constancias. ¿Qué necesitas consultar?`,
+}[roleId] || `¡Hola ${nombre}! Soy el asistente oficial del SGUMS. ¿En qué puedo ayudarte hoy?`);
 
 const ROLE_LABELS = {
   1: 'Asistente Admin',

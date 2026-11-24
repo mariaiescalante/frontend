@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
@@ -9,13 +9,16 @@ import './Layout.css';
 const ROLE_MAP = {
   Admin: 1,
   Administrador: 1,
+  'Control de Estudios': 1,
+  'Gestión Académica': 1,
   Docente: 2,
   Estudiante: 3,
 };
 
 export default function AppLayout() {
   const { isAuthenticated, loading, user } = useAuth();
-  const roleId = ROLE_MAP[user?.role] || 3;
+  const location = useLocation();
+  const roleId = ROLE_MAP[user?.role] || ([1, 4, 5].includes(Number(user?.id_role)) ? 1 : Number(user?.id_role) || 3);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Show a gorgeous cosmic loader while authenticating/restoring session
@@ -62,9 +65,14 @@ export default function AppLayout() {
     return <Navigate to="/login" replace />;
   }
 
+  // Enforce mandatory password change for users with temporary password
+  if (user?.must_change_password && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+
   return (
     <div className="app-container">
-      {mobileSidebarOpen ? (
+      {!user?.must_change_password && mobileSidebarOpen ? (
         <button
           type="button"
           className="sgums-sidebar-backdrop"
@@ -72,7 +80,9 @@ export default function AppLayout() {
           onClick={() => setMobileSidebarOpen(false)}
         />
       ) : null}
-      <Sidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
+      {!user?.must_change_password && (
+        <Sidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
+      )}
       <div className="sgums-main-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Navbar onMenuClick={() => setMobileSidebarOpen((current) => !current)} />
         <main className="sgums-content-container">
@@ -80,7 +90,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
-      <ChatbotUniversitario roleId={roleId} userName={user?.name} />
+      {!user?.must_change_password && <ChatbotUniversitario roleId={roleId} userName={user?.name} />}
     </div>
   );
 }

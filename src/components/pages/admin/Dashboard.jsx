@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ClipboardList, GraduationCap, LayoutGrid, FileCheck, Clock, Calendar, Trash2, PlusCircle, PenTool } from 'lucide-react';
-import { AdminPageShell, ActionButton, SectionCard } from './AdminPageShell';
-import { getAdminDashboard } from '../../../services/dashboardService';
+import { Users, ClipboardList, GraduationCap, LayoutGrid, FileCheck, Clock, Calendar, Trash2, PlusCircle, PenTool, Database, Download, CheckCircle2, FileCode2, FileJson } from 'lucide-react';
+import { AdminPageShell, ActionButton, SectionCard, Modal } from './AdminPageShell';
+import { getAdminDashboard, getBackupSummary, exportDatabaseBackup } from '../../../services/dashboardService';
 
 
 const ActivityItem = ({ title, description, time, borderLeftColor, icon: Icon, iconBg, onClick }) => (
@@ -86,6 +86,56 @@ export default function AdminDashboard() {
   const [error, setError] = useState(null);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [selectedPeriodIndex, setSelectedPeriodIndex] = useState(0);
+
+  // Estados para Respaldo / Exportación de Base de Datos
+  const [backupModalOpen, setBackupModalOpen] = useState(false);
+  const [backupSummary, setBackupSummary] = useState(null);
+  const [backupSummaryLoading, setBackupSummaryLoading] = useState(false);
+  const [backupFormat, setBackupFormat] = useState('sql');
+  const [includeAuditLogs, setIncludeAuditLogs] = useState(true);
+  const [exportingBackup, setExportingBackup] = useState(false);
+  const [backupMessage, setBackupMessage] = useState(null);
+
+  const openBackupModal = async () => {
+    setBackupModalOpen(true);
+    setBackupMessage(null);
+    setBackupSummaryLoading(true);
+    try {
+      const summary = await getBackupSummary();
+      setBackupSummary(summary);
+    } catch (err) {
+      setBackupMessage({
+        type: 'error',
+        text: err.message || 'No se pudo obtener el resumen de la base de datos.',
+      });
+    } finally {
+      setBackupSummaryLoading(false);
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    setExportingBackup(true);
+    setBackupMessage(null);
+    try {
+      const { filename } = await exportDatabaseBackup({
+        format: backupFormat,
+        includeAudit: includeAuditLogs,
+      });
+      setBackupMessage({
+        type: 'success',
+        text: `Respaldo generado y descargado correctamente (${filename}).`,
+      });
+      // Recargar actividad reciente del dashboard para reflejar la auditoría
+      loadData();
+    } catch (err) {
+      setBackupMessage({
+        type: 'error',
+        text: err.message || 'Ocurrió un error al exportar la base de datos.',
+      });
+    } finally {
+      setExportingBackup(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -213,6 +263,11 @@ export default function AdminDashboard() {
       title="Visión general del panel de administración"
       subtitle="Métricas generales, actividad reciente del sistema y tareas administrativas pendientes."
       metrics={metrics}
+      actions={
+        <ActionButton variant="accent" icon={Database} onClick={openBackupModal}>
+          Exportar Base de Datos
+        </ActionButton>
+      }
     >
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
         <SectionCard title="Actividad reciente del sistema" description="Últimas acciones relevantes del entorno académico.">
@@ -796,6 +851,226 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal de Exportación y Respaldo de Base de Datos */}
+      <Modal
+        open={backupModalOpen}
+        onClose={() => !exportingBackup && setBackupModalOpen(false)}
+        title="Respaldo y Exportación de Base de Datos"
+        subtitle="Genera una copia completa de seguridad (Estructura DDL + Datos DML) de PostgreSQL."
+        footer={
+          <>
+            <ActionButton
+              variant="secondary"
+              onClick={() => setBackupModalOpen(false)}
+              disabled={exportingBackup}
+            >
+              Cerrar
+            </ActionButton>
+            <ActionButton
+              variant="accent"
+              icon={Download}
+              onClick={handleDownloadBackup}
+              disabled={exportingBackup || backupSummaryLoading}
+            >
+              {exportingBackup
+                ? 'Generando respaldo...'
+                : `Exportar y Descargar (.${backupFormat.toUpperCase()})`}
+            </ActionButton>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          {/* Resumen general de la Base de Datos */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: '12px',
+            }}
+          >
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px 16px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Motor / Esquema</span>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#051124', marginTop: '4px' }}>
+                {backupSummaryLoading ? 'Consultando...' : `${backupSummary?.dialect || 'PostgreSQL'} (${backupSummary?.database || 'sgums'})`}
+              </div>
+            </div>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px 16px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Tablas Activas</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#051124', marginTop: '4px' }}>
+                {backupSummaryLoading ? '...' : backupSummary?.totalTables ?? 24}
+              </div>
+            </div>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px 16px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Registros Totales</span>
+              <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#059669', marginTop: '4px' }}>
+                {backupSummaryLoading ? '...' : (backupSummary?.totalRecords ?? 0).toLocaleString()}
+              </div>
+            </div>
+          </div>
+
+          {/* Selección de formato */}
+          <div>
+            <span style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '10px' }}>
+              Formato de Exportación
+            </span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setBackupFormat('sql')}
+                style={{
+                  textAlign: 'left',
+                  padding: '14px 16px',
+                  borderRadius: '14px',
+                  border: backupFormat === 'sql' ? '2px solid #051124' : '1px solid #cbd5e1',
+                  background: backupFormat === 'sql' ? '#f8fafc' : '#ffffff',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <div style={{ padding: '10px', borderRadius: '10px', background: backupFormat === 'sql' ? '#051124' : '#f1f5f9', color: backupFormat === 'sql' ? '#ffd100' : '#475569', display: 'flex' }}>
+                  <FileCode2 size={20} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, color: '#051124', fontSize: '0.92rem' }}>Script SQL (.sql) — Recomendado</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '3px', lineHeight: 1.4 }}>
+                    Incluye sentencias <code>CREATE TABLE</code>, <code>INSERT INTO</code> ordenadas por llaves foráneas y secuencias para PostgreSQL / pgAdmin.
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setBackupFormat('json')}
+                style={{
+                  textAlign: 'left',
+                  padding: '14px 16px',
+                  borderRadius: '14px',
+                  border: backupFormat === 'json' ? '2px solid #051124' : '1px solid #cbd5e1',
+                  background: backupFormat === 'json' ? '#f8fafc' : '#ffffff',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <div style={{ padding: '10px', borderRadius: '10px', background: backupFormat === 'json' ? '#051124' : '#f1f5f9', color: backupFormat === 'json' ? '#ffd100' : '#475569', display: 'flex' }}>
+                  <FileJson size={20} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, color: '#051124', fontSize: '0.92rem' }}>Respaldo Estructurado (.json)</div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '3px', lineHeight: 1.4 }}>
+                    Exporta metadatos institucionales y todas las tablas en formato JSON estandarizado para auditoría o migración.
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Opción de incluir bitácora */}
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              cursor: 'pointer',
+              fontSize: '0.86rem',
+              color: '#1e293b',
+              fontWeight: 600,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={includeAuditLogs}
+              onChange={(e) => setIncludeAuditLogs(e.target.checked)}
+              style={{ width: '16px', height: '16px', accentColor: '#051124', cursor: 'pointer' }}
+            />
+            <span>Incluir historial de Bitácora de Auditoría (<code>th_audit</code>) en el archivo exportado</span>
+          </label>
+
+          {/* Listado resumido de tablas incluidas */}
+          {backupSummary?.tables && backupSummary.tables.length > 0 && (
+            <div>
+              <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
+                Detalle de Tablas en la Base de Datos ({backupSummary.tables.filter((t) => includeAuditLogs || (t.name !== 'th_audit' && t.name !== 'tm_audit_logs')).length})
+              </span>
+              <div
+                style={{
+                  maxHeight: '190px',
+                  overflowY: 'auto',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  background: '#ffffff',
+                }}
+              >
+                {backupSummary.tables
+                  .filter((t) => includeAuditLogs || (t.name !== 'th_audit' && t.name !== 'tm_audit_logs'))
+                  .map((tbl, idx) => (
+                    <div
+                      key={tbl.name}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '9px 14px',
+                        borderBottom: idx === backupSummary.tables.length - 1 ? 'none' : '1px solid #f1f5f9',
+                        fontSize: '0.82rem',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '6px', color: '#0f172a', fontWeight: 700, fontSize: '0.76rem' }}>
+                          {tbl.name}
+                        </code>
+                        <span style={{ color: '#475569', fontWeight: 600 }}>{tbl.label}</span>
+                      </div>
+                      <span
+                        style={{
+                          fontWeight: 800,
+                          fontSize: '0.76rem',
+                          color: tbl.records > 0 ? '#059669' : '#94a3b8',
+                          background: tbl.records > 0 ? '#ecfdf5' : '#f8fafc',
+                          padding: '2px 8px',
+                          borderRadius: '999px',
+                        }}
+                      >
+                        {tbl.records} {tbl.records === 1 ? 'registro' : 'registros'}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Mensaje de estado (éxito o error) */}
+          {backupMessage && (
+            <div
+              style={{
+                padding: '12px 16px',
+                borderRadius: '12px',
+                background: backupMessage.type === 'success' ? '#ecfdf5' : '#fff1f2',
+                border: `1px solid ${backupMessage.type === 'success' ? '#a7f3d0' : '#fecdd3'}`,
+                color: backupMessage.type === 'success' ? '#065f46' : '#9f1239',
+                fontSize: '0.86rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
+              <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
+              <span>{backupMessage.text}</span>
+            </div>
+          )}
+        </div>
+      </Modal>
     </AdminPageShell>
   );
 }

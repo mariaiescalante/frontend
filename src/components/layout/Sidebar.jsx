@@ -81,22 +81,32 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
     return 'PORTAL ACADÉMICO';
   };
 
-  const getInitials = () => {
-    if (!user) return 'SG';
-    const first = user.name ? user.name[0] : '';
-    const last = user.lastname ? user.lastname[0] : '';
-    return (first + last).toUpperCase();
+  // Determinar la ruta de Dashboard correspondiente según el rol principal del usuario
+  const userDashboardItem = {
+    id: isAdmin
+      ? 'admin:dashboard'
+      : isTeacher
+        ? 'teacher:dashboard'
+        : 'student:dashboard',
+    path: isAdmin
+      ? '/admin/dashboard'
+      : isTeacher
+        ? '/teacher/dashboard'
+        : '/student/dashboard',
+    name: 'Dashboard',
+    icon: LayoutDashboard,
+    visible: hasModulePermission(
+      user,
+      isAdmin ? 'admin:dashboard' : isTeacher ? 'teacher:dashboard' : 'student:dashboard'
+    )
   };
 
   // Sidebar navigation menu items based on granular permissions
   const menuItems = [
-    {
-      id: 'admin:dashboard',
-      path: '/admin/dashboard',
-      name: 'Dashboard',
-      icon: LayoutDashboard,
-      visible: hasModulePermission(user, 'admin:dashboard')
-    },
+    // El Dashboard del usuario SIEMPRE es el primer elemento de la barra de navegación
+    userDashboardItem,
+
+    // Admin Modules
     {
       id: 'admin:users',
       path: '/admin/users',
@@ -174,48 +184,8 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
       icon: History,
       visible: hasModulePermission(user, 'admin:history')
     },
-    {
-      id: 'teacher:dashboard',
-      path: '/teacher/dashboard',
-      name: 'Dashboard',
-      icon: LayoutDashboard,
-      visible: hasModulePermission(user, 'teacher:dashboard')
-    },
-    {
-      id: 'teacher:subjects',
-      path: '/teacher/subjects',
-      name: 'Asignaturas Impartidas',
-      icon: BookOpen,
-      visible: hasModulePermission(user, 'teacher:subjects')
-    },
-    {
-      id: 'teacher:students',
-      path: '/teacher/students',
-      name: 'Estudiantes Inscritos',
-      icon: Users,
-      visible: hasModulePermission(user, 'teacher:students')
-    },
-    {
-      id: 'teacher:records',
-      path: '/teacher/records',
-      name: 'Cerrar Actas',
-      icon: FileLock2,
-      visible: hasModulePermission(user, 'teacher:records')
-    },
-    {
-      id: 'teacher:history',
-      path: '/teacher/history',
-      name: 'Historial Impartido',
-      icon: History,
-      visible: hasModulePermission(user, 'teacher:history')
-    },
-    {
-      id: 'student:dashboard',
-      path: '/student/dashboard',
-      name: 'Dashboard',
-      icon: LayoutDashboard,
-      visible: hasModulePermission(user, 'student:dashboard')
-    },
+
+    // Student Modules
     {
       id: 'student:profile',
       path: '/student/profile',
@@ -257,6 +227,36 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
       name: 'Constancias y Reportes',
       icon: FileLock2,
       visible: hasModulePermission(user, 'student:documents')
+    },
+
+    // Teacher Modules (si tiene módulos docentes como asignaturas impartidas, se muestran en su sección ordenada)
+    {
+      id: 'teacher:subjects',
+      path: '/teacher/subjects',
+      name: 'Asignaturas Impartidas',
+      icon: BookOpen,
+      visible: hasModulePermission(user, 'teacher:subjects')
+    },
+    {
+      id: 'teacher:students',
+      path: '/teacher/students',
+      name: 'Estudiantes Inscritos',
+      icon: Users,
+      visible: hasModulePermission(user, 'teacher:students')
+    },
+    {
+      id: 'teacher:records',
+      path: '/teacher/records',
+      name: 'Cerrar Actas',
+      icon: ClipboardCheck,
+      visible: hasModulePermission(user, 'teacher:records')
+    },
+    {
+      id: 'teacher:history',
+      path: '/teacher/history',
+      name: 'Historial Impartido',
+      icon: History,
+      visible: hasModulePermission(user, 'teacher:history')
     }
   ];
 
@@ -339,35 +339,8 @@ export default function Sidebar({ mobileOpen = false, onMobileClose }) {
           })}
       </nav>
 
-      {/* Sidebar Footer details */}
+      {/* Sidebar Footer actions */}
       <div className="sgums-sidebar-footer" style={{ alignItems: isCompact ? 'center' : 'stretch' }}>
-        {user && !isCompact && (
-          <div className="sgums-sidebar-profile">
-            <div className="sgums-sidebar-avatar">
-              {getInitials()}
-            </div>
-            <div className="sgums-sidebar-profile-info">
-              <span className="sgums-sidebar-profile-name">
-                {user.name} {user.lastname}
-              </span>
-              <span className="sgums-sidebar-profile-role">
-                {user.role}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {user && isCompact && (
-          <div
-            className="sgums-sidebar-avatar"
-            title={`${user.name} ${user.lastname} (${user.role})`}
-            style={{ margin: '8px auto' }}
-          >
-            {getInitials()}
-          </div>
-        )}
-
-        {/* Action button container */}
         <div className="sgums-sidebar-footer-actions" style={{ alignItems: isCompact ? 'center' : 'stretch' }}>
           <NavLink
             to="/change-password"

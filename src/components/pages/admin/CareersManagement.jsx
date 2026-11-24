@@ -3,6 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Search, School, BookOpenCheck, Plus } from 'lucide-react';
 import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, ProgressBar, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
+import {
+  LIMITS,
+  sanitizeCode,
+  sanitizeLettersOnly,
+  validateCodeField,
+  validateCareerTerms
+} from '../../../utils/validation';
 
 const decorateCareer = (c) => {
   const code = c.code_career || '';
@@ -56,10 +63,12 @@ export default function CareersManagement() {
   const [query, setQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCareer, setEditingCareer] = useState(null);
+  const [formError, setFormError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     code_career: '',
     name_career: '',
-    total_semesters: 10,
+    total_semesters: 8,
     academic_regime: 'Semestral',
     is_active: true
   });
@@ -90,10 +99,11 @@ export default function CareersManagement() {
 
   const handleNewCareer = () => {
     setEditingCareer(null);
+    setFormError('');
     setForm({
       code_career: '',
       name_career: '',
-      total_semesters: 10,
+      total_semesters: 8,
       academic_regime: 'Semestral',
       is_active: true
     });
@@ -101,12 +111,15 @@ export default function CareersManagement() {
   };
 
   const handleEditCareer = (career) => {
+    const regime = career.regime || 'Semestral';
+    const defaultTerms = regime === 'Trimestral' ? 12 : ([8, 12].includes(Number(career.semesters)) ? Number(career.semesters) : 8);
     setEditingCareer(career);
+    setFormError('');
     setForm({
       code_career: career.code,
       name_career: career.name,
-      total_semesters: career.semesters,
-      academic_regime: career.regime || 'Semestral',
+      total_semesters: defaultTerms,
+      academic_regime: regime,
       is_active: career.status === 'Activa'
     });
     setModalOpen(true);
@@ -114,19 +127,34 @@ export default function CareersManagement() {
 
   const handleSave = async () => {
     try {
+      setFormError('');
+      const codeErr = validateCodeField(form.code_career, 'El código de la carrera');
+      if (codeErr) {
+        setFormError(codeErr);
+        return;
+      }
+
+      const cleanName = form.name_career.trim();
+      if (cleanName.length < LIMITS.TITLE_MIN || cleanName.length > LIMITS.CAREER_NAME_MAX) {
+        setFormError(`El nombre de la carrera debe tener entre ${LIMITS.TITLE_MIN} y ${LIMITS.CAREER_NAME_MAX} letras.`);
+        return;
+      }
+
+      const termsErr = validateCareerTerms(form.total_semesters, form.academic_regime || 'Semestral');
+      if (termsErr) {
+        setFormError(termsErr);
+        return;
+      }
+
       const payload = {
-        code_career: form.code_career.trim(),
-        name_career: form.name_career.trim(),
+        code_career: form.code_career.trim().toUpperCase(),
+        name_career: cleanName,
         total_semesters: Number(form.total_semesters),
         academic_regime: form.academic_regime || 'Semestral',
         is_active: form.is_active
       };
 
-      if (!payload.code_career || !payload.name_career || !payload.total_semesters) {
-        alert('Por favor complete todos los campos.');
-        return;
-      }
-
+      setSubmitting(true);
       if (editingCareer) {
         await api.put(`/careers/${editingCareer.id}`, payload);
       } else {
@@ -137,7 +165,9 @@ export default function CareersManagement() {
       loadCareers();
     } catch (err) {
       console.error('Error saving career:', err);
-      alert(err.message || 'Error al guardar la carrera');
+      setFormError(err.message || 'Error al guardar la carrera');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -256,25 +286,49 @@ export default function CareersManagement() {
         onClose={() => setModalOpen(false)}
         footer={
           <>
-            <ActionButton variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</ActionButton>
-            <ActionButton variant="accent" onClick={handleSave}>Guardar carrera</ActionButton>
+            <ActionButton variant="ghost" onClick={() => setModalOpen(false)} disabled={submitting}>Cancelar</ActionButton>
+            <ActionButton variant="accent" onClick={handleSave} loading={submitting}>
+              {submitting ? 'Guardando...' : 'Guardar carrera'}
+            </ActionButton>
           </>
         }
       >
+        {formError && (
+          <div style={{ marginBottom: '14px', padding: '12px 14px', borderRadius: '12px', background: '#fff1f2', color: '#b91c1c', border: '1px solid #fecdd3', fontSize: '0.9rem', fontWeight: 600 }}>
+            {formError}
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Código de la Carrera</span>
-            <input className="form-input" value={form.code_career} onChange={e => setForm({...form, code_career: e.target.value})} placeholder="Código (ej: ING-SIS)" disabled={!!editingCareer} />
+            <input
+              className="form-input"
+              maxLength={LIMITS.CODE_MAX}
+              value={form.code_career}
+              onChange={e => setForm({ ...form, code_career: sanitizeCode(e.target.value, LIMITS.CODE_MAX) })}
+              placeholder="Código (ej: ING-SIS)"
+              disabled={!!editingCareer}
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Nombre</span>
-            <input className="form-input" value={form.name_career} onChange={e => setForm({...form, name_career: e.target.value})} placeholder="Nombre (ej: Ingeniería en Sistemas)" />
+            <input
+              className="form-input"
+              maxLength={LIMITS.CAREER_NAME_MAX}
+              value={form.name_career}
+              onChange={e => setForm({ ...form, name_career: sanitizeLettersOnly(e.target.value, LIMITS.CAREER_NAME_MAX) })}
+              placeholder="Nombre (ej: Ingeniería en Sistemas)"
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Régimen Académico</span>
             <CustomSelect
               value={form.academic_regime}
-              onChange={value => setForm({...form, academic_regime: value})}
+              onChange={value => setForm({
+                ...form,
+                academic_regime: value,
+                total_semesters: value === 'Trimestral' ? 12 : ([8, 12].includes(Number(form.total_semesters)) ? Number(form.total_semesters) : 8)
+              })}
               options={[
                 { value: 'Semestral', label: 'Semestral' },
                 { value: 'Trimestral', label: 'Trimestral' }
@@ -285,7 +339,18 @@ export default function CareersManagement() {
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>
               {form.academic_regime === 'Trimestral' ? 'Cantidad de Trimestres' : 'Cantidad de Semestres'}
             </span>
-            <input className="form-input" type="number" min="1" max="20" value={form.total_semesters} onChange={e => setForm({...form, total_semesters: e.target.value})} placeholder="Ej: 12" />
+            <CustomSelect
+              value={String(form.total_semesters)}
+              onChange={value => setForm({ ...form, total_semesters: Number(value) })}
+              options={
+                form.academic_regime === 'Trimestral'
+                  ? [{ value: '12', label: '12 Trimestres' }]
+                  : [
+                      { value: '8', label: '8 Semestres' },
+                      { value: '12', label: '12 Semestres' }
+                    ]
+              }
+            />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: 'span 2' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Estado</span>

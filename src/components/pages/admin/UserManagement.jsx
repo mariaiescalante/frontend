@@ -5,6 +5,20 @@ import { careerCatalog } from './adminSeedData';
 import { registerUser } from '../../../services/auth';
 import api from '../../../services/api';
 import { MODULE_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS } from '../../../constants/permissions';
+import {
+  LIMITS,
+  sanitizeLettersOnly,
+  sanitizeDigitsOnly,
+  sanitizeDocumentNumber,
+  sanitizeEmail,
+  sanitizeUsername,
+  validatePersonName,
+  validateEmailField,
+  validateDocumentField,
+  validatePhoneField,
+  getMaxBirthDate,
+  validateBirthDate
+} from '../../../utils/validation';
 
 const defaultTeacherTitleOptions = ['Licenciado', 'Ingeniero', 'MSc', 'PhD', 'Otro'];
 const documentTypeOptions = [
@@ -176,13 +190,13 @@ const buildLocalRecord = (form) => {
 
 const isValidEmail = (value) => /^\S+@\S+\.\S+$/.test(value.trim());
 
-const normalizeDocumentNumber = (value) => value.replace(/\D/g, '').slice(0, 8);
+const normalizeDocumentNumber = (value, type = 'V') => sanitizeDocumentNumber(value, type);
 
-const normalizePhoneNumber = (value) => value.replace(/\D/g, '').slice(0, 11);
+const normalizePhoneNumber = (value) => sanitizeDigitsOnly(value, LIMITS.PHONE_MAX);
 
 const formatDocumentId = (type, value) => {
-  const documentNumber = normalizeDocumentNumber(value);
-  const documentType = (type || '').toUpperCase();
+  const documentType = (type || 'V').toUpperCase();
+  const documentNumber = normalizeDocumentNumber(value, documentType);
   return documentNumber ? `${documentType}-${documentNumber}` : `${documentType}-`;
 };
 
@@ -447,8 +461,10 @@ export default function UserManagement() {
   const totalActiveUsers = totalItems; // Just showing total for current tab
 
   const careerOptions = careerList.length > 0
-    ? careerList.map((c) => c.name_career)
+    ? careerList.map((c) => (typeof c === 'string' ? c : c?.name_career)).filter(Boolean)
     : careerCatalog.map((career) => career.name);
+
+  const [modalTab, setModalTab] = useState('datos');
 
   const openUserModal = (type) => {
     const nextType = type || (
@@ -461,35 +477,45 @@ export default function UserManagement() {
     setUserType(nextType);
     setFormError('');
     setShowPassword(false);
+    setModalTab('datos');
     setModalOpen(true);
   };
 
-  const handleFieldChange = (field, value) => {
+  const handleFieldChange = (field, rawValue) => {
+    let value = rawValue;
+
+    if (field === 'firstName' || field === 'secondName' || field === 'lastName' || field === 'secondLastName') {
+      value = sanitizeLettersOnly(rawValue, LIMITS.NAME_MAX);
+    } else if (field === 'documentNumber') {
+      value = sanitizeDocumentNumber(rawValue, form.documentType);
+    } else if (field === 'documentType') {
+      value = rawValue;
+    } else if (field === 'phone') {
+      value = sanitizeDigitsOnly(rawValue, LIMITS.PHONE_MAX);
+    } else if (field === 'email') {
+      value = sanitizeEmail(rawValue, LIMITS.EMAIL_MAX);
+    } else if (field === 'username') {
+      value = sanitizeUsername(rawValue, LIMITS.USERNAME_MAX);
+    }
+
+    const updater = (currentForm) => {
+      const next = { ...currentForm, [field]: value };
+      if (field === 'documentType') {
+        next.documentNumber = sanitizeDocumentNumber(currentForm.documentNumber, value);
+      }
+      return next;
+    };
+
     if (userType === 'student') {
-      setStudentForm((currentForm) => ({
-        ...currentForm,
-        [field]: value
-      }));
+      setStudentForm(updater);
     } else if (userType === 'teacher') {
-      setTeacherForm((currentForm) => ({
-        ...currentForm,
-        [field]: value
-      }));
+      setTeacherForm(updater);
     } else if (userType === 'control_estudios') {
-      setControlEstudiosForm((currentForm) => ({
-        ...currentForm,
-        [field]: value
-      }));
+      setControlEstudiosForm(updater);
     } else if (userType === 'gestion_academica') {
-      setGestionAcademicaForm((currentForm) => ({
-        ...currentForm,
-        [field]: value
-      }));
+      setGestionAcademicaForm(updater);
     } else if (userType === 'admin') {
-      setAdminForm((currentForm) => ({
-        ...currentForm,
-        [field]: value
-      }));
+      setAdminForm(updater);
     }
   };
 
@@ -511,12 +537,36 @@ export default function UserManagement() {
   };
 
   const validateForm = () => {
-    if (!form.firstName.trim()) return 'El primer nombre es obligatorio.';
-    if (!form.lastName.trim()) return 'El primer apellido es obligatorio.';
-    if (!form.email.trim()) return 'El correo es obligatorio.';
-    if (!isValidEmail(form.email)) return 'El correo no tiene un formato válido.';
-    if (normalizeDocumentNumber(form.documentNumber).length !== 8) return 'La cédula debe tener 8 dígitos.';
-    if (normalizePhoneNumber(form.phone).length !== 11) return 'El teléfono debe tener 11 dígitos.';
+    const firstNameErr = validatePersonName(form.firstName, 'El primer nombre', true);
+    if (firstNameErr) return firstNameErr;
+
+    const secondNameErr = validatePersonName(form.secondName, 'El segundo nombre', false);
+    if (secondNameErr) return secondNameErr;
+
+    const lastNameErr = validatePersonName(form.lastName, 'El primer apellido', true);
+    if (lastNameErr) return lastNameErr;
+
+    const secondLastNameErr = validatePersonName(form.secondLastName, 'El segundo apellido', false);
+    if (secondLastNameErr) return secondLastNameErr;
+
+    const birthDateErr = validateBirthDate(form.birthDate, false, LIMITS.MIN_AGE);
+    if (birthDateErr) return birthDateErr;
+
+    const emailErr = validateEmailField(form.email, true);
+    if (emailErr) return emailErr;
+
+    if (!editingUser) {
+      const docErr = validateDocumentField(form.documentNumber, form.documentType);
+      if (docErr) return docErr;
+    }
+
+    const phoneErr = validatePhoneField(form.phone, true);
+    if (phoneErr) return phoneErr;
+
+    if (form.username.trim() && form.username.trim().length < LIMITS.USERNAME_MIN) {
+      return `El nombre de usuario debe tener entre ${LIMITS.USERNAME_MIN} y ${LIMITS.USERNAME_MAX} caracteres.`;
+    }
+
     const pwd = form.password.trim();
     if (pwd && pwd.length < 8) {
       return 'La contraseña debe tener al menos 8 caracteres.';
@@ -538,6 +588,7 @@ export default function UserManagement() {
     setEditingUser(null);
     setFormError('');
     setShowPassword(false);
+    setModalTab('datos');
   };
 
   const handleStartEdit = (record) => {
@@ -605,6 +656,7 @@ export default function UserManagement() {
 
     setFormError('');
     setShowPassword(false);
+    setModalTab('datos');
     setModalOpen(true);
   };
 
@@ -742,6 +794,7 @@ export default function UserManagement() {
 
     if (validationMessage) {
       setFormError(validationMessage);
+      setModalTab('datos');
       return;
     }
 
@@ -1083,507 +1136,582 @@ export default function UserManagement() {
           </div>
         ) : null}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Primer nombre</span>
-            <input className="form-input" value={form.firstName} onChange={(event) => handleFieldChange('firstName', event.target.value)} />
-          </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Segundo nombre</span>
-            <input className="form-input" value={form.secondName} onChange={(event) => handleFieldChange('secondName', event.target.value)} />
-          </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Primer apellido</span>
-            <input className="form-input" value={form.lastName} onChange={(event) => handleFieldChange('lastName', event.target.value)} />
-          </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Segundo apellido</span>
-            <input className="form-input" value={form.secondLastName} onChange={(event) => handleFieldChange('secondLastName', event.target.value)} />
-          </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Fecha de nacimiento</span>
-            <input className="form-input" type="date" value={form.birthDate} onChange={(event) => handleFieldChange('birthDate', event.target.value)} />
-          </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Correo</span>
-            <input className="form-input" type="email" value={form.email} onChange={(event) => handleFieldChange('email', event.target.value)} />
-          </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Tipo de documento</span>
-            <CustomSelect
-              value={form.documentType}
-              onChange={(value) => handleFieldChange('documentType', value)}
-              options={documentTypeOptions}
-            />
-          </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Número de documento / cédula</span>
-            <input className="form-input" value={form.documentNumber} onChange={(event) => handleFieldChange('documentNumber', event.target.value)} />
-          </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Teléfono</span>
-            <input className="form-input" value={form.phone} onChange={(event) => handleFieldChange('phone', event.target.value)} />
-          </label>
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Username</span>
-            <input className="form-input" value={form.username} onChange={(event) => handleFieldChange('username', event.target.value)} />
-          </label>
-          {editingUser && (
-            <label className="form-group" style={{ marginBottom: 0, opacity: 0.6 }}>
-              <span className="form-label">Contraseña (Bloqueada en edición)</span>
-              <input className="form-input" type="password" value="••••••••" disabled style={{ cursor: 'not-allowed' }} />
-            </label>
-          )}
+        {/* Pestañas superiores del Modal: 1. Datos Personales | 2. Permisos y Módulos */}
+        <div
+          style={{
+            display: 'flex',
+            gap: '8px',
+            padding: '5px',
+            background: '#f1f5f9',
+            borderRadius: '14px',
+            marginBottom: '18px',
+            border: '1px solid #e2e8f0',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setModalTab('datos')}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              border: modalTab === 'datos' ? '1px solid #e2e8f0' : '1px solid transparent',
+              background: modalTab === 'datos' ? '#ffffff' : 'transparent',
+              color: modalTab === 'datos' ? '#0f172a' : '#64748b',
+              fontSize: '0.88rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: modalTab === 'datos' ? '0 2px 6px rgba(15, 23, 42, 0.06)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Users size={16} />
+            <span>1. Datos Personales</span>
+          </button>
 
-          {userType === 'student' && (
-            <label className="form-group" style={{ marginBottom: 0 }}>
-              <span className="form-label">Carrera</span>
-              <CustomSelect
-                value={form.career}
-                onChange={(value) => handleFieldChange('career', value)}
-                options={[
-                  { value: '', label: 'Seleccionar' },
-                  ...careerOptions.map((option) => ({ value: option, label: option }))
-                ]}
-              />
-            </label>
-          )}
-          {userType === 'teacher' && (
-            <label className="form-group" style={{ marginBottom: 0 }}>
-              <span className="form-label">Título académico</span>
-              <CustomSelect
-                value={form.academicTitle}
-                onChange={(value) => handleFieldChange('academicTitle', value)}
-                options={academicTitles.map((option) => ({ value: option, label: option }))}
-              />
-
-            </label>
-          )}
-
-          <label className="form-group" style={{ marginBottom: 0 }}>
-            <span className="form-label">Estado</span>
-            <CustomSelect
-              value={form.status || 'Activo'}
-              onChange={(value) => handleFieldChange('status', value)}
-              options={[
-                { value: 'Activo', label: 'Activo' },
-                { value: 'Inactivo', label: 'Inactivo' },
-                { value: 'Bloqueado', label: 'Bloqueado' }
-              ]}
-            />
-          </label>
-
-          <label className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
-            <span className="form-label">Tipo de registro</span>
-            <input
-              className="form-input"
-              value={
-                userType === 'student' ? 'Estudiante' :
-                userType === 'teacher' ? 'Docente' :
-                userType === 'admin' ? 'Administrador' :
-                userType === 'control_estudios' ? 'Control de Estudios' :
-                'Gestión Académica'
-              }
-              disabled
-            />
-          </label>
+          <button
+            type="button"
+            onClick={() => setModalTab('permisos')}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              border: modalTab === 'permisos' ? '1px solid #e2e8f0' : '1px solid transparent',
+              background: modalTab === 'permisos' ? '#ffffff' : 'transparent',
+              color: modalTab === 'permisos' ? '#0f172a' : '#64748b',
+              fontSize: '0.88rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: modalTab === 'permisos' ? '0 2px 6px rgba(15, 23, 42, 0.06)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <Shield size={16} />
+            <span>2. Permisos y Módulos</span>
+            <span
+              style={{
+                background: modalTab === 'permisos' ? '#0f172a' : '#e2e8f0',
+                color: modalTab === 'permisos' ? '#ffffff' : '#475569',
+                fontSize: '0.73rem',
+                fontWeight: 800,
+                padding: '2px 8px',
+                borderRadius: '999px',
+              }}
+            >
+              {(form.permissions || []).length}
+            </span>
+          </button>
         </div>
 
-        {/* Permissions & Module Access Section */}
-        <div style={{
-          marginTop: '24px',
-          padding: '24px',
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '18px',
-          boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)'
-        }}>
-          {/* Header */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-            gap: '16px',
-            marginBottom: '20px',
-            paddingBottom: '16px',
-            borderBottom: '1px solid #e2e8f0'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                width: '42px',
-                height: '42px',
+        {modalTab === 'datos' ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+              <label className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Primer nombre</span>
+                <input
+                  className="form-input"
+                  maxLength={LIMITS.NAME_MAX}
+                  placeholder="Solo letras"
+                  value={form.firstName}
+                  onChange={(event) => handleFieldChange('firstName', event.target.value)}
+                />
+              </label>
+              <label className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Segundo nombre</span>
+                <input
+                  className="form-input"
+                  maxLength={LIMITS.NAME_MAX}
+                  placeholder="Opcional"
+                  value={form.secondName}
+                  onChange={(event) => handleFieldChange('secondName', event.target.value)}
+                />
+              </label>
+              <label className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Primer apellido</span>
+                <input
+                  className="form-input"
+                  maxLength={LIMITS.NAME_MAX}
+                  placeholder="Solo letras"
+                  value={form.lastName}
+                  onChange={(event) => handleFieldChange('lastName', event.target.value)}
+                />
+              </label>
+              <label className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Segundo apellido</span>
+                <input
+                  className="form-input"
+                  maxLength={LIMITS.NAME_MAX}
+                  placeholder="Opcional"
+                  value={form.secondLastName}
+                  onChange={(event) => handleFieldChange('secondLastName', event.target.value)}
+                />
+              </label>
+              <label className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Fecha de nacimiento</span>
+                <input
+                  className="form-input"
+                  type="date"
+                  min="1920-01-01"
+                  max={getMaxBirthDate(LIMITS.MIN_AGE)}
+                  value={form.birthDate}
+                  onChange={(event) => handleFieldChange('birthDate', event.target.value)}
+                />
+              </label>
+              <label className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Correo</span>
+                <input
+                  className="form-input"
+                  type="email"
+                  maxLength={LIMITS.EMAIL_MAX}
+                  placeholder="usuario@dominio.com"
+                  value={form.email}
+                  onChange={(event) => handleFieldChange('email', event.target.value)}
+                />
+              </label>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Tipo de documento</span>
+                <CustomSelect
+                  value={form.documentType}
+                  onChange={(value) => handleFieldChange('documentType', value)}
+                  options={documentTypeOptions}
+                />
+              </div>
+              <label className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Número de documento / cédula</span>
+                <input
+                  className="form-input"
+                  inputMode={form.documentType === 'P' ? 'text' : 'numeric'}
+                  maxLength={form.documentType === 'P' ? LIMITS.PASSPORT_MAX : LIMITS.DOC_MAX}
+                  placeholder={form.documentType === 'P' ? 'Pasaporte' : 'Ej: 12345678'}
+                  disabled={Boolean(editingUser)}
+                  value={form.documentNumber}
+                  onChange={(event) => handleFieldChange('documentNumber', event.target.value)}
+                />
+              </label>
+              <label className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Teléfono</span>
+                <input
+                  className="form-input"
+                  inputMode="numeric"
+                  maxLength={LIMITS.PHONE_MAX}
+                  placeholder="Ej: 04141234567"
+                  value={form.phone}
+                  onChange={(event) => handleFieldChange('phone', event.target.value)}
+                />
+              </label>
+              <label className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Username</span>
+                <input
+                  className="form-input"
+                  maxLength={LIMITS.USERNAME_MAX}
+                  placeholder="usuario_123"
+                  value={form.username}
+                  onChange={(event) => handleFieldChange('username', event.target.value)}
+                />
+              </label>
+              {editingUser ? (
+                <label key="field-password-locked" className="form-group" style={{ marginBottom: 0, opacity: 0.6 }}>
+                  <span className="form-label">Contraseña (Bloqueada en edición)</span>
+                  <input className="form-input" type="password" value="••••••••" disabled style={{ cursor: 'not-allowed' }} />
+                </label>
+              ) : null}
+
+              <div
+                className="form-group"
+                style={{ marginBottom: 0, display: userType === 'student' ? 'block' : 'none' }}
+              >
+                <span className="form-label">Carrera</span>
+                <CustomSelect
+                  value={form.career}
+                  onChange={(value) => handleFieldChange('career', value)}
+                  options={[
+                    { value: '', label: 'Seleccionar' },
+                    ...careerOptions.map((option) => ({ value: option, label: option }))
+                  ]}
+                />
+              </div>
+              <div
+                className="form-group"
+                style={{ marginBottom: 0, display: userType === 'teacher' ? 'block' : 'none' }}
+              >
+                <span className="form-label">Título académico</span>
+                <CustomSelect
+                  value={form.academicTitle}
+                  onChange={(value) => handleFieldChange('academicTitle', value)}
+                  options={academicTitles.map((option) => ({ value: option, label: option }))}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <span className="form-label">Estado</span>
+                <CustomSelect
+                  value={form.status || 'Activo'}
+                  onChange={(value) => handleFieldChange('status', value)}
+                  options={[
+                    { value: 'Activo', label: 'Activo' },
+                    { value: 'Inactivo', label: 'Inactivo' },
+                    { value: 'Bloqueado', label: 'Bloqueado' }
+                  ]}
+                />
+              </div>
+
+              <label className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+                <span className="form-label">Tipo de registro</span>
+                <input
+                  className="form-input"
+                  value={
+                    userType === 'student' ? 'Estudiante' :
+                    userType === 'teacher' ? 'Docente' :
+                    userType === 'admin' ? 'Administrador' :
+                    userType === 'control_estudios' ? 'Control de Estudios' :
+                    'Gestión Académica'
+                  }
+                  disabled
+                />
+              </label>
+            </div>
+
+            {/* Barra de resumen rápido de permisos al final de Datos Personales */}
+            <div
+              style={{
+                marginTop: '18px',
+                padding: '12px 16px',
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, #051124 0%, #1e3a8a 100%)',
-                color: '#ffd100',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 10px rgba(5, 17, 36, 0.15)'
-              }}>
-                <Shield size={22} />
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '10px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.84rem', color: '#475569', fontWeight: 600 }}>
+                <Shield size={16} color="#0f172a" />
+                <span>
+                  Permisos asignados automáticamente para este rol:{' '}
+                  <strong style={{ color: '#0f172a' }}>{(form.permissions || []).length} módulos activos</strong>
+                </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setModalTab('permisos')}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                }}
+              >
+                Personalizar permisos →
+              </button>
+            </div>
+          </>
+        ) : (
+          /* Pestaña 2: Permisos y Módulos de Acceso (Diseño monocromático y limpio) */
+          <div
+            style={{
+              padding: '20px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '16px',
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: '14px',
+                marginBottom: '16px',
+                paddingBottom: '14px',
+                borderBottom: '1px solid #e2e8f0',
+              }}
+            >
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
                   Permisos y Módulos de Acceso
                 </h4>
-                <p style={{ margin: '3px 0 0', fontSize: '0.86rem', color: '#64748b' }}>
-                  Selecciona con total libertad qué módulos verá y podrá gestionar este usuario en el sistema.
+                <p style={{ margin: '3px 0 0', fontSize: '0.84rem', color: '#64748b' }}>
+                  Marca o desmarca los módulos a los que tendrá acceso este usuario.
                 </p>
+              </div>
+
+              {/* Quick Global Actions */}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleResetRolePermissions}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                  title="Restablece los permisos originales del rol seleccionado"
+                >
+                  ↺ Predeterminados del rol
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearPermissions}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#64748b',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Desmarcar todo
+                </button>
               </div>
             </div>
 
-            {/* Quick Global Actions */}
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={handleResetRolePermissions}
-                style={{
-                  padding: '7px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid #cbd5e1',
-                  background: '#ffffff',
-                  color: '#334155',
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                  transition: 'all 0.15s ease'
-                }}
-                title="Restablece los permisos originales del rol seleccionado arriba"
-              >
-                ↺ Predeterminados del rol
-              </button>
-              <button
-                type="button"
-                onClick={handleClearPermissions}
-                style={{
-                  padding: '7px 12px',
-                  borderRadius: '10px',
-                  border: '1px solid #fecdd3',
-                  background: '#fff1f2',
-                  color: '#b91c1c',
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                Limpiar todo
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Selection Toolbar by Role */}
-          <div style={{
-            marginBottom: '20px',
-            padding: '14px 16px',
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '12px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Selección rápida por rol:
+            {/* Quick Selection Toolbar by Role (Monocromático y sin exceso de colores) */}
+            <div
+              style={{
+                marginBottom: '16px',
+                padding: '12px 14px',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '10px',
+              }}
+            >
+              <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Plantillas por rol:
               </span>
-            </div>
 
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-              {/* Button: Todos de Docente */}
-              <button
-                type="button"
-                onClick={() => handleToggleRolePermissions('teacher')}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  border: '1px solid #a7f3d0',
-                  background: '#ecfdf5',
-                  color: '#047857',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                👨‍🏫 {MODULE_PERMISSIONS.filter(m => m.role === 'teacher').every(m => (form.permissions || []).includes(m.id)) ? 'Desmarcar' : '+ Todos'} Docente
-              </button>
-
-              {/* Button: Todos de Admin */}
-              <button
-                type="button"
-                onClick={() => handleToggleRolePermissions('admin')}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  border: '1px solid #bfdbfe',
-                  background: '#eff6ff',
-                  color: '#1d4ed8',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                🏛️ {MODULE_PERMISSIONS.filter(m => m.role === 'admin').every(m => (form.permissions || []).includes(m.id)) ? 'Desmarcar' : '+ Todos'} Admin
-              </button>
-
-              {/* Button: Todos de Estudiante */}
-              <button
-                type="button"
-                onClick={() => handleToggleRolePermissions('student')}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  border: '1px solid #ddd6fe',
-                  background: '#f5f3ff',
-                  color: '#6d28d9',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                🎓 {MODULE_PERMISSIONS.filter(m => m.role === 'student').every(m => (form.permissions || []).includes(m.id)) ? 'Desmarcar' : '+ Todos'} Estudiante
-              </button>
-
-              {/* Button: Todos de Control de Estudios */}
-              <button
-                type="button"
-                onClick={() => handleToggleRolePermissions('control_estudios')}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  border: '1px solid #fef08a',
-                  background: '#fefce8',
-                  color: '#854d0e',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                📋 {MODULE_PERMISSIONS.filter(m => m.category === 'Control de Estudios').every(m => (form.permissions || []).includes(m.id)) ? 'Desmarcar' : '+ Todos'} Control de Estudios
-              </button>
-
-              {/* Button: Todos de Gestión Académica */}
-              <button
-                type="button"
-                onClick={() => handleToggleRolePermissions('gestion_academica')}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  border: '1px solid #99f6e4',
-                  background: '#f0fdfa',
-                  color: '#0f766e',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                📚 {MODULE_PERMISSIONS.filter(m => m.category === 'Gestión Académica').every(m => (form.permissions || []).includes(m.id)) ? 'Desmarcar' : '+ Todos'} Gestión Académica
-              </button>
-
-              {/* Special Preset: Coordinador (Docente + Gestión Académica) */}
-              <button
-                type="button"
-                onClick={handleSetCoordinatorPreset}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '999px',
-                  border: '1px solid #fde68a',
-                  background: '#fefce8',
-                  color: '#b45309',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s ease'
-                }}
-                title="Docente + Secciones, Aulas, Pensum, Asignación Docente e Inscripciones"
-              >
-                <Sparkles size={14} color="#d97706" /> Perfil Coordinador
-              </button>
-            </div>
-          </div>
-
-          {/* Grouped Modules List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {permissionCategories.map((category) => {
-              const categoryModules = MODULE_PERMISSIONS.filter(m => m.category === category);
-              const selectedCount = categoryModules.filter(m => (form.permissions || []).includes(m.id)).length;
-              const allCategorySelected = categoryModules.length > 0 && selectedCount === categoryModules.length;
-              const theme = CATEGORY_THEMES[category] || CATEGORY_THEMES['Administración General'];
-
-              return (
-                <div
-                  key={category}
-                  style={{
-                    background: '#ffffff',
-                    borderRadius: '14px',
-                    padding: '16px 18px',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
-                  }}
-                >
-                  {/* Category Header */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '14px',
-                    paddingBottom: '10px',
-                    borderBottom: '1px solid #f1f5f9',
-                    flexWrap: 'wrap',
-                    gap: '10px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{
-                        padding: '4px 12px',
-                        borderRadius: '999px',
-                        fontSize: '0.78rem',
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        background: theme.badgeBg,
-                        color: theme.badgeText,
-                        border: `1px solid ${theme.badgeBorder}`
-                      }}>
-                        {category}
-                      </span>
-                      <span style={{
-                        fontSize: '0.82rem',
-                        color: selectedCount > 0 ? theme.badgeText : '#94a3b8',
-                        fontWeight: 700
-                      }}>
-                        {selectedCount} de {categoryModules.length} activos
-                      </span>
-                    </div>
-
-                    {/* Button to toggle ONLY this category */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                {[
+                  { key: 'student', label: 'Estudiante', checkFn: () => MODULE_PERMISSIONS.filter(m => m.role === 'student').every(m => (form.permissions || []).includes(m.id)) },
+                  { key: 'teacher', label: 'Docente', checkFn: () => MODULE_PERMISSIONS.filter(m => m.role === 'teacher').every(m => (form.permissions || []).includes(m.id)) },
+                  { key: 'control_estudios', label: 'Control de Estudios', checkFn: () => MODULE_PERMISSIONS.filter(m => m.category === 'Control de Estudios').every(m => (form.permissions || []).includes(m.id)) },
+                  { key: 'gestion_academica', label: 'Gestión Académica', checkFn: () => MODULE_PERMISSIONS.filter(m => m.category === 'Gestión Académica').every(m => (form.permissions || []).includes(m.id)) },
+                  { key: 'admin', label: 'Administrador', checkFn: () => MODULE_PERMISSIONS.filter(m => m.role === 'admin').every(m => (form.permissions || []).includes(m.id)) },
+                ].map((preset) => {
+                  const active = preset.checkFn();
+                  return (
                     <button
+                      key={preset.key}
                       type="button"
-                      onClick={() => handleToggleCategoryPermissions(category)}
+                      onClick={() => handleToggleRolePermissions(preset.key)}
                       style={{
                         padding: '5px 12px',
                         borderRadius: '8px',
-                        border: `1px solid ${allCategorySelected ? '#cbd5e1' : theme.badgeBorder}`,
-                        background: allCategorySelected ? '#f8fafc' : theme.badgeBg,
-                        color: allCategorySelected ? '#475569' : theme.badgeText,
+                        border: `1px solid ${active ? '#0f172a' : '#cbd5e1'}`,
+                        background: active ? '#0f172a' : '#f8fafc',
+                        color: active ? '#ffffff' : '#334155',
                         fontSize: '0.78rem',
                         fontWeight: 700,
                         cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.15s ease'
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      {allCategorySelected ? (
-                        <>
-                          <Square size={13} /> Desmarcar este grupo
-                        </>
-                      ) : (
-                        <>
-                          <CheckSquare size={13} /> Marcar todo este grupo
-                        </>
-                      )}
+                      {active ? `✓ ${preset.label}` : `+ ${preset.label}`}
                     </button>
-                  </div>
+                  );
+                })}
 
-                  {/* Modules Grid */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                    gap: '10px'
-                  }}>
-                    {categoryModules.map((module) => {
-                      const isChecked = (form.permissions || []).includes(module.id);
-                      return (
-                        <div
-                          key={module.id}
-                          onClick={() => handleTogglePermission(module.id)}
+                <button
+                  type="button"
+                  onClick={handleSetCoordinatorPreset}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#334155',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                  title="Docente + Secciones, Aulas, Pensum, Asignación Docente e Inscripciones"
+                >
+                  + Perfil Coordinador
+                </button>
+              </div>
+            </div>
+
+            {/* Grouped Modules List (Estilo limpio y uniforme) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {permissionCategories.map((category) => {
+                const categoryModules = MODULE_PERMISSIONS.filter(m => m.category === category);
+                const selectedCount = categoryModules.filter(m => (form.permissions || []).includes(m.id)).length;
+                const allCategorySelected = categoryModules.length > 0 && selectedCount === categoryModules.length;
+
+                return (
+                  <div
+                    key={category}
+                    style={{
+                      background: '#ffffff',
+                      borderRadius: '12px',
+                      padding: '14px 16px',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    {/* Category Header */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '12px',
+                        paddingBottom: '8px',
+                        borderBottom: '1px solid #f1f5f9',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span
                           style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: '12px',
-                            padding: '12px 14px',
-                            borderRadius: '12px',
-                            background: isChecked ? theme.cardCheckedBg : '#ffffff',
-                            border: `1.5px solid ${isChecked ? theme.cardCheckedBorder : '#e2e8f0'}`,
-                            boxShadow: isChecked ? `0 2px 8px ${theme.badgeBg}` : 'none',
-                            cursor: 'pointer',
-                            transition: 'all 0.18s ease'
+                            fontSize: '0.78rem',
+                            fontWeight: 800,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                            color: '#0f172a',
                           }}
                         >
-                          <div style={{
-                            marginTop: '2px',
-                            width: '20px',
-                            height: '20px',
-                            borderRadius: '6px',
-                            border: `2px solid ${isChecked ? theme.checkBg : '#cbd5e1'}`,
-                            background: isChecked ? theme.checkBg : '#ffffff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: theme.checkColor,
-                            flexShrink: 0,
-                            transition: 'all 0.18s ease'
-                          }}>
-                            {isChecked && <Check size={14} strokeWidth={3.2} />}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{
-                              fontSize: '0.88rem',
-                              fontWeight: isChecked ? 800 : 600,
-                              color: isChecked ? '#0f172a' : '#334155',
-                              lineHeight: 1.3
-                            }}>
-                              {module.label}
+                          {category}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '0.76rem',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            background: selectedCount > 0 ? '#f1f5f9' : 'transparent',
+                            color: selectedCount > 0 ? '#334155' : '#94a3b8',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {`${selectedCount} / ${categoryModules.length}`}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleCategoryPermissions(category)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid #e2e8f0',
+                          background: '#f8fafc',
+                          color: '#475569',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {allCategorySelected ? 'Desmarcar grupo' : 'Marcar grupo'}
+                      </button>
+                    </div>
+
+                    {/* Modules Grid */}
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                        gap: '8px',
+                      }}
+                    >
+                      {categoryModules.map((module) => {
+                        const isChecked = (form.permissions || []).includes(module.id);
+                        return (
+                          <div
+                            key={module.id}
+                            onClick={() => handleTogglePermission(module.id)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '10px',
+                              padding: '10px 12px',
+                              borderRadius: '10px',
+                              background: isChecked ? '#f8fafc' : '#ffffff',
+                              border: `1.5px solid ${isChecked ? '#0f172a' : '#e2e8f0'}`,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div
+                              style={{
+                                marginTop: '2px',
+                                width: '18px',
+                                height: '18px',
+                                borderRadius: '5px',
+                                border: `2px solid ${isChecked ? '#0f172a' : '#cbd5e1'}`,
+                                background: isChecked ? '#0f172a' : '#ffffff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#ffffff',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <Check
+                                size={12}
+                                strokeWidth={3.2}
+                                style={{ opacity: isChecked ? 1 : 0 }}
+                              />
                             </div>
-                            <div style={{
-                              fontSize: '0.76rem',
-                              color: isChecked ? '#475569' : '#64748b',
-                              marginTop: '3px',
-                              lineHeight: 1.3
-                            }}>
-                              {module.description}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div
+                                style={{
+                                  fontSize: '0.85rem',
+                                  fontWeight: isChecked ? 800 : 600,
+                                  color: '#0f172a',
+                                  lineHeight: 1.25,
+                                }}
+                              >
+                                {module.label}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: '0.74rem',
+                                  color: '#64748b',
+                                  marginTop: '2px',
+                                  lineHeight: 1.25,
+                                }}
+                              >
+                                {module.description}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </Modal>
 
       {createdPassword && (
@@ -1595,8 +1723,21 @@ export default function UserManagement() {
           <div style={{
             background: '#fff', borderRadius: '20px', maxWidth: '480px', width: '100%',
             padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
-            borderTop: '6px solid #ffd100'
+            borderTop: '6px solid #ffd100', position: 'relative'
           }}>
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={() => setCreatedPassword(null)}
+              style={{
+                position: 'absolute', top: '14px', right: '14px', width: '36px', height: '36px',
+                borderRadius: '10px', border: '1px solid #e2e8f0', background: '#f8fafc',
+                color: '#475569', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', fontSize: '18px', fontWeight: 700
+              }}
+            >
+              &times;
+            </button>
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
               <div style={{
                 width: '56px', height: '56px', borderRadius: '50%',

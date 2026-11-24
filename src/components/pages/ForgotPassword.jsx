@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, GraduationCap, Mail, ShieldCheck } from 'lucide-react';
 import { requestPasswordReset } from '../../services/auth';
+import { LIMITS, sanitizeEmail, validateEmailField } from '../../utils/validation';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -15,6 +16,11 @@ export default function ForgotPassword() {
     const sanitizedEmail = email.trim();
     if (!sanitizedEmail) {
       setError('Ingresa tu correo institucional para continuar.');
+      return;
+    }
+    const emailErr = validateEmailField(sanitizedEmail, true);
+    if (emailErr) {
+      setError(emailErr);
       return;
     }
 
@@ -158,9 +164,10 @@ export default function ForgotPassword() {
               <input
                 id="email"
                 type="email"
+                maxLength={LIMITS.EMAIL_MAX}
                 placeholder="tu-correo@universidad.edu"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => setEmail(sanitizeEmail(event.target.value, LIMITS.EMAIL_MAX))}
                 autoComplete="email"
                 required
                 style={{

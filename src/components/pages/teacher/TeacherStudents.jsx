@@ -4,6 +4,7 @@ import { ActionButton, AdminPageShell, SectionCard, StatusBadge, CustomSelect } 
 import api from '../../../services/api';
 import useAuth from '../../../hooks/useAuth';
 import { logoBase64 } from '../../../assets/logoConstant';
+import { LIMITS, sanitizeGradeInput, sanitizeTitleText } from '../../../utils/validation';
 
 const cuts = ['c1', 'c2', 'c3', 'c4'];
 
@@ -18,10 +19,7 @@ function computeAverage(grades) {
 }
 
 function clampGrade(raw) {
-  if (raw === '') return '';
-  const value = Number(raw);
-  if (!Number.isFinite(value)) return '';
-  return String(Math.max(0, Math.min(20, value)));
+  return sanitizeGradeInput(raw);
 }
 
 export default function TeacherStudents() {
@@ -187,8 +185,9 @@ export default function TeacherStudents() {
 
   const handleContentChange = (detailId, cut, nextValue) => {
     if (!isEditWindowOpen) return;
+    const sanitized = sanitizeTitleText(nextValue, LIMITS.CONTENT_MAX);
     setEditableRecords((prev) => 
-      prev.map(r => r.id_detail === detailId ? { ...r, contents: { ...r.contents, [cut]: nextValue } } : r)
+      prev.map(r => r.id_detail === detailId ? { ...r, contents: { ...r.contents, [cut]: sanitized } } : r)
     );
   };
 
@@ -690,20 +689,23 @@ export default function TeacherStudents() {
                         <td>
                           <input
                             className="form-input"
+                            inputMode="decimal"
+                            maxLength={5}
                             value={student.grades[cut]}
                             disabled={!isEditWindowOpen}
                             onChange={(event) => handleGradeChange(student.id_detail, cut, event.target.value)}
-                            placeholder={`C${idx + 1}`}
+                            placeholder={`0–20`}
                             style={{ minWidth: '86px', padding: '9px 10px' }}
                           />
                         </td>
                         <td>
                           <input
                             className="form-input"
+                            maxLength={LIMITS.CONTENT_MAX}
                             value={student.contents[cut]}
                             disabled={!isEditWindowOpen}
                             onChange={(event) => handleContentChange(student.id_detail, cut, event.target.value)}
-                            placeholder={`Contenido corte ${idx + 1}`}
+                            placeholder={`Contenido corte ${idx + 1} (máx 120)`}
                             style={{ minWidth: '200px', padding: '9px 10px' }}
                           />
                         </td>
@@ -728,16 +730,28 @@ export default function TeacherStudents() {
             background: 'rgba(15, 23, 42, 0.4)',
             animation: 'notifPop 0.25s ease',
           }}
-          onClick={() => setNotification({ show: false, type: '', message: '' })}
         >
           <div
             style={{
               width: 'min(360px, 90%)', background: '#ffffff', borderRadius: '24px',
               padding: '40px 32px 32px', textAlign: 'center',
-              boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+              boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)', position: 'relative',
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={() => setNotification({ show: false, type: '', message: '' })}
+              style={{
+                position: 'absolute', top: '14px', right: '14px', width: '34px', height: '34px',
+                borderRadius: '10px', border: '1px solid #e2e8f0', background: '#f8fafc',
+                color: '#475569', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', fontSize: '18px', fontWeight: 700
+              }}
+            >
+              &times;
+            </button>
             <div style={{
               width: '72px', height: '72px', borderRadius: '50%',
               background: notification.type === 'success'

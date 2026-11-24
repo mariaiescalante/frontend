@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
@@ -111,11 +112,61 @@ const DashboardRedirect = () => {
   return <Navigate to="/login" replace />;
 };
 
+class SafeRenderBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, retryKey: 0 };
+  }
+
+  static getDerivedStateFromError(error) {
+    const msg = String(error?.message || '');
+    // Auto-recover silently from browser translator / extension DOM mutations (removeChild / insertBefore)
+    if (msg.includes('removeChild') || msg.includes('insertBefore') || error?.name === 'NotFoundError') {
+      return { hasError: false, error: null };
+    }
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    const msg = String(error?.message || '');
+    if (msg.includes('removeChild') || msg.includes('insertBefore') || error?.name === 'NotFoundError') {
+      this.setState((prev) => ({ hasError: false, error: null, retryKey: prev.retryKey + 1 }));
+      return;
+    }
+    console.error('UI Error caught by SafeRenderBoundary:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ background: '#fff', borderRadius: '18px', padding: '28px', maxWidth: '520px', width: '100%', boxShadow: '0 10px 30px rgba(15,23,42,0.1)', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 8px', color: '#0f172a', fontSize: '1.2rem', fontWeight: 800 }}>Se produjo un problema visual</h3>
+            <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: '0.92rem' }}>
+              {String(this.state.error?.message || 'Error inesperado al renderizar la vista.')}
+            </p>
+            <button
+              type="button"
+              onClick={() => this.setState((prev) => ({ hasError: false, error: null, retryKey: prev.retryKey + 1 }))}
+              style={{ padding: '10px 18px', borderRadius: '10px', border: 'none', background: '#051124', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return <React.Fragment key={this.state.retryKey}>{this.props.children}</React.Fragment>;
+  }
+}
+
 function App() {
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <BrowserRouter>
+    <SafeRenderBoundary>
+      <AuthProvider>
+        <NotificationProvider>
+          <BrowserRouter>
           <Routes>
           {/* Public Route */}
           <Route path="/login" element={<Login />} />
@@ -168,9 +219,10 @@ function App() {
           {/* Catch-all redirection */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-        </BrowserRouter>
-      </NotificationProvider>
-    </AuthProvider>
+          </BrowserRouter>
+        </NotificationProvider>
+      </AuthProvider>
+    </SafeRenderBoundary>
   );
 }
 

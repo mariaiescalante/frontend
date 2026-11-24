@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Layers3, PlusSquare, Search } from 'lucide-react';
 import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, ProgressBar, CustomSelect, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
+import { LIMITS, sanitizeIntRange } from '../../../utils/validation';
 
 const START_HOURS = [
   '07:00 AM',
@@ -114,6 +115,8 @@ export default function SectionsManagement() {
   const [editingSection, setEditingSection] = useState(null);
   const [query, setQuery] = useState('');
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [selectedPeriod, setSelectedPeriod] = useState('');
 
@@ -281,6 +284,12 @@ export default function SectionsManagement() {
         return;
       }
 
+      if (!Number.isInteger(payload.quota_max) || payload.quota_max < LIMITS.CAPACITY_MIN || payload.quota_max > LIMITS.CAPACITY_MAX) {
+        alert(`Los cupos máximos deben ser un número entero entre ${LIMITS.CAPACITY_MIN} y ${LIMITS.CAPACITY_MAX}.`);
+        return;
+      }
+
+      setSubmitting(true);
       if (editingSection) {
         await api.put(`/sections/${editingSection.id_section}`, payload);
       } else {
@@ -292,6 +301,8 @@ export default function SectionsManagement() {
     } catch (err) {
       console.error('Error saving section:', err);
       alert(err.message || 'Error al guardar la sección');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -302,14 +313,17 @@ export default function SectionsManagement() {
   const executeDelete = async () => {
     const { id } = confirmDelete;
     if (!id) return;
-    setConfirmDelete({ open: false, id: null });
+    setDeleting(true);
 
     try {
       await api.delete(`/sections/${id}`);
+      setConfirmDelete({ open: false, id: null });
       loadSections(selectedPeriod);
     } catch (err) {
       console.error('Error deleting section:', err);
       alert(err.message || 'Error al eliminar la sección');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -444,8 +458,10 @@ export default function SectionsManagement() {
         onClose={() => setModalOpen(false)}
         footer={
           <>
-            <ActionButton variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</ActionButton>
-            <ActionButton variant="accent" onClick={handleSave}>Guardar sección</ActionButton>
+            <ActionButton variant="ghost" onClick={() => setModalOpen(false)} disabled={submitting}>Cancelar</ActionButton>
+            <ActionButton variant="accent" onClick={handleSave} loading={submitting}>
+              {submitting ? 'Guardando...' : 'Guardar sección'}
+            </ActionButton>
           </>
         }
       >
@@ -491,7 +507,14 @@ export default function SectionsManagement() {
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Cupos Máximos</span>
-            <input className="form-input" type="number" value={form.quota_max} onChange={e => setForm({...form, quota_max: e.target.value})} placeholder="Cupos máximos" />
+            <input
+              className="form-input"
+              inputMode="numeric"
+              maxLength={3}
+              value={form.quota_max}
+              onChange={e => setForm({ ...form, quota_max: sanitizeIntRange(e.target.value, LIMITS.CAPACITY_MIN, LIMITS.CAPACITY_MAX) })}
+              placeholder="1 a 100 cupos"
+            />
           </label>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>

@@ -636,9 +636,7 @@ export default function Aspirantes() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: 'zoom-out',
           }}
-          onClick={() => setPreviewDoc(null)}
         >
           <div
             style={{

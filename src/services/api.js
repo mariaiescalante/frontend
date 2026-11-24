@@ -59,31 +59,68 @@ api.interceptors.response.use(
   }
 );
 
+// Registro de peticiones activas mutantes (POST, PUT, PATCH, DELETE) para evitar doble envío accidental
+const activeMutations = new Set();
+
+const buildMutationKey = (method, endpoint, data) => {
+  const normMethod = String(method || '').toUpperCase();
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(normMethod)) {
+    return null;
+  }
+  let payloadStr = '';
+  try {
+    payloadStr = data ? JSON.stringify(data) : '';
+  } catch {
+    payloadStr = '';
+  }
+  return `${normMethod}:${endpoint}:${payloadStr}`;
+};
+
 const request = async (method, endpoint, data, config = {}, retries = 2) => {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const response = await api.request({
-        url: endpoint,
-        method,
-        data,
-        ...config,
-      });
+  const mutationKey = buildMutationKey(method, endpoint, data);
 
-      if (response.status === 204) {
-        return null;
+  // Si esta misma petición de guardado/borrado ya está procesándose, bloqueamos la duplicada
+  if (mutationKey && activeMutations.has(mutationKey)) {
+    console.warn(`[API] Petición duplicada prevenida: ${mutationKey}`);
+    return new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('La acción ya se está procesando, por favor espere...')), 50);
+    });
+  }
+
+  if (mutationKey) {
+    activeMutations.add(mutationKey);
+  }
+
+  try {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await api.request({
+          url: endpoint,
+          method,
+          data,
+          ...config,
+        });
+
+        if (response.status === 204) {
+          return null;
+        }
+
+        return response.data;
+      } catch (error) {
+        const isNetworkError = !error.response;
+        const isLastAttempt = attempt === retries;
+
+        if (isNetworkError && !isLastAttempt) {
+          await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
+          continue;
+        }
+
+        throw error;
       }
-
-      return response.data;
-    } catch (error) {
-      const isNetworkError = !error.response;
-      const isLastAttempt = attempt === retries;
-
-      if (isNetworkError && !isLastAttempt) {
-        await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
-        continue;
-      }
-
-      throw error;
+    }
+  } finally {
+    if (mutationKey) {
+      activeMutations.delete(mutationKey);
     }
   }
 };

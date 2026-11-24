@@ -3,6 +3,13 @@ import { useSearchParams } from 'react-router-dom';
 import { BookMarked, Layers3, PlusCircle, Trash2, CheckCircle2, AlertTriangle, XCircle, Eye, EyeOff } from 'lucide-react';
 import { AdminPageShell, ActionButton, Modal, SectionCard, StatusBadge, fieldStyle, CustomSelect } from './AdminPageShell';
 import api from '../../../services/api';
+import {
+  LIMITS,
+  sanitizeCode,
+  sanitizeTitleText,
+  sanitizeIntRange,
+  validateCodeField
+} from '../../../utils/validation';
 
 export default function PensumManagement() {
   const [searchParams] = useSearchParams();
@@ -174,15 +181,20 @@ export default function PensumManagement() {
     if (submittingRef.current) return;
     try {
       const { id_career, name_pensum, resolution_date, is_active } = pensumForm;
-      if (!id_career || !name_pensum) {
+      const cleanName = (name_pensum || '').trim();
+      if (!id_career || !cleanName) {
         alert('Por favor complete todos los campos requeridos.');
+        return;
+      }
+      if (cleanName.length < LIMITS.TITLE_MIN || cleanName.length > LIMITS.TITLE_MAX) {
+        alert(`El nombre del pensum debe tener entre ${LIMITS.TITLE_MIN} y ${LIMITS.TITLE_MAX} caracteres.`);
         return;
       }
       submittingRef.current = true;
       setSubmitting(true);
       const payload = {
         id_career: Number(id_career),
-        name_pensum: name_pensum.trim(),
+        name_pensum: cleanName,
         is_active: Boolean(is_active),
       };
       if (resolution_date && typeof resolution_date === 'string' && resolution_date.trim()) {
@@ -226,6 +238,24 @@ export default function PensumManagement() {
         return;
       }
 
+      const codeErr = validateCodeField(code_subject, 'El código de la materia');
+      if (codeErr) {
+        alert(codeErr);
+        return;
+      }
+
+      const cleanName = name_subject.trim();
+      if (cleanName.length < LIMITS.TITLE_MIN || cleanName.length > LIMITS.TITLE_MAX) {
+        alert(`El nombre de la materia debe tener entre ${LIMITS.TITLE_MIN} y ${LIMITS.TITLE_MAX} caracteres.`);
+        return;
+      }
+
+      const creditsNum = Number(credit_units);
+      if (!Number.isInteger(creditsNum) || creditsNum < LIMITS.CREDITS_MIN || creditsNum > LIMITS.CREDITS_MAX) {
+        alert(`Las unidades de crédito deben ser un número entero entre ${LIMITS.CREDITS_MIN} y ${LIMITS.CREDITS_MAX}.`);
+        return;
+      }
+
       submittingRef.current = true;
       setSubmitting(true);
 
@@ -234,9 +264,9 @@ export default function PensumManagement() {
         .filter((val) => !isNaN(val) && val > 0);
 
       const payload = {
-        code_subject: code_subject.trim(),
-        name_subject: name_subject.trim(),
-        credit_units: Number(credit_units),
+        code_subject: code_subject.trim().toUpperCase(),
+        name_subject: cleanName,
+        credit_units: creditsNum,
         id_pensum: Number(id_pensum),
         id_semester: Number(id_semester),
         id_prerequisites: prereqs
@@ -333,14 +363,14 @@ export default function PensumManagement() {
       subtitle="Plan de estudios por carrera con asignaturas, créditos y prelaciones entre materias."
       actions={
         <div style={{ display: 'flex', gap: '10px' }}>
+          <ActionButton variant="secondary" onClick={handleOpenPensumModal}>
+            <PlusCircle size={16} /> Nuevo Pensum
+          </ActionButton>
           {currentPensum && (
             <ActionButton variant="accent" onClick={handleOpenAddModal}>
               <PlusCircle size={16} /> Agregar materia
             </ActionButton>
           )}
-          <ActionButton variant="secondary" onClick={handleOpenPensumModal}>
-            <PlusCircle size={16} /> Nuevo Pensum
-          </ActionButton>
         </div>
       }
       metrics={[
@@ -657,12 +687,13 @@ export default function PensumManagement() {
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>
-              Código Base (ej: MAT-101) {!isCreatingNewSubject && '🔒'}
+              Código Base {!isCreatingNewSubject && '🔒'}
             </span>
             <input
               className="form-input"
+              maxLength={LIMITS.CODE_MAX}
               value={form.code_subject}
-              onChange={(e) => setForm({ ...form, code_subject: e.target.value })}
+              onChange={(e) => setForm({ ...form, code_subject: sanitizeCode(e.target.value, LIMITS.CODE_MAX) })}
               placeholder={!isCreatingNewSubject && !selectedGlobalSubjectId ? "Seleccione una materia arriba..." : "Código único de la materia"}
               disabled={!isCreatingNewSubject}
               style={{ background: !isCreatingNewSubject ? '#f1f5f9' : '#ffffff', cursor: !isCreatingNewSubject ? 'not-allowed' : 'text' }}
@@ -675,8 +706,9 @@ export default function PensumManagement() {
             </span>
             <input
               className="form-input"
+              maxLength={LIMITS.TITLE_MAX}
               value={form.name_subject}
-              onChange={(e) => setForm({ ...form, name_subject: e.target.value })}
+              onChange={(e) => setForm({ ...form, name_subject: sanitizeTitleText(e.target.value, LIMITS.TITLE_MAX) })}
               placeholder={!isCreatingNewSubject && !selectedGlobalSubjectId ? "Seleccione una materia arriba..." : "Nombre de la materia"}
               disabled={!isCreatingNewSubject}
               style={{ background: !isCreatingNewSubject ? '#f1f5f9' : '#ffffff', cursor: !isCreatingNewSubject ? 'not-allowed' : 'text' }}
@@ -689,10 +721,11 @@ export default function PensumManagement() {
             </span>
             <input
               className="form-input"
-              type="number"
+              inputMode="numeric"
+              maxLength={2}
               value={form.credit_units}
-              onChange={(e) => setForm({ ...form, credit_units: e.target.value })}
-              placeholder="Número de créditos"
+              onChange={(e) => setForm({ ...form, credit_units: sanitizeIntRange(e.target.value, LIMITS.CREDITS_MIN, LIMITS.CREDITS_MAX) })}
+              placeholder="1 a 10 créditos"
               disabled={!isCreatingNewSubject}
               style={{ background: !isCreatingNewSubject ? '#f1f5f9' : '#ffffff', cursor: !isCreatingNewSubject ? 'not-allowed' : 'text' }}
             />
@@ -774,11 +807,12 @@ export default function PensumManagement() {
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Nombre del Pensum (ej: Pensum 2026)</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Nombre del Pensum</span>
             <input
               className="form-input"
+              maxLength={LIMITS.TITLE_MAX}
               value={pensumForm.name_pensum}
-              onChange={(e) => setPensumForm({ ...pensumForm, name_pensum: e.target.value })}
+              onChange={(e) => setPensumForm({ ...pensumForm, name_pensum: sanitizeTitleText(e.target.value, LIMITS.TITLE_MAX) })}
               placeholder="Ej: Pensum 2026"
             />
           </label>
@@ -814,16 +848,28 @@ export default function PensumManagement() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '16px', zIndex: 80,
           }}
-          onClick={() => { setPasswordDialog({ open: false, id: null }); setDeletePassword(''); }}
         >
           <div
             style={{
               width: 'min(400px, 100%)', background: '#ffffff', border: '1px solid #dbe4f0',
               borderRadius: '22px', boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
-              padding: '32px', textAlign: 'center',
+              padding: '32px', textAlign: 'center', position: 'relative',
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={() => { setPasswordDialog({ open: false, id: null }); setDeletePassword(''); }}
+              style={{
+                position: 'absolute', top: '14px', right: '14px', width: '36px', height: '36px',
+                borderRadius: '10px', border: '1px solid #e2e8f0', background: '#f8fafc',
+                color: '#475569', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', fontSize: '18px', fontWeight: 700
+              }}
+            >
+              &times;
+            </button>
             <div style={{
               width: '64px', height: '64px', borderRadius: '50%',
               background: '#fff1f2', display: 'flex', alignItems: 'center',
@@ -889,16 +935,28 @@ export default function PensumManagement() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '16px', zIndex: 70,
           }}
-          onClick={() => setDeleteDialog({ open: false, id: null, name: '', code: '' })}
         >
           <div
             style={{
               width: 'min(440px, 100%)', background: '#ffffff', border: '1px solid #dbe4f0',
               borderRadius: '22px', boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
-              padding: '32px', textAlign: 'center',
+              padding: '32px', textAlign: 'center', position: 'relative',
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={() => setDeleteDialog({ open: false, id: null, name: '', code: '' })}
+              style={{
+                position: 'absolute', top: '14px', right: '14px', width: '36px', height: '36px',
+                borderRadius: '10px', border: '1px solid #e2e8f0', background: '#f8fafc',
+                color: '#475569', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', fontSize: '18px', fontWeight: 700
+              }}
+            >
+              &times;
+            </button>
             <div style={{
               width: '64px', height: '64px', borderRadius: '50%',
               background: '#fff1f2', display: 'flex', alignItems: 'center',
@@ -949,16 +1007,28 @@ export default function PensumManagement() {
             background: 'rgba(15, 23, 42, 0.4)',
             animation: 'notifPop 0.25s ease',
           }}
-          onClick={() => setNotification({ show: false, type: '', message: '' })}
         >
           <div
             style={{
               width: 'min(360px, 90%)', background: '#ffffff', borderRadius: '24px',
               padding: '40px 32px 32px', textAlign: 'center',
-              boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+              boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)', position: 'relative',
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={() => setNotification({ show: false, type: '', message: '' })}
+              style={{
+                position: 'absolute', top: '14px', right: '14px', width: '34px', height: '34px',
+                borderRadius: '10px', border: '1px solid #e2e8f0', background: '#f8fafc',
+                color: '#475569', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', fontSize: '18px', fontWeight: 700
+              }}
+            >
+              &times;
+            </button>
             <div style={{
               width: '72px', height: '72px', borderRadius: '50%',
               background: notification.type === 'success'

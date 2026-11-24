@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { CalendarDays, CirclePlus, Clock3, Trash2, Edit2 } from 'lucide-react';
 import { AdminPageShell, ActionButton, SectionCard, StatusBadge, CustomSelect, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
+import { LIMITS, sanitizePeriodName } from '../../../utils/validation';
 
 export default function AcademicPeriods() {
   const [periods, setPeriods] = useState([]);
@@ -66,14 +67,23 @@ export default function AcademicPeriods() {
   const handleSave = async () => {
     try {
       const { name_period, start_date, end_date, enrollment_status, period_status, period_type } = form;
-      if (!name_period || !start_date || !end_date) {
+      const cleanName = (name_period || '').trim();
+      if (!cleanName || !start_date || !end_date) {
         alert('Por favor complete todos los campos requeridos.');
+        return;
+      }
+      if (cleanName.length < LIMITS.PERIOD_NAME_MIN || cleanName.length > LIMITS.PERIOD_NAME_MAX) {
+        alert(`El nombre del período debe tener entre ${LIMITS.PERIOD_NAME_MIN} y ${LIMITS.PERIOD_NAME_MAX} caracteres.`);
+        return;
+      }
+      if (start_date > end_date) {
+        alert('La fecha de inicio no puede ser posterior a la fecha de culminación.');
         return;
       }
       setSubmitting(true);
 
       const payload = {
-        name_period: name_period.trim(),
+        name_period: cleanName,
         start_date,
         end_date,
         enrollment_status,
@@ -183,17 +193,32 @@ export default function AcademicPeriods() {
                 const isPeriodActive = period.period_status === 'Activo';
                 const isEnrollmentOpen = period.enrollment_status === 'Abierta';
                 const isPeriodEnded = period.period_status === 'Culminado';
+                const isEditingThis = String(editingId) === String(period.id_period);
                 
                 const indicatorColor = isPeriodActive ? '#10b981' : isEnrollmentOpen ? '#ffd100' : isPeriodEnded ? '#94a3b8' : '#3b82f6';
                 const badgeTone = isPeriodActive ? 'success' : isEnrollmentOpen ? 'warning' : isPeriodEnded ? 'neutral' : 'info';
 
                 return (
-                  <article key={period.id_period} style={{ display: 'flex', gap: '14px', padding: '16px', borderRadius: '16px', border: '1px solid #e2e8f0', background: '#f8fafc', position: 'relative' }}>
-                    <div style={{ width: '12px', borderRadius: '999px', background: indicatorColor }} />
+                  <article
+                    key={period.id_period}
+                    style={{
+                      display: 'flex',
+                      gap: '14px',
+                      padding: '16px',
+                      borderRadius: '16px',
+                      border: isEditingThis ? '2px solid #10b981' : '1px solid #e2e8f0',
+                      background: isEditingThis ? '#ecfdf5' : '#f8fafc',
+                      boxShadow: isEditingThis ? '0 0 0 4px rgba(16, 185, 129, 0.15)' : 'none',
+                      position: 'relative',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ width: '12px', borderRadius: '999px', background: isEditingThis ? '#10b981' : indicatorColor }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, paddingRight: '60px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
                         <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>{period.name_period}</h4>
                         <div className="period-badges-container">
+                          {isEditingThis && <StatusBadge tone="success">Editando ahora</StatusBadge>}
                           <StatusBadge tone={period.period_type === 'Trimestral' ? 'accent' : 'info'}>{period.period_type || 'Semestral'}</StatusBadge>
                           <StatusBadge tone={badgeTone}>Periodo: {period.period_status}</StatusBadge>
                           <StatusBadge tone={isEnrollmentOpen ? 'warning' : 'neutral'}>Inscripción: {period.enrollment_status}</StatusBadge>
@@ -211,15 +236,16 @@ export default function AcademicPeriods() {
                       <button
                         onClick={() => handleStartEdit(period)}
                         style={{
-                          border: 'none',
-                          background: 'transparent',
-                          color: '#3b82f6',
+                          border: isEditingThis ? '1px solid #10b981' : 'none',
+                          background: isEditingThis ? '#10b981' : 'transparent',
+                          color: isEditingThis ? '#ffffff' : '#3b82f6',
                           cursor: 'pointer',
-                          padding: '4px',
-                          borderRadius: '6px',
+                          padding: '6px',
+                          borderRadius: '8px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          transition: 'all 0.2s ease'
                         }}
                         title="Editar período"
                       >
@@ -255,8 +281,37 @@ export default function AcademicPeriods() {
         <SectionCard
           title={editingId ? 'Editar período' : 'Crear período'}
           description={editingId ? 'Modifica las fechas y estados operativos del ciclo académico.' : 'Formulario rápido para abrir una nueva ventana administrativa.'}
+          style={
+            editingId
+              ? {
+                  border: '2px solid #10b981',
+                  boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.16), 0 12px 28px rgba(16, 185, 129, 0.12)',
+                  background: '#f0fdf4',
+                  transition: 'all 0.25s ease'
+                }
+              : { transition: 'all 0.25s ease' }
+          }
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {editingId && (
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '12px',
+                  background: '#d1fae5',
+                  border: '1px solid #34d399',
+                  color: '#065f46',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Edit2 size={15} />
+                <span>Modo edición activo: ya puedes modificar este período</span>
+              </div>
+            )}
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label">Tipo de régimen</span>
               <CustomSelect
@@ -272,9 +327,10 @@ export default function AcademicPeriods() {
               <span className="form-label">Nombre del período</span>
               <input
                 className="form-input"
+                maxLength={LIMITS.PERIOD_NAME_MAX}
                 placeholder={form.period_type === 'Trimestral' ? 'Ej: 2027-T1' : 'Ej: 2027-I'}
                 value={form.name_period}
-                onChange={(e) => setForm({ ...form, name_period: e.target.value })}
+                onChange={(e) => setForm({ ...form, name_period: sanitizePeriodName(e.target.value, LIMITS.PERIOD_NAME_MAX) })}
               />
             </label>
             <label className="form-group" style={{ marginBottom: 0 }}>
@@ -324,6 +380,7 @@ export default function AcademicPeriods() {
               <ActionButton
                 variant="accent"
                 onClick={handleSave}
+                loading={submitting}
                 disabled={submitting}
               >
                 {submitting ? 'Guardando...' : editingId ? 'Guardar Cambios' : 'Crear Período'}

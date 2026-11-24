@@ -232,16 +232,28 @@ export default function TeacherRecords() {
             background: 'rgba(15, 23, 42, 0.4)',
             animation: 'notifPop 0.25s ease',
           }}
-          onClick={() => setNotification({ show: false, type: '', message: '' })}
         >
           <div
             style={{
               width: 'min(360px, 90%)', background: '#ffffff', borderRadius: '24px',
               padding: '40px 32px 32px', textAlign: 'center',
-              boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
+              boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)', position: 'relative',
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={() => setNotification({ show: false, type: '', message: '' })}
+              style={{
+                position: 'absolute', top: '14px', right: '14px', width: '34px', height: '34px',
+                borderRadius: '10px', border: '1px solid #e2e8f0', background: '#f8fafc',
+                color: '#475569', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', fontSize: '18px', fontWeight: 700
+              }}
+            >
+              &times;
+            </button>
             <div style={{
               width: '72px', height: '72px', borderRadius: '50%',
               background: notification.type === 'success'

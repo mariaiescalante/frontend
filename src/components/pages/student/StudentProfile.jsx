@@ -12,6 +12,13 @@ import {
 } from 'lucide-react';
 import { AdminPageShell, SectionCard, ActionButton, StatusBadge, fieldStyle } from '../admin/AdminPageShell';
 import api from '../../../services/api';
+import {
+  LIMITS,
+  sanitizeEmail,
+  sanitizeDigitsOnly,
+  validateEmailField,
+  validatePhoneField
+} from '../../../utils/validation';
 
 export default function StudentProfile() {
   const [profile, setProfile] = useState(null);
@@ -28,7 +35,7 @@ export default function StudentProfile() {
       const data = res.data || res;
       setProfile(data);
       setEmail(data.email || '');
-      setPhone(data.phone || '');
+      setPhone((data.phone || '').replace(/\D/g, ''));
       // Fallback local storage for address since backend doesn't store address
       const localAddress = localStorage.getItem(`address_${data.id}`) || 'San Cristóbal, Estado Táchira';
       setAddress(localAddress);
@@ -45,10 +52,30 @@ export default function StudentProfile() {
 
   const handleSave = async () => {
     try {
+      const emailErr = validateEmailField(email, true);
+      if (emailErr) {
+        alert(emailErr);
+        return;
+      }
+
+      const phoneErr = validatePhoneField(phone, true);
+      if (phoneErr) {
+        alert(phoneErr);
+        return;
+      }
+
+      if (address.trim().length > 0 && address.trim().length < LIMITS.ADDRESS_MIN) {
+        alert(`La dirección debe tener al menos ${LIMITS.ADDRESS_MIN} caracteres.`);
+        return;
+      }
+
+      const digits = sanitizeDigitsOnly(phone, LIMITS.PHONE_MAX);
+      const formattedPhone = digits.length > 4 ? `${digits.slice(0, 4)}-${digits.slice(4)}` : digits;
+
       // Save phone and email to backend
       const res = await api.put('/auth/profile_update', {
         email: email.trim(),
-        phone: phone.trim()
+        phone: formattedPhone
       });
 
       // Save address locally
@@ -165,36 +192,41 @@ export default function StudentProfile() {
 
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Mail size={14} /> Correo Electrónico
+                <Mail size={14} /> Correo Electrónico (máx 100) *
               </span>
               <input
                 className="form-input"
+                type="email"
+                maxLength={LIMITS.EMAIL_MAX}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(sanitizeEmail(e.target.value, LIMITS.EMAIL_MAX))}
                 placeholder="correo@ejemplo.com"
               />
             </label>
 
             <label className="form-group" style={{ marginBottom: 0 }}>
               <span className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Phone size={14} /> Teléfono Móvil
+                <Phone size={14} /> Teléfono Móvil (10–11 dígitos) *
               </span>
               <input
                 className="form-input"
+                inputMode="numeric"
+                maxLength={LIMITS.PHONE_MAX}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Ej. 0414-1234567"
+                onChange={(e) => setPhone(sanitizeDigitsOnly(e.target.value, LIMITS.PHONE_MAX))}
+                placeholder="Solo números (ej. 04141234567)"
               />
             </label>
 
             <label className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
               <span className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <MapPin size={14} /> Dirección de Habitación
+                <MapPin size={14} /> Dirección de Habitación (máx 160 caracteres)
               </span>
               <textarea
                 className="form-input"
+                maxLength={LIMITS.ADDRESS_MAX}
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(e) => setAddress(e.target.value.slice(0, LIMITS.ADDRESS_MAX))}
                 placeholder="Ej. Urb. Las Lomas, Calle 5..."
                 style={{ ...fieldStyle, minHeight: '80px', resize: 'vertical' }}
               />

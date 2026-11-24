@@ -27,6 +27,13 @@ import {
   Pagination
 } from './AdminPageShell';
 import api from '../../../services/api';
+import {
+  LIMITS,
+  sanitizeCode,
+  sanitizeTitleText,
+  sanitizeIntRange,
+  validateCodeField
+} from '../../../utils/validation';
 
 const CLASSROOM_TYPES = ['Teoría', 'Laboratorio', 'Taller', 'Auditorio'];
 const CLASSROOM_STATUSES = ['Disponible', 'Mantenimiento', 'Inhabilitada'];
@@ -67,6 +74,8 @@ export default function ClassroomsManagement() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingClassroom, setEditingClassroom] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, name: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Modal de horario / ocupación
   const [scheduleModal, setScheduleModal] = useState({
@@ -207,21 +216,47 @@ export default function ClassroomsManagement() {
 
   // Guardar aula (crear o editar)
   const handleSave = async () => {
-    if (!form.code_classroom.trim() || !form.name_classroom.trim()) {
-      alert('El código y el nombre del aula son obligatorios.');
+    const codeErr = validateCodeField(form.code_classroom, 'El código del aula');
+    if (codeErr) {
+      alert(codeErr);
+      return;
+    }
+
+    const cleanName = form.name_classroom.trim();
+    if (cleanName.length < LIMITS.TITLE_MIN || cleanName.length > LIMITS.TITLE_MAX) {
+      alert(`El nombre del aula debe tener entre ${LIMITS.TITLE_MIN} y ${LIMITS.TITLE_MAX} caracteres.`);
+      return;
+    }
+
+    const cap = Number(form.capacity);
+    if (!Number.isInteger(cap) || cap < LIMITS.CAPACITY_MIN || cap > LIMITS.CAPACITY_MAX) {
+      alert(`La capacidad máxima debe ser un número entero entre ${LIMITS.CAPACITY_MIN} y ${LIMITS.CAPACITY_MAX} estudiantes.`);
       return;
     }
 
     try {
+      const payload = {
+        ...form,
+        code_classroom: form.code_classroom.trim().toUpperCase(),
+        name_classroom: cleanName,
+        building: (form.building || 'Edificio Central').trim().slice(0, LIMITS.BUILDING_MAX),
+        capacity: cap,
+        resources: (form.resources || '').trim().slice(0, LIMITS.RESOURCES_MAX),
+        notes: (form.notes || '').trim().slice(0, LIMITS.NOTES_MAX)
+      };
+
+      setSubmitting(true);
       if (editingClassroom) {
-        await api.put(`/classrooms/${editingClassroom.id_classroom}`, form);
+        await api.put(`/classrooms/${editingClassroom.id_classroom}`, payload);
       } else {
-        await api.post('/classrooms', form);
+        await api.post('/classrooms', payload);
       }
       setModalOpen(false);
       loadClassrooms();
     } catch (err) {
       alert(err.message || 'Error al guardar el aula');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -233,12 +268,15 @@ export default function ClassroomsManagement() {
   const executeDelete = async () => {
     const { id } = confirmDelete;
     if (!id) return;
-    setConfirmDelete({ open: false, id: null, name: '' });
+    setDeleting(true);
     try {
       await api.delete(`/classrooms/${id}`);
+      setConfirmDelete({ open: false, id: null, name: '' });
       loadClassrooms();
     } catch (err) {
       alert(err.message || 'No se pudo eliminar el aula');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -504,33 +542,37 @@ export default function ClassroomsManagement() {
         onClose={() => setModalOpen(false)}
         footer={
           <>
-            <ActionButton variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</ActionButton>
-            <ActionButton variant="accent" onClick={handleSave}>Guardar Espacio</ActionButton>
+            <ActionButton variant="ghost" onClick={() => setModalOpen(false)} disabled={submitting}>Cancelar</ActionButton>
+            <ActionButton variant="accent" onClick={handleSave} loading={submitting}>
+              {submitting ? 'Guardando...' : 'Guardar Espacio'}
+            </ActionButton>
           </>
         }
       >
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '14px' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Código del Aula *</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Código del Aula</span>
             <input
               className="form-input"
               style={fieldStyle}
               type="text"
+              maxLength={LIMITS.CODE_MAX}
               placeholder="Ej: AULA-08, LAB-05"
               value={form.code_classroom}
-              onChange={(e) => setForm({ ...form, code_classroom: e.target.value })}
+              onChange={(e) => setForm({ ...form, code_classroom: sanitizeCode(e.target.value, LIMITS.CODE_MAX) })}
             />
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Nombre Descriptivo *</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Nombre Descriptivo</span>
             <input
               className="form-input"
               style={fieldStyle}
               type="text"
+              maxLength={LIMITS.TITLE_MAX}
               placeholder="Ej: Aula 08 - Audiovisual"
               value={form.name_classroom}
-              onChange={(e) => setForm({ ...form, name_classroom: e.target.value })}
+              onChange={(e) => setForm({ ...form, name_classroom: sanitizeTitleText(e.target.value, LIMITS.TITLE_MAX) })}
             />
           </label>
 
@@ -540,9 +582,10 @@ export default function ClassroomsManagement() {
               className="form-input"
               style={fieldStyle}
               type="text"
+              maxLength={LIMITS.BUILDING_MAX}
               placeholder="Ej: Edificio Central"
               value={form.building}
-              onChange={(e) => setForm({ ...form, building: e.target.value })}
+              onChange={(e) => setForm({ ...form, building: sanitizeTitleText(e.target.value, LIMITS.BUILDING_MAX) })}
             />
           </label>
 
@@ -556,15 +599,15 @@ export default function ClassroomsManagement() {
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Capacidad Máxima (Estudiantes)</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Capacidad Máxima</span>
             <input
               className="form-input"
               style={fieldStyle}
-              type="number"
-              min="1"
-              max="500"
+              inputMode="numeric"
+              maxLength={3}
+              placeholder="1 a 100"
               value={form.capacity}
-              onChange={(e) => setForm({ ...form, capacity: e.target.value })}
+              onChange={(e) => setForm({ ...form, capacity: sanitizeIntRange(e.target.value, LIMITS.CAPACITY_MIN, LIMITS.CAPACITY_MAX) })}
             />
           </label>
 
@@ -591,25 +634,27 @@ export default function ClassroomsManagement() {
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Recursos y Equipamiento (separados por coma)</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Recursos y Equipamiento</span>
             <input
               className="form-input"
               style={fieldStyle}
               type="text"
+              maxLength={LIMITS.RESOURCES_MAX}
               placeholder="Ej: Pizarra acrílica, 30 computadoras, Video beam, A/C"
               value={form.resources}
-              onChange={(e) => setForm({ ...form, resources: e.target.value })}
+              onChange={(e) => setForm({ ...form, resources: sanitizeTitleText(e.target.value, LIMITS.RESOURCES_MAX) })}
             />
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Notas adicionales (opcional)</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Notas adicionales</span>
             <textarea
               className="form-input"
               style={{ ...fieldStyle, minHeight: '70px', resize: 'vertical' }}
+              maxLength={LIMITS.NOTES_MAX}
               placeholder="Observaciones de acceso, llaves de laboratorio, etc."
               value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              onChange={(e) => setForm({ ...form, notes: e.target.value.slice(0, LIMITS.NOTES_MAX) })}
             />
           </label>
         </div>

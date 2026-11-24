@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Award, FilePenLine, ShieldCheck, Save } from 'lucide-react';
 import { AdminPageShell, ActionButton, SectionCard, StatusBadge, CustomSelect, ConfirmDialog } from './AdminPageShell';
 import api from '../../../services/api';
+import { sanitizeGradeInput } from '../../../utils/validation';
 
 export default function GradesControl() {
   const [loading, setLoading] = useState(true);
@@ -110,16 +111,20 @@ export default function GradesControl() {
 
   const updateGrade = (detailId, index, value) => {
     if (isClosed || isCulminado) return;
+    const sanitized = sanitizeGradeInput(value);
     setGrades((currentGrades) => currentGrades.map((student) => {
       if (student.id !== detailId) return student;
-      const val = Number(value) || 0;
       const mapped = { ...student };
-      if (index === 0) mapped.c1 = val;
-      if (index === 1) mapped.c2 = val;
-      if (index === 2) mapped.c3 = val;
-      if (index === 3) mapped.c4 = val;
+      if (index === 0) mapped.c1 = sanitized;
+      if (index === 1) mapped.c2 = sanitized;
+      if (index === 2) mapped.c3 = sanitized;
+      if (index === 3) mapped.c4 = sanitized;
       
-      mapped.final = (mapped.c1 + mapped.c2 + mapped.c3 + mapped.c4) / 4;
+      const n1 = Number(mapped.c1) || 0;
+      const n2 = Number(mapped.c2) || 0;
+      const n3 = Number(mapped.c3) || 0;
+      const n4 = Number(mapped.c4) || 0;
+      mapped.final = (n1 + n2 + n3 + n4) / 4;
       return mapped;
     }));
   };
@@ -129,16 +134,22 @@ export default function GradesControl() {
     try {
       setIsSaving(true);
       await Promise.all(grades.map(r => {
+        const c1 = Math.max(0, Math.min(20, Number(r.c1) || 0));
+        const c2 = Math.max(0, Math.min(20, Number(r.c2) || 0));
+        const c3 = Math.max(0, Math.min(20, Number(r.c3) || 0));
+        const c4 = Math.max(0, Math.min(20, Number(r.c4) || 0));
+        const finalNote = (c1 + c2 + c3 + c4) / 4;
+
         let status = 'Cursando';
-        if (r.final >= 9.5) status = 'Aprobado'; // Simplified criteria
+        if (finalNote >= 9.5) status = 'Aprobado'; // Simplified criteria
         else status = 'Reprobado';
 
         return api.put(`/registration-details/${r.id}`, {
-          corte_1: r.c1,
-          corte_2: r.c2,
-          corte_3: r.c3,
-          corte_4: r.c4,
-          final_note: r.final,
+          corte_1: c1,
+          corte_2: c2,
+          corte_3: c3,
+          corte_4: c4,
+          final_note: finalNote,
           subject_status: status
         });
       }));
@@ -255,20 +266,20 @@ export default function GradesControl() {
                 </div>
                 <div className="grades-input-grid">
                   <label className="form-group" style={{ marginBottom: 0 }}>
-                    <span className="form-label">Corte 1</span>
-                    <input className="form-input" disabled={isClosed || isCulminado} value={student.c1} onChange={(e) => updateGrade(student.id, 0, e.target.value)} />
+                    <span className="form-label">Corte 1 (0–20)</span>
+                    <input className="form-input" inputMode="decimal" maxLength={5} disabled={isClosed || isCulminado} value={student.c1} onChange={(e) => updateGrade(student.id, 0, e.target.value)} />
                   </label>
                   <label className="form-group" style={{ marginBottom: 0 }}>
-                    <span className="form-label">Corte 2</span>
-                    <input className="form-input" disabled={isClosed || isCulminado} value={student.c2} onChange={(e) => updateGrade(student.id, 1, e.target.value)} />
+                    <span className="form-label">Corte 2 (0–20)</span>
+                    <input className="form-input" inputMode="decimal" maxLength={5} disabled={isClosed || isCulminado} value={student.c2} onChange={(e) => updateGrade(student.id, 1, e.target.value)} />
                   </label>
                   <label className="form-group" style={{ marginBottom: 0 }}>
-                    <span className="form-label">Corte 3</span>
-                    <input className="form-input" disabled={isClosed || isCulminado} value={student.c3} onChange={(e) => updateGrade(student.id, 2, e.target.value)} />
+                    <span className="form-label">Corte 3 (0–20)</span>
+                    <input className="form-input" inputMode="decimal" maxLength={5} disabled={isClosed || isCulminado} value={student.c3} onChange={(e) => updateGrade(student.id, 2, e.target.value)} />
                   </label>
                   <label className="form-group" style={{ marginBottom: 0 }}>
-                    <span className="form-label">Corte 4</span>
-                    <input className="form-input" disabled={isClosed || isCulminado} value={student.c4} onChange={(e) => updateGrade(student.id, 3, e.target.value)} />
+                    <span className="form-label">Corte 4 (0–20)</span>
+                    <input className="form-input" inputMode="decimal" maxLength={5} disabled={isClosed || isCulminado} value={student.c4} onChange={(e) => updateGrade(student.id, 3, e.target.value)} />
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                     <span className="form-label">Final</span>

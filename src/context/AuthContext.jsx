@@ -105,8 +105,22 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const refreshProfile = useCallback(async () => {
+    try {
+      const profile = await api.get('/auth/profile');
+      const normalized = normalizeUser(profile);
+      setUser(normalized);
+      return normalized;
+    } catch (err) {
+      console.error('Error refreshing profile:', err);
+      throw err;
+    }
+  }, []);
+
   const value = {
     user,
+    setUser,
+    refreshProfile,
     token,
     loading,
     error,

@@ -332,9 +332,10 @@ function PasswordField({ id, label, value, onChange, showValue, onToggle }) {
         <input
           id={id}
           type={showValue ? 'text' : 'password'}
+          maxLength={100}
           placeholder="••••••••"
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => onChange(event.target.value.slice(0, 100))}
           autoComplete="new-password"
           required
           style={{

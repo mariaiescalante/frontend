@@ -51,6 +51,11 @@ export default function ChangePassword() {
       return;
     }
 
+    if (normalizedNew === normalizedCurrent) {
+      setError('La nueva contraseña debe ser diferente a la contraseña actual o temporal.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
@@ -86,12 +91,42 @@ export default function ChangePassword() {
     }
   };
 
+  const isMandatoryChange = Boolean(user?.must_change_password);
+
   return (
     <AdminPageShell
       eyebrow="Seguridad"
-      title="Cambiar Contraseña"
-      subtitle={user ? `Usuario: ${user.name || ''} ${user.lastname || ''} · Actualiza tu clave de acceso de manera segura.` : 'Actualiza tu clave de acceso desde el panel autenticado.'}
+      title={isMandatoryChange ? 'Cambio Obligatorio de Contraseña' : 'Cambiar Contraseña'}
+      subtitle={
+        isMandatoryChange
+          ? 'Has iniciado sesión con una contraseña temporal. Por seguridad, debes configurar una contraseña personal antes de acceder al sistema.'
+          : user
+            ? `Usuario: ${user.name || ''} ${user.lastname || ''} · Actualiza tu clave de acceso de manera segura.`
+            : 'Actualiza tu clave de acceso desde el panel autenticado.'
+      }
     >
+      {isMandatoryChange && (
+        <div
+          style={{
+            marginBottom: '20px',
+            padding: '14px 18px',
+            borderRadius: '14px',
+            background: '#fffbeb',
+            border: '1.5px solid #f59e0b',
+            color: '#92400e',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            fontSize: '0.92rem',
+            fontWeight: 600,
+          }}
+        >
+          <AlertTriangle size={20} style={{ flexShrink: 0, color: '#d97706' }} />
+          <span>
+            <strong>Acción requerida:</strong> Tu cuenta tiene asignada una contraseña temporal. Ingresa la clave temporal que recibiste por correo y define tu nueva contraseña definitiva para desbloquear el acceso a todos los módulos.
+          </span>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
         <SectionCard
           title="Seguridad de la Cuenta"
@@ -99,16 +134,30 @@ export default function ChangePassword() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <InfoRow icon={<ShieldCheck size={18} />} title="Token activo" text="Se adjunta automáticamente en la petición protegida." />
-            <InfoRow icon={<LockKeyhole size={18} />} title="Contraseña actual" text="Debes escribir tu clave actual para confirmar el cambio." />
-            <InfoRow icon={<BadgeCheck size={18} />} title="Redirección" text="Al completar el cambio, la sesión se cerrará por seguridad." />
+            <InfoRow icon={<LockKeyhole size={18} />} title="Contraseña actual" text={isMandatoryChange ? 'Ingresa la contraseña temporal que te fue enviada al correo.' : 'Debes escribir tu clave actual para confirmar el cambio.'} />
+            <InfoRow icon={<BadgeCheck size={18} />} title="Redirección" text="Al completar el cambio, volverás a iniciar sesión con tu nueva clave personal." />
             
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', marginTop: '8px' }}>
-              <Link to="/dashboard" style={{ textDecoration: 'none' }}>
-                <ActionButton variant="secondary">
-                  <ArrowLeft size={16} /> Volver al Dashboard
+            {!isMandatoryChange ? (
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', marginTop: '8px' }}>
+                <Link to="/dashboard" style={{ textDecoration: 'none' }}>
+                  <ActionButton variant="secondary">
+                    <ArrowLeft size={16} /> Volver al Dashboard
+                  </ActionButton>
+                </Link>
+              </div>
+            ) : (
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', marginTop: '8px' }}>
+                <ActionButton
+                  variant="secondary"
+                  onClick={() => {
+                    logout();
+                    navigate('/login', { replace: true });
+                  }}
+                >
+                  <ArrowLeft size={16} /> Cerrar sesión
                 </ActionButton>
-              </Link>
-            </div>
+              </div>
+            )}
           </div>
         </SectionCard>
 
@@ -224,9 +273,10 @@ function PasswordField({ id, label, value, onChange, showValue, onToggle }) {
         <input
           id={id}
           type={showValue ? 'text' : 'password'}
+          maxLength={100}
           placeholder="••••••••"
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => onChange(event.target.value.slice(0, 100))}
           autoComplete={
             id === 'current-password' ? 'current-password' : 'new-password'
           }

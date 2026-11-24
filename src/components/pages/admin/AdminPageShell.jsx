@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 const tonePalette = {
   primary: {
@@ -82,7 +82,7 @@ export function StatusBadge({ children, tone = 'neutral', style }) {
   );
 }
 
-export function ActionButton({ variant = 'primary', children, style, ...props }) {
+export function ActionButton({ variant = 'primary', loading = false, disabled = false, icon: Icon, children, style, ...props }) {
   const variants = {
     primary: {
       background: 'linear-gradient(135deg, #051124 0%, #17315a 100%)',
@@ -111,11 +111,13 @@ export function ActionButton({ variant = 'primary', children, style, ...props })
     }
   };
 
+  const isBlocked = disabled || loading;
   const selected = variants[variant] || variants.primary;
 
   return (
     <button
       type="button"
+      disabled={isBlocked}
       {...props}
       style={{
         display: 'inline-flex',
@@ -127,25 +129,36 @@ export function ActionButton({ variant = 'primary', children, style, ...props })
         fontFamily: 'var(--font-heading)',
         fontSize: '0.85rem',
         fontWeight: 700,
-        cursor: 'pointer',
+        cursor: isBlocked ? 'not-allowed' : 'pointer',
+        opacity: isBlocked ? 0.6 : 1,
+        pointerEvents: isBlocked ? 'none' : 'auto',
         transition: 'all 0.2s ease',
-        boxShadow: variant === 'accent' ? '0 8px 20px rgba(255, 209, 0, 0.22)' : 'none',
+        boxShadow: variant === 'accent' && !isBlocked ? '0 8px 20px rgba(255, 209, 0, 0.22)' : 'none',
         ...selected,
         ...style
       }}
       onMouseEnter={(event) => {
-        event.currentTarget.style.transform = 'translateY(-1px)';
-        if (variant === 'accent') {
-          event.currentTarget.style.boxShadow = '0 12px 24px rgba(255, 209, 0, 0.3)';
+        if (!isBlocked) {
+          event.currentTarget.style.transform = 'translateY(-1px)';
+          if (variant === 'accent') {
+            event.currentTarget.style.boxShadow = '0 12px 24px rgba(255, 209, 0, 0.3)';
+          }
         }
       }}
       onMouseLeave={(event) => {
-        event.currentTarget.style.transform = 'translateY(0)';
-        if (variant === 'accent') {
-          event.currentTarget.style.boxShadow = '0 8px 20px rgba(255, 209, 0, 0.22)';
+        if (!isBlocked) {
+          event.currentTarget.style.transform = 'translateY(0)';
+          if (variant === 'accent') {
+            event.currentTarget.style.boxShadow = '0 8px 20px rgba(255, 209, 0, 0.22)';
+          }
         }
       }}
     >
+      {loading ? (
+        <Loader2 size={16} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
+      ) : Icon ? (
+        <Icon size={16} />
+      ) : null}
       {children}
     </button>
   );
@@ -223,7 +236,10 @@ export function MetricsCarousel({ metrics = [] }) {
   const handleScroll = (direction) => {
     const el = containerRef.current;
     if (!el) return;
-    const scrollAmount = 260;
+    const firstCard = el.firstElementChild;
+    const gap = 18;
+    const singleCardStep = firstCard ? firstCard.getBoundingClientRect().width + gap : 258;
+    const scrollAmount = singleCardStep * 3;
     el.scrollBy({
       left: direction === 'left' ? -scrollAmount : scrollAmount,
       behavior: 'smooth'
@@ -283,8 +299,8 @@ export function MetricsCarousel({ metrics = [] }) {
           <div
             key={metric.label}
             style={{
-              flex: '0 0 240px',
-              minWidth: '235px',
+              flex: '0 0 calc((100% - 36px) / 3)',
+              minWidth: '220px',
               scrollSnapAlign: 'start'
             }}
           >
@@ -478,7 +494,8 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
 
   return (
     <div
-      className="sgums-modal-overlay"
+      translate="no"
+      className="sgums-modal-overlay notranslate"
       style={{
         position: 'fixed',
         inset: 0,
@@ -492,7 +509,6 @@ export function Modal({ open, title, subtitle, onClose, children, footer }) {
         overflowY: 'auto',
         WebkitOverflowScrolling: 'touch',
       }}
-      onClick={onClose}
     >
       <div
         className="glass-panel custom-modal-scrollbar sgums-modal-card"
@@ -555,10 +571,11 @@ export function ProgressBar({ value, tone = 'primary' }) {
   );
 }
 
-export function CustomSelect({ value, onChange, options, placeholder = 'Seleccionar...', style }) {
+export function CustomSelect({ value, onChange, options = [], placeholder = 'Seleccionar...', style }) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
-  const selectedOption = options.find(opt => opt.value === value || String(opt.value) === String(value));
+  const safeOptions = Array.isArray(options) ? options.filter(Boolean) : [];
+  const selectedOption = safeOptions.find(opt => opt.value === value || String(opt.value) === String(value));
   const wrapperRef = useRef(null);
 
   useEffect(() => {
@@ -646,9 +663,9 @@ export function CustomSelect({ value, onChange, options, placeholder = 'Seleccio
             padding: '6px 0'
           }}
         >
-          {options.map((opt) => (
+          {safeOptions.map((opt, idx) => (
             <li
-              key={opt.value}
+              key={`${opt.value ?? idx}-${idx}`}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -734,7 +751,6 @@ export function ConfirmDialog({ open, title, message, confirmText = 'Confirmar',
         padding: '16px',
         zIndex: 10050,
       }}
-      onClick={onCancel}
     >
       <div
         style={{
@@ -745,9 +761,32 @@ export function ConfirmDialog({ open, title, message, confirmText = 'Confirmar',
           boxShadow: '0 30px 80px rgba(15, 23, 42, 0.28)',
           padding: '32px',
           textAlign: 'center',
+          position: 'relative',
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        <button
+          type="button"
+          onClick={onCancel || onConfirm}
+          aria-label="Cerrar ventana"
+          style={{
+            position: 'absolute',
+            top: '14px',
+            right: '14px',
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0',
+            background: '#f8fafc',
+            color: '#475569',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <X size={16} />
+        </button>
         <div style={{
           width: '64px',
           height: '64px',
